@@ -10,13 +10,20 @@ from app.config import Settings
 from app.hash_keys import object_key, sha256_hex
 
 
+class S3Body(Protocol):
+    """Streaming body returned by ``get_object``."""
+
+    def read(self, size: int = -1) -> bytes:
+        """Read the next window of object bytes."""
+
+
 class S3ObjectClient(Protocol):
     """Minimal S3 client surface used by ``S3CompatibleStorage``."""
 
     def put_object(self, **kwargs: object) -> object:
         """Upload an object."""
 
-    def get_object(self, **kwargs: object) -> dict[str, object]:
+    def get_object(self, **kwargs: object) -> dict[str, S3Body]:
         """Download an object."""
 
     def delete_object(self, **kwargs: object) -> object:

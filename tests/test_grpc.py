@@ -20,6 +20,10 @@ def _create_request() -> pb.CreateSessionRequest:
     info = sample_phone_info().model_dump()
     caps = sample_phone_caps().model_dump()
     cameras = sample_cameras()
+    from google.protobuf.struct_pb2 import Struct
+
+    metadata = Struct()
+    metadata.update({"capture_mode": "burst"})
     return pb.CreateSessionRequest(
         session_name="grpc-run",
         phone_info=pb.PhoneInfo(**info),
@@ -28,6 +32,7 @@ def _create_request() -> pb.CreateSessionRequest:
             camera_count=cameras.camera_count,
             cameras=[pb.CameraInfo(**item.model_dump()) for item in cameras.cameras],
         ),
+        metadata=metadata,
     )
 
 
@@ -50,6 +55,7 @@ async def test_grpc_crud_and_images(stub) -> None:
     session_id = created.session.id
     assert created.session.status == "CREATED"
     assert created.session.phone_info.model == "Pixel 8"
+    assert created.session.metadata["capture_mode"] == "burst"
 
     fetched = await stub.GetSession(pb.GetSessionRequest(session_id=session_id))
     assert fetched.session.session_name == "grpc-run"
@@ -107,6 +113,48 @@ async def test_grpc_crud_and_images(stub) -> None:
     with pytest.raises(grpc.aio.AioRpcError) as err:
         await stub.GetSession(pb.GetSessionRequest(session_id=session_id))
     assert err.value.code() == grpc.StatusCode.NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_grpc_mapped_service_errors(stub) -> None:
+    """Create/update/upload validation failures map to INVALID_ARGUMENT."""
+    with pytest.raises(grpc.aio.AioRpcError) as create_err:
+        await stub.CreateSession(pb.CreateSessionRequest(session_name=""))
+    assert create_err.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+
+    created = await stub.CreateSession(_create_request())
+    session_id = created.session.id
+    with pytest.raises(grpc.aio.AioRpcError) as upd_err:
+        await stub.UpdateSession(
+            pb.UpdateSessionRequest(session_id=session_id, status="NOPE"),
+        )
+    assert upd_err.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+
+    async def not_image():
+        yield pb.ImageChunk(
+            session_id=session_id,
+            filename="note.txt",
+            content_type="text/plain",
+            data=b"hello",
+        )
+
+    with pytest.raises(grpc.aio.AioRpcError) as up_err:
+        await stub.UploadImage(not_image())
+    assert up_err.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+
+    async def not_image_batch():
+        yield pb.BatchImageChunk(
+            session_id=session_id,
+            image_index=0,
+            filename="note.txt",
+            content_type="text/plain",
+            data=b"hello",
+            end_of_image=True,
+        )
+
+    with pytest.raises(grpc.aio.AioRpcError) as batch_err:
+        await stub.UploadImagesBatch(not_image_batch())
+    assert batch_err.value.code() == grpc.StatusCode.INVALID_ARGUMENT
 
 
 @pytest.mark.asyncio
