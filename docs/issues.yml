@@ -13,6 +13,16 @@
 #   bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml --validate-only
 #   bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml --dry-run
 #   bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml
+#
+# GitHub issue objects are not published yet (Issues: write + github-scaffold
+# analog still pending TOOL-001-T1). This file remains the decision log.
+#
+# Shipped on main via https://github.com/pirlruc/pixeldive/pull/1
+# (merged 2026-09-19, commit c1eda05):
+#   done  ARCH-001, DATA-001, API-001, QUAL-001, REV-001
+#   done  TOOL-001-T2, TOOL-001-T3
+#   open  TOOL-001 / TOOL-001-T1 (analog submodule pins)
+#   open  SEC-001, PERF-001, DATA-002, OPS-001, API-002 (Phase 2)
 
 milestones:
   - name: Tooling — Analog & methodology
@@ -45,6 +55,7 @@ milestones:
           - Wrapper scripts under scripts/ call the scaffold copies
           - docs/guardrails is pinned at tag 1.3.0 when GUARDRAILS_READ_TOKEN exists
           - .github/scaffold is pinned at tag 1.2.0 when a Contents-read token exists
+          - Phase 1 templates, Cursor rules, and this manifest shipped in pirlruc/pixeldive#1
         guardrail_refs:
           - PY-TEST-002
           - CI-022
@@ -121,6 +132,7 @@ milestones:
           - No business SQL or disk I/O lives in transport modules beyond mapping
           - Phone/camera JSON field names match the Android sources listed on the models
           - HTTP 404/422 map to gRPC NOT_FOUND/INVALID_ARGUMENT
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/1
         guardrail_refs:
           - PY-RUN-002
           - PY-CPLX-001
@@ -165,6 +177,7 @@ milestones:
           - init_db() creates tables when absent
           - Identical payloads reuse storage_path; delete GCs a path only at refcount 0
           - STORAGE_BACKEND=s3 uses the S3-compatible adapter
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/1
         guardrail_refs:
           - PY-TEST-002
         tasks:
@@ -211,6 +224,7 @@ milestones:
           - gRPC UploadImage / UploadImagesBatch are client-streaming
           - gRPC DownloadImage is server-streaming
           - Missing resources are HTTP 404 / gRPC NOT_FOUND
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/1
         guardrail_refs:
           - PY-RUN-002
           - PY-TEST-002
@@ -260,6 +274,7 @@ milestones:
           - bash scripts/ci-local.sh is the local PY-* parity entrypoint
           - Dockerfile uses a non-root USER and exec-form ENTRYPOINT
           - Tests use SQLite aiosqlite; production default is PostgreSQL asyncpg
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/1
         guardrail_refs:
           - PY-QUAL-001
           - PY-TEST-002
@@ -327,6 +342,7 @@ milestones:
           - gRPC assembly aborts when bytes or batch cardinality exceed settings
           - Session delete GC issues one distinct-path query, not one per blob
           - Remaining risks are owned by SEC-001, PERF-001, DATA-002, OPS-001, API-002
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/1
         guardrail_refs:
           - PY-TEST-002
         tasks:
