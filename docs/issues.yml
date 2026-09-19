@@ -1,0 +1,576 @@
+# Authored backlog for pixeldive. Source of truth for GitHub Epic/Task issues.
+#
+# Schema: https://github.com/pirlruc/github-scaffold/blob/1.2.0/docs/issues-schema.md
+# Methodology: https://github.com/pirlruc/methodologies/tree/1.2.0/github-issue-adr
+#
+# The Epic is the decision record — there are no ADR markdown files.
+# Deviations from guardrails go in docs/guardrail-deviations.yml, not here.
+#
+# `id` values are permanent: issues are matched by the [ID] in their title.
+#
+# Sync (after Issues: Read and write on the token, and github-scaffold is cloned):
+#   bash scripts/setup-issue-scaffold.sh
+#   bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml --validate-only
+#   bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml --dry-run
+#   bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml
+
+milestones:
+  - name: Tooling — Analog & methodology
+    epics:
+      - id: TOOL-001
+        status: open
+        title: Pin analog repos and adopt github-issue-adr
+        overview:
+          problem: >-
+            pixeldive started empty, so agents had no pinned guardrails, no
+            authored backlog, and no issue templates. github-issue-adr requires
+            Epic issues as decision records and docs/issues.yml as the manifest.
+          goal: >-
+            Adopt the same analog pins as FinSilo/Heimdall (guardrails 1.3.0,
+            github-scaffold 1.2.0, methodologies cited at 1.2.0), sync Cursor
+            rules and GitHub templates, and keep docs/issues.yml as the
+            decision log. No docs/adr/ tree.
+        architecture:
+          target: Analog pins plus docs/issues.yml as the decision log
+          modules:
+            - docs/guardrails
+            - .github/scaffold
+            - docs/issues.yml
+            - docs/issues-sync-targets.yml
+            - scripts/issues-sync.sh
+            - .cursor/rules
+        acceptance_criteria:
+          - Cursor rules and issue/PR templates match github-scaffold 1.2.0
+          - docs/issues.yml is the authored backlog; no docs/adr/
+          - Wrapper scripts under scripts/ call the scaffold copies
+          - docs/guardrails is pinned at tag 1.3.0 when GUARDRAILS_READ_TOKEN exists
+          - .github/scaffold is pinned at tag 1.2.0 when a Contents-read token exists
+        guardrail_refs:
+          - PY-TEST-002
+          - CI-022
+        tasks:
+          - id: TOOL-001-T1
+            status: open
+            title: Pin guardrails and github-scaffold submodules
+            instructions:
+              files:
+                - .gitmodules
+                - docs/guardrails
+                - .github/scaffold
+            verification:
+              - git -C docs/guardrails describe --tags --exact-match HEAD
+              - git -C .github/scaffold describe --tags --exact-match HEAD
+          - id: TOOL-001-T2
+            status: done
+            title: Sync GitHub templates and Cursor rules from the scaffold analog
+            instructions:
+              files:
+                - .github/ISSUE_TEMPLATE
+                - .github/pull_request_template.md
+                - .cursor/rules
+                - docs/guardrail-deviations.yml
+            verification:
+              - test -f .github/ISSUE_TEMPLATE/epic-template.md
+              - test -f .cursor/rules/github-issue-adr.mdc
+          - id: TOOL-001-T3
+            status: done
+            title: Author issues.yml, targets, and root wrapper scripts
+            instructions:
+              files:
+                - docs/issues.yml
+                - docs/issues-sync-targets.yml
+                - scripts/issues-sync.sh
+                - scripts/setup-issue-scaffold.sh
+                - scripts/sync-templates.sh
+            verification:
+              - test -f docs/issues.yml
+              - test -x scripts/issues-sync.sh
+
+  - name: Phase 1 — Session platform
+    epics:
+      - id: ARCH-001
+        status: done
+        title: Dual-transport session service with a single business layer
+        overview:
+          problem: >-
+            Android capture clients (Heimdall app→kit→core SDK stack, FinSilo-style
+            :app/:domain modules) need to open an image-processing session, attach
+            device/camera identity, and upload frames. REST is convenient for
+            mobile multipart; gRPC streaming is required for large/batch transfers.
+            Two independent implementations would drift.
+          goal: >-
+            One SessionService owns sessions, images, and storage. FastAPI and
+            gRPC are transports only. Device JSON matches Android Build,
+            ActivityManager, DisplayMetrics, and Camera2 fields those clients
+            already collect.
+        architecture:
+          target: >-
+            In the context of Android capture clients uploading processing
+            sessions, facing dual REST and gRPC needs, we decided on a single
+            asyncio SessionService behind FastAPI and grpcio with SQLModel as
+            the shared schema, to achieve one validation and storage path,
+            accepting dual-server process complexity.
+          modules:
+            - app/service.py
+            - app/api.py
+            - app/grpc_server.py
+            - app/models.py
+            - main.py
+        acceptance_criteria:
+          - FastAPI handlers and gRPC servicers call the same SessionService methods
+          - No business SQL or disk I/O lives in transport modules beyond mapping
+          - Phone/camera JSON field names match the Android sources listed on the models
+          - HTTP 404/422 map to gRPC NOT_FOUND/INVALID_ARGUMENT
+        guardrail_refs:
+          - PY-RUN-002
+          - PY-CPLX-001
+        tasks:
+          - id: ARCH-001-T1
+            status: done
+            title: Factor SessionService out of REST and gRPC transports
+            instructions:
+              files:
+                - app/service.py
+                - app/api.py
+                - app/grpc_server.py
+                - main.py
+            verification:
+              - rg -n "SessionService" app/api.py app/grpc_server.py app/service.py
+              - bash scripts/ci-local.sh
+
+      - id: DATA-001
+        status: done
+        title: SQLModel session/image schema, async PostgreSQL, content-addressed storage
+        overview:
+          problem: >-
+            Sessions must persist device specs and image blobs with cascade
+            delete. A naive UUID-per-file store duplicates burst frames from
+            Camera2. SQLAlchemy `metadata` is reserved, so the JSON bag needs
+            an explicit column mapping.
+          goal: >-
+            SQLModel tables for Session and SessionImage, async engine via
+            asyncpg, init_db() for empty databases, and a StorageBackend with
+            local filesystem plus S3-compatible adapter. Blobs are SHA-256
+            addressed so identical payloads share a path; DB rows stay unique.
+        architecture:
+          target: Async SQLModel + StorageBackend protocol
+          modules:
+            - app/models.py
+            - app/database.py
+            - app/storage.py
+            - app/config.py
+        acceptance_criteria:
+          - Session.images cascade delete on session removal (FK ondelete CASCADE)
+          - extra_metadata maps to column metadata without colliding with MetaData
+          - init_db() creates tables when absent
+          - Identical payloads reuse storage_path; delete GCs a path only at refcount 0
+          - STORAGE_BACKEND=s3 uses the S3-compatible adapter
+        guardrail_refs:
+          - PY-TEST-002
+        tasks:
+          - id: DATA-001-T1
+            status: done
+            title: Define SQLModel tables and async engine
+            instructions:
+              files:
+                - app/models.py
+                - app/database.py
+                - app/config.py
+            verification:
+              - uv run pytest tests/test_models.py tests/test_service.py
+          - id: DATA-001-T2
+            status: done
+            title: Implement local and S3-compatible storage backends
+            instructions:
+              files:
+                - app/storage.py
+            verification:
+              - uv run pytest tests/test_storage.py
+
+      - id: API-001
+        status: done
+        title: REST and gRPC session/image transports
+        overview:
+          problem: >-
+            Mobile clients need multipart REST; high-throughput capture needs
+            client-streaming gRPC. The surface must cover create/get/update/delete
+            session plus single, batch, list, and download image operations.
+          goal: >-
+            Implement every REST route under /api/v1 and every rpc in
+            proto/session_service.proto against SessionService, including
+            concurrent batch disk writes and streamed image bytes.
+        architecture:
+          target: FastAPI router + grpcio aio servicer
+          modules:
+            - app/api.py
+            - app/grpc_server.py
+            - proto/session_service.proto
+        acceptance_criteria:
+          - POST/GET/PUT/DELETE /api/v1/sessions and image routes behave as specified
+          - Batch REST upload accepts List[UploadFile] and saves concurrently
+          - gRPC UploadImage / UploadImagesBatch are client-streaming
+          - gRPC DownloadImage is server-streaming
+          - Missing resources are HTTP 404 / gRPC NOT_FOUND
+        guardrail_refs:
+          - PY-RUN-002
+          - PY-TEST-002
+        tasks:
+          - id: API-001-T1
+            status: done
+            title: Implement FastAPI session and image routes
+            instructions:
+              files:
+                - app/api.py
+                - proto/session_service.proto
+            verification:
+              - uv run pytest tests/test_api.py
+          - id: API-001-T2
+            status: done
+            title: Implement gRPC SessionService servicer
+            instructions:
+              files:
+                - app/grpc_server.py
+                - proto/session_service.proto
+            verification:
+              - uv run pytest tests/test_grpc.py
+
+      - id: QUAL-001
+        status: done
+        title: Dual-server runner, Python quality gates, container
+        overview:
+          problem: >-
+            REST and gRPC must share one asyncio loop. Python PY-* gates need
+            a consumer threshold copy because pirlruc/guardrails is private.
+            The image is a product artifact (DOCKER-*), not a tool container.
+          goal: >-
+            main.py runs Uvicorn and the gRPC aio server together. ci-local.sh
+            enforces ruff, mypy, pytest 95/95, interrogate, and radon against
+            config/python.profile.thresholds.yml. Dockerfile is multi-stage,
+            non-root, and env-configured.
+        architecture:
+          target: Concurrent asyncio runner plus PY-* CI parity
+          modules:
+            - main.py
+            - Dockerfile
+            - docker-compose.yml
+            - scripts/ci-local.sh
+            - .github/workflows
+        acceptance_criteria:
+          - FastAPI and gRPC start in one process and one event loop
+          - bash scripts/ci-local.sh is the local PY-* parity entrypoint
+          - Dockerfile uses a non-root USER and exec-form ENTRYPOINT
+          - Tests use SQLite aiosqlite; production default is PostgreSQL asyncpg
+        guardrail_refs:
+          - PY-QUAL-001
+          - PY-TEST-002
+          - PY-DOC-001
+          - PY-CPLX-001
+          - PY-CPLX-002
+          - DOCKER-BUILD-001
+          - DOCKER-RUN-001
+        tasks:
+          - id: QUAL-001-T1
+            status: done
+            title: Dual-server runner and container image
+            instructions:
+              files:
+                - main.py
+                - Dockerfile
+                - docker-compose.yml
+            verification:
+              - test -f Dockerfile
+              - test -f main.py
+          - id: QUAL-001-T2
+            status: done
+            title: Pytest coverage and local CI parity scripts
+            instructions:
+              files:
+                - tests
+                - scripts/ci-local.sh
+                - scripts/check-complexity.py
+                - config/python.profile.thresholds.yml
+            verification:
+              - bash scripts/ci-local.sh
+
+  - name: Phase 2 — Hardening & scale
+    epics:
+      - id: REV-001
+        status: done
+        title: Record Phase 1 review findings and immediate hardening
+        overview:
+          problem: >-
+            The Phase 1 dual-transport service is functionally complete, but a
+            review found header injection in Content-Disposition, local storage
+            path escape if a row is poisoned, unbounded gRPC upload buffers,
+            unbounded batch cardinality, N+1 blob GC, and several scale/security
+            gaps that must not be forgotten.
+          goal: >-
+            Fix the cheap, high-impact defects in-tree (filename sanitization,
+            contained local paths, upload/batch ceilings, single-query GC,
+            missing-blob 404) and record remaining work as Phase 2 epics rather
+            than a parallel ADR tree.
+        architecture:
+          target: >-
+            In the context of a first production-shaped ingest API, facing
+            review findings that mix defects and roadmap items, we decided to
+            patch the defects immediately and log the rest as github-issue-adr
+            epics, to keep Phase 1 shippable without burying residual risk.
+          modules:
+            - app/filenames.py
+            - app/local_storage.py
+            - app/grpc_streams.py
+            - app/service.py
+            - docs/issues.yml
+        acceptance_criteria:
+          - Client filenames cannot inject headers or path separators
+          - Local blob keys cannot resolve outside STORAGE_ROOT
+          - gRPC assembly aborts when bytes or batch cardinality exceed settings
+          - Session delete GC issues one distinct-path query, not one per blob
+          - Remaining risks are owned by SEC-001, PERF-001, DATA-002, OPS-001, API-002
+        guardrail_refs:
+          - PY-TEST-002
+        tasks:
+          - id: REV-001-T1
+            status: done
+            title: Sanitize filenames, contain local paths, bound uploads and GC
+            instructions:
+              files:
+                - app/filenames.py
+                - app/local_storage.py
+                - app/grpc_streams.py
+                - app/service.py
+                - app/api.py
+                - app/config.py
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: SEC-001
+        status: open
+        title: Authenticate REST and gRPC; terminate TLS
+        overview:
+          problem: >-
+            Phase 1 is an unauthenticated ingest API on a trusted network.
+            gRPC binds an insecure port. Any caller who can reach the process
+            can create sessions, read device JSON, and download every image.
+          goal: >-
+            Add transport auth (mTLS and/or bearer tokens shared by REST and
+            gRPC) so SessionService remains the single authorization point.
+            Terminate TLS for gRPC; do not keep plaintext as the production
+            default.
+        architecture:
+          target: >-
+            In the context of Android capture clients on untrusted networks,
+            facing an open dual-transport ingest surface, we decided on a
+            shared auth dependency in SessionService (or a gateway in front of
+            both ports) rather than per-transport checks, to keep authorization
+            from drifting, accepting operational key/cert management.
+          modules:
+            - app/api.py
+            - app/grpc_server.py
+            - app/service.py
+            - main.py
+        acceptance_criteria:
+          - Unauthenticated REST calls return 401/403
+          - Unauthenticated gRPC calls return UNAUTHENTICATED/PERMISSION_DENIED
+          - Production gRPC is TLS (or mTLS); insecure bind is explicit/dev-only
+          - Authz is session-scoped (a token cannot read another tenant's images)
+        guardrail_refs:
+          - PY-RUN-002
+        tasks:
+          - id: SEC-001-T1
+            status: open
+            title: Design the shared credential and session-ownership model
+            instructions:
+              files:
+                - docs/issues.yml
+                - app/service.py
+            verification:
+              - rg -n "UNAUTHENTICATED|401" app docs/issues.yml
+          - id: SEC-001-T2
+            status: open
+            title: Implement REST and gRPC auth plus TLS bind options
+            instructions:
+              files:
+                - app/api.py
+                - app/grpc_server.py
+                - main.py
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: PERF-001
+        status: open
+        title: Stream ingest, bound concurrency, and paginate lists
+        overview:
+          problem: >-
+            Uploads are fully buffered in memory (REST multipart, gRPC
+            assemble_single/batch) then SHA-256 hashed as one blob. Batch REST
+            reads files sequentially before concurrent disk writes. S3 uses
+            blocking boto3 via to_thread with an extra HEAD before PUT.
+            list_images has no cursor. High-throughput Camera2 bursts will OOM
+            or stall the event loop.
+          goal: >-
+            Spool uploads to disk (or S3 multipart) while hashing incrementally,
+            cap concurrent saves, paginate image lists, and use an async S3
+            client. Keep SessionService as the owner of those limits.
+        architecture:
+          target: Streaming ingest with bounded fan-out behind SessionService
+          modules:
+            - app/service.py
+            - app/api.py
+            - app/grpc_streams.py
+            - app/s3_storage.py
+        acceptance_criteria:
+          - Peak memory per upload is O(chunk) plus a disk/S3 spool, not O(file)
+          - Concurrent blob writes are capped (semaphore), not one task per file
+          - List endpoints accept limit/cursor and do not return unbounded rows
+          - S3 save does not require a blocking HEAD+PUT round trip on the loop
+        guardrail_refs:
+          - PY-CPLX-001
+        tasks:
+          - id: PERF-001-T1
+            status: open
+            title: Replace in-memory ImageUpload.payload with a spool + digest
+            instructions:
+              files:
+                - app/service.py
+                - app/api.py
+                - app/grpc_streams.py
+            verification:
+              - bash scripts/ci-local.sh
+          - id: PERF-001-T2
+            status: open
+            title: Paginate list_images and bound batch fan-out
+            instructions:
+              files:
+                - app/service.py
+                - app/api.py
+                - proto/session_service.proto
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: DATA-002
+        status: open
+        title: Alembic migrations, GC races, and orphan blob sweeper
+        overview:
+          problem: >-
+            init_db() is create_all; live schema changes will break existing
+            databases. Blob GC checks refcount then deletes without a lock, so
+            a concurrent upload of the same hash can lose the object. Failed
+            DB inserts after a successful save leave orphans. status is an
+            unconstrained string. camera_count is not checked against
+            len(cameras).
+          goal: >-
+            Alembic for PostgreSQL, transactional or compare-and-swap GC,
+            a periodic sweeper for unreferenced objects, and CHECK/constraint
+            coverage for status and camera_count.
+        architecture:
+          target: Alembic + refcount-safe GC
+          modules:
+            - app/database.py
+            - app/service.py
+            - app/models.py
+        acceptance_criteria:
+          - Schema changes ship as Alembic revisions; create_all is test/dev only
+          - Deleting a session cannot remove a blob still referenced by another
+            session that inserted concurrently
+          - Orphan objects are reclaimed by a sweeper
+          - Invalid status strings cannot persist
+        guardrail_refs:
+          - PY-TEST-002
+        tasks:
+          - id: DATA-002-T1
+            status: open
+            title: Add Alembic and stop using create_all in production
+            instructions:
+              files:
+                - app/database.py
+                - alembic
+            verification:
+              - test -d alembic
+          - id: DATA-002-T2
+            status: open
+            title: Make blob GC race-safe and add an orphan sweeper
+            instructions:
+              files:
+                - app/service.py
+                - app/storage.py
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: OPS-001
+        status: open
+        title: Readiness probe, pool settings, metrics, and structured logs
+        overview:
+          problem: >-
+            /health is process-liveness only; Docker HEALTHCHECK and load
+            balancers will keep a replica in rotation when PostgreSQL is down.
+            The async engine uses SQLAlchemy defaults (no pool_pre_ping,
+            no size). There are no RED metrics or request IDs. Dual-server
+            shutdown waits on uvicorn.serve() and gRPC independently.
+          goal: >-
+            Split liveness and readiness, tune the asyncpg pool, emit
+            structured logs with request/rpc IDs, and export ingest latency
+            and blob size histograms.
+        architecture:
+          target: Probe + metrics sidecar-friendly process
+          modules:
+            - app/api.py
+            - app/database.py
+            - main.py
+        acceptance_criteria:
+          - Readiness fails when the database cannot be reached
+          - pool_pre_ping (or equivalent) is on for PostgreSQL
+          - Request/rpc identifiers appear in logs
+          - At least request count, error count, and upload bytes are exported
+        guardrail_refs:
+          - DOCKER-RUN-006
+        tasks:
+          - id: OPS-001-T1
+            status: open
+            title: Add /ready that checks PostgreSQL and tune the engine pool
+            instructions:
+              files:
+                - app/api.py
+                - app/database.py
+                - Dockerfile
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: API-002
+        status: open
+        title: Session listing, metadata patch semantics, hide storage_path
+        overview:
+          problem: >-
+            There is no GET /sessions. Image list is unbounded. PUT metadata
+            replaces the bag; protobuf Struct cannot distinguish omit vs clear.
+            SessionImageRead returns storage_path, leaking the content-addressed
+            layout. camera_count can disagree with cameras.length.
+          goal: >-
+            Add paginated session listing, explicit metadata merge vs replace,
+            drop storage_path from public DTOs (keep it internal), and reject
+            camera_count mismatches.
+        architecture:
+          target: Additive REST/gRPC list + tighter public DTOs
+          modules:
+            - app/api.py
+            - app/models.py
+            - proto/session_service.proto
+        acceptance_criteria:
+          - Clients can list sessions with a cursor
+          - Public image JSON does not include storage_path
+          - Metadata update has documented merge or replace semantics on both
+            transports
+          - camera_count must equal len(cameras)
+        guardrail_refs:
+          - PY-TEST-002
+        tasks:
+          - id: API-002-T1
+            status: open
+            title: Add paginated session list and hide storage_path
+            instructions:
+              files:
+                - app/api.py
+                - app/models.py
+                - proto/session_service.proto
+            verification:
+              - bash scripts/ci-local.sh

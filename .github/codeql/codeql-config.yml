@@ -1,0 +1,7 @@
+name: pixeldive-codeql
+queries:
+  - uses: security-extended
+paths-ignore:
+  - .github/scaffold
+  - docs/guardrails
+  - app/pb

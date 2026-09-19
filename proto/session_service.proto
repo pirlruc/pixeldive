@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+package pixeldive.session.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/pirlruc/pixeldive/gen/session/v1;sessionv1";
+
+// SessionService manages image-processing sessions and attached image blobs.
+// REST equivalents live under /api/v1/sessions. Both transports call the same
+// Python SessionService (ARCH-001).
+service SessionService {
+  rpc CreateSession(CreateSessionRequest) returns (SessionResponse);
+  rpc GetSession(GetSessionRequest) returns (SessionResponse);
+  rpc UpdateSession(UpdateSessionRequest) returns (SessionResponse);
+  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
+  rpc UploadImage(stream ImageChunk) returns (ImageUploadResponse);
+  rpc UploadImagesBatch(stream BatchImageChunk) returns (BatchUploadResponse);
+  rpc ListSessionImages(ListImagesRequest) returns (ImageListResponse);
+  rpc DownloadImage(DownloadImageRequest) returns (stream ImageChunk);
+}
+
+// PhoneInfo maps android.os.Build fields collected by Heimdall/FinSilo-style clients.
+message PhoneInfo {
+  string manufacturer = 1;
+  string model = 2;
+  string brand = 3;
+  string device = 4;
+  string board = 5;
+  string android_version = 6;
+  int32 sdk_int = 7;
+}
+
+// PhoneCapabilities maps ActivityManager, Runtime, and DisplayMetrics.
+message PhoneCapabilities {
+  int32 total_ram_mb = 1;
+  int32 available_ram_mb = 2;
+  string cpu_abi = 3;
+  int32 cpu_cores = 4;
+  int32 screen_width_px = 5;
+  int32 screen_height_px = 6;
+  int32 screen_density_dpi = 7;
+  bool is_low_ram_device = 8;
+}
+
+// CameraInfo maps Camera2 CameraCharacteristics for one cameraId.
+message CameraInfo {
+  string camera_id = 1;
+  string lens_facing = 2;
+  string hardware_level = 3;
+  int32 sensor_orientation = 4;
+  string max_resolution = 5;
+  bool has_flash = 6;
+  bool has_optical_stabilization = 7;
+  repeated string supported_capabilities = 8;
+}
+
+message CameraCapabilities {
+  int32 camera_count = 1;
+  repeated CameraInfo cameras = 2;
+}
+
+message Session {
+  string id = 1;
+  string session_name = 2;
+  string status = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  PhoneInfo phone_info = 6;
+  PhoneCapabilities phone_capabilities = 7;
+  CameraCapabilities camera_capabilities = 8;
+  google.protobuf.Struct metadata = 9;
+}
+
+message SessionImage {
+  string id = 1;
+  string session_id = 2;
+  string filename = 3;
+  string content_type = 4;
+  int64 size_bytes = 5;
+  string storage_path = 6;
+  google.protobuf.Timestamp uploaded_at = 7;
+  google.protobuf.Struct metadata = 8;
+}
+
+message CreateSessionRequest {
+  string session_name = 1;
+  PhoneInfo phone_info = 2;
+  PhoneCapabilities phone_capabilities = 3;
+  CameraCapabilities camera_capabilities = 4;
+  google.protobuf.Struct metadata = 5;
+}
+
+message GetSessionRequest {
+  string session_id = 1;
+}
+
+message UpdateSessionRequest {
+  string session_id = 1;
+  optional string session_name = 2;
+  optional string status = 3;
+  google.protobuf.Struct metadata = 4;
+}
+
+message DeleteSessionRequest {
+  string session_id = 1;
+}
+
+message DeleteSessionResponse {
+  bool deleted = 1;
+}
+
+message ImageChunk {
+  string session_id = 1;
+  string image_id = 2;
+  string filename = 3;
+  string content_type = 4;
+  bytes data = 5;
+  string metadata_json = 6;
+}
+
+message BatchImageChunk {
+  string session_id = 1;
+  uint32 image_index = 2;
+  string filename = 3;
+  string content_type = 4;
+  bytes data = 5;
+  bool end_of_image = 6;
+  string metadata_json = 7;
+}
+
+message ImageUploadResponse {
+  SessionImage image = 1;
+}
+
+message BatchUploadResponse {
+  repeated SessionImage images = 1;
+}
+
+message ListImagesRequest {
+  string session_id = 1;
+}
+
+message ImageListResponse {
+  repeated SessionImage images = 1;
+}
+
+message DownloadImageRequest {
+  string session_id = 1;
+  string image_id = 2;
+}
+
+message SessionResponse {
+  Session session = 1;
+}
