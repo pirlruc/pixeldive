@@ -104,7 +104,11 @@ class SessionServicer(pb_grpc.SessionServiceServicer):
     ) -> pb.ImageUploadResponse:
         """Client-stream a single image."""
         try:
-            session_id, upload = await assemble_single(request_iterator, context)
+            session_id, upload = await assemble_single(
+                request_iterator,
+                context,
+                max_bytes=self._service._settings.max_image_bytes,
+            )
             image = await self._service.add_image(session_id, upload)
         except (SessionServiceError, ValidationError) as exc:
             await abort_rpc(context, exc)
@@ -117,7 +121,12 @@ class SessionServicer(pb_grpc.SessionServiceServicer):
     ) -> pb.BatchUploadResponse:
         """Client-stream a batch of images."""
         try:
-            session_id, uploads = await assemble_batch(request_iterator, context)
+            session_id, uploads = await assemble_batch(
+                request_iterator,
+                context,
+                max_bytes=self._service._settings.max_image_bytes,
+                max_images=self._service._settings.max_batch_images,
+            )
             images = await self._service.add_images_batch(session_id, uploads)
         except (SessionServiceError, ValidationError) as exc:
             await abort_rpc(context, exc)
@@ -163,7 +172,13 @@ async def start_grpc_server(
     port: int,
 ) -> tuple[grpc.aio.Server, int]:
     """Start an aio gRPC server and return it with the bound port."""
-    server = grpc.aio.server()
+    ceiling = service._settings.max_image_bytes + (2 * 1024 * 1024)
+    server = grpc.aio.server(
+        options=[
+            ("grpc.max_receive_message_length", ceiling),
+            ("grpc.max_send_message_length", ceiling),
+        ],
+    )
     pb_grpc.add_SessionServiceServicer_to_server(SessionServicer(service), server)
     bound_port = server.add_insecure_port(f"{host}:{port}")
     await server.start()

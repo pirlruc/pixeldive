@@ -5,11 +5,13 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncIterator
 from typing import cast
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, FastAPI, File, Form, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.exceptions import ImageTooLargeError
+from app.filenames import sanitize_filename
 from app.http_errors import register_error_handlers
 from app.metadata import parse_metadata_json
 from app.models import (
@@ -131,6 +133,7 @@ async def download_image(
 ) -> StreamingResponse:
     """Stream the raw image binary."""
     image = await service.get_image(session_id, image_id)
+    filename = sanitize_filename(image.filename)
 
     async def chunks() -> AsyncIterator[bytes]:
         async for chunk in service.stream_image(session_id, image_id):
@@ -139,7 +142,11 @@ async def download_image(
     return StreamingResponse(
         chunks(),
         media_type=image.content_type,
-        headers={"Content-Disposition": f'attachment; filename="{image.filename}"'},
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quote(filename, safe='')}"
+            ),
+        },
     )
 
 
@@ -152,7 +159,7 @@ async def _to_upload(
     """Read an UploadFile into an ImageUpload with size enforcement."""
     payload = await _read_limited(file, service._settings.max_image_bytes)
     return ImageUpload(
-        filename=file.filename or "upload.bin",
+        filename=sanitize_filename(file.filename),
         content_type=file.content_type or "application/octet-stream",
         payload=payload,
         extra_metadata=extra if extra is not None else parse_metadata_json(metadata),

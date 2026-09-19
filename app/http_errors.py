@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.exceptions import (
+    BatchLimitError,
     EmptyImageError,
     ImageNotFoundError,
     ImageTooLargeError,
@@ -23,6 +24,7 @@ ERROR_STATUS: dict[type[SessionServiceError], int] = {
     InvalidMetadataError: 422,
     UnsupportedContentTypeError: 422,
     EmptyImageError: 422,
+    BatchLimitError: 422,
     ImageTooLargeError: 413,
 }
 

@@ -35,3 +35,7 @@ class InvalidMetadataError(SessionServiceError):
 
 class InvalidIdError(SessionServiceError):
     """A path or protobuf UUID could not be parsed."""
+
+
+class BatchLimitError(SessionServiceError):
+    """Batch is empty or exceeds Settings.max_batch_images."""

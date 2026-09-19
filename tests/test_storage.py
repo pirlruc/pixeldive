@@ -127,6 +127,17 @@ async def test_replace_missing_destination(tmp_path: Path, monkeypatch: pytest.M
 
 
 @pytest.mark.asyncio
+async def test_local_rejects_path_escape(tmp_path: Path) -> None:
+    """Resolved keys must stay under the storage root."""
+    backend = LocalFilesystemStorage(tmp_path)
+    with pytest.raises(FileNotFoundError):
+        async for _ in backend.stream("../secret", chunk_size=8):
+            pass
+    assert await backend.exists("../secret") is False
+    await backend.delete("../secret")
+
+
+@pytest.mark.asyncio
 async def test_s3_exists_reraises_unexpected() -> None:
     """Non-404 HEAD failures propagate."""
 

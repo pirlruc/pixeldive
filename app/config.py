@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     grpc_host: str = "0.0.0.0"
     grpc_port: int = 50051
     max_image_bytes: int = 32 * 1024 * 1024
+    max_batch_images: int = 100
     download_chunk_bytes: int = 64 * 1024
 
     @field_validator("storage_backend")

@@ -9,13 +9,15 @@ import asyncio
 import uuid
 from collections.abc import AsyncIterator, Sequence
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
+from sqlmodel import col
 
 from app.config import Settings
 from app.content_types import ALLOWED_CONTENT_TYPES
 from app.exceptions import (
+    BatchLimitError,
     EmptyImageError,
     ImageNotFoundError,
     ImageTooLargeError,
@@ -23,6 +25,7 @@ from app.exceptions import (
     SessionNotFoundError,
     UnsupportedContentTypeError,
 )
+from app.filenames import sanitize_filename
 from app.models import (
     ImageUpload,
     Session,
@@ -114,6 +117,12 @@ class SessionService:
         uploads: Sequence[ImageUpload],
     ) -> list[SessionImage]:
         """Save payloads concurrently, then insert rows in one transaction."""
+        if not uploads:
+            raise BatchLimitError("batch is empty")
+        if len(uploads) > self._settings.max_batch_images:
+            raise BatchLimitError(
+                f"batch exceeds max_batch_images={self._settings.max_batch_images}",
+            )
         for upload in uploads:
             self.validate_upload(upload)
         async with self._factory() as db:
@@ -163,11 +172,14 @@ class SessionService:
     ) -> AsyncIterator[bytes]:
         """Yield stored bytes for download endpoints."""
         image = await self.get_image(session_id, image_id)
-        async for chunk in self._storage.stream(
-            image.storage_path,
-            self._settings.download_chunk_bytes,
-        ):
-            yield chunk
+        try:
+            async for chunk in self._storage.stream(
+                image.storage_path,
+                self._settings.download_chunk_bytes,
+            ):
+                yield chunk
+        except FileNotFoundError as exc:
+            raise ImageNotFoundError(f"image {image_id} blob is missing") from exc
 
     def validate_upload(self, upload: ImageUpload) -> None:
         """Reject empty, oversized, or non-image payloads."""
@@ -186,7 +198,7 @@ class SessionService:
         """Build an unsaved SessionImage row."""
         return SessionImage(
             session_id=session.id,
-            filename=upload.filename,
+            filename=sanitize_filename(upload.filename),
             content_type=upload.content_type,
             size_bytes=len(upload.payload),
             storage_path=storage_path,
@@ -213,18 +225,18 @@ class SessionService:
     async def _gc_paths(self, paths: Sequence[str]) -> None:
         """Delete blobs whose storage_path is no longer referenced."""
         unique_paths = list(dict.fromkeys(paths))
+        if not unique_paths:
+            return
         async with self._factory() as db:
-            for path in unique_paths:
-                statement = (
-                    select(func.count())
-                    .select_from(SessionImage)
-                    .where(
-                        SessionImage.storage_path == path,  # type: ignore[arg-type]
-                    )
-                )
-                remaining = int((await db.execute(statement)).scalar_one())
-                if remaining == 0:
-                    await self._storage.delete(path)
+            statement = (
+                select(col(SessionImage.storage_path))
+                .where(col(SessionImage.storage_path).in_(unique_paths))
+                .distinct()
+            )
+            still_used = set((await db.execute(statement)).scalars().all())
+        for path in unique_paths:
+            if path not in still_used:
+                await self._storage.delete(path)
 
 
 def _status_value(status: SessionStatus | str) -> str:

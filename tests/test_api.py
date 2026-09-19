@@ -88,6 +88,8 @@ async def test_upload_list_download_batch(client: AsyncClient) -> None:
     assert download.status_code == 200
     assert download.content == PNG_1X1
     assert download.headers["content-type"].startswith("image/png")
+    assert "attachment;" in download.headers["content-disposition"]
+    assert "filename=" in download.headers["content-disposition"]
 
     batch = await client.post(
         f"/api/v1/sessions/{session_id}/images/batch",

@@ -17,14 +17,21 @@ class LocalFilesystemStorage:
 
     def __init__(self, root: Path) -> None:
         """Create the backend rooted at ``root``."""
-        self._root = root
+        self._root = root.resolve()
+
+    def _contained(self, storage_path: str) -> Path:
+        """Resolve ``storage_path`` and reject keys that escape ``root``."""
+        candidate = (self._root / storage_path).resolve()
+        if not candidate.is_relative_to(self._root):
+            raise FileNotFoundError(storage_path)
+        return candidate
 
     async def save(self, payload: bytes, content_type: str) -> str:
         """Write payload atomically; skip the write when the hash path exists."""
         key = object_key(sha256_hex(payload), content_type)
-        destination = self._root / key
+        destination = self._contained(key)
         await aiofiles.os.makedirs(destination.parent, exist_ok=True)
-        if destination.exists():
+        if await aiofiles.os.path.isfile(destination):
             return key
         tmp_path = destination.parent / f".{uuid.uuid4().hex}.tmp"
         async with aiofiles.open(tmp_path, "wb") as handle:
@@ -34,13 +41,13 @@ class LocalFilesystemStorage:
         except FileExistsError:
             await aiofiles.os.remove(tmp_path)
         except FileNotFoundError:
-            if not destination.exists():
+            if not await aiofiles.os.path.isfile(destination):
                 raise
         return key
 
     async def stream(self, storage_path: str, chunk_size: int) -> AsyncIterator[bytes]:
         """Yield local file chunks."""
-        async with aiofiles.open(self._root / storage_path, "rb") as handle:
+        async with aiofiles.open(self._contained(storage_path), "rb") as handle:
             while True:
                 chunk = await handle.read(chunk_size)
                 if not chunk:
@@ -49,12 +56,14 @@ class LocalFilesystemStorage:
 
     async def delete(self, storage_path: str) -> None:
         """Unlink the file; ignore if already gone."""
-        path = self._root / storage_path
         try:
-            await aiofiles.os.remove(path)
+            await aiofiles.os.remove(self._contained(storage_path))
         except FileNotFoundError:
             return
 
     async def exists(self, storage_path: str) -> bool:
         """Return True when the local file is present."""
-        return (self._root / storage_path).is_file()
+        try:
+            return await aiofiles.os.path.isfile(self._contained(storage_path))
+        except FileNotFoundError:
+            return False

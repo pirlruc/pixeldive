@@ -77,7 +77,12 @@ Clients should send the same keys they already read on-device:
 ## Suggested next work
 
 - [TOOL-001-T1](issues.yml) pin analog submodules once tokens exist
-- Alembic migrations instead of `create_all` for non-empty production databases
-- Authn/authz on REST and gRPC (out of scope for Phase 1)
+- [SEC-001](issues.yml) authn/authz and gRPC TLS
+- [PERF-001](issues.yml) streaming ingest, pagination, bounded fan-out
+- [DATA-002](issues.yml) Alembic, race-safe GC, orphan sweeper
+- [OPS-001](issues.yml) readiness probe, pool, metrics
+- [API-002](issues.yml) session list, hide `storage_path`, camera_count check
+
+Immediate Phase 1 review patches ([REV-001](issues.yml)): filename sanitization, contained local paths, `max_batch_images`, gRPC assembly size abort, single-query blob GC.
 
 *Last updated: 2026-09-19*

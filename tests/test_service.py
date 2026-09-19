@@ -7,6 +7,7 @@ import uuid
 import pytest
 
 from app.exceptions import (
+    BatchLimitError,
     ImageNotFoundError,
     ImageTooLargeError,
     InvalidMetadataError,
@@ -137,3 +138,32 @@ def test_parse_metadata_json() -> None:
     assert parse_metadata_json('{"iso": 100}') == {"iso": 100}
     with pytest.raises(InvalidMetadataError):
         parse_metadata_json("[1]")
+
+
+@pytest.mark.asyncio
+async def test_batch_limit_and_empty(service: SessionService) -> None:
+    """Empty batches and oversized batches are rejected before writes."""
+    session = await service.create_session(sample_create())
+    with pytest.raises(BatchLimitError):
+        await service.add_images_batch(session.id, [])
+    service._settings.max_batch_images = 1
+    uploads = [
+        ImageUpload(filename="a.png", content_type="image/png", payload=PNG_1X1),
+        ImageUpload(filename="b.png", content_type="image/png", payload=PNG_1X1),
+    ]
+    with pytest.raises(BatchLimitError):
+        await service.add_images_batch(session.id, uploads)
+
+
+@pytest.mark.asyncio
+async def test_missing_blob_maps_to_image_not_found(service: SessionService, storage) -> None:
+    """A deleted blob with a leftover row is ImageNotFoundError on stream."""
+    session = await service.create_session(sample_create())
+    image = await service.add_image(
+        session.id,
+        ImageUpload(filename="frame.png", content_type="image/png", payload=PNG_1X1),
+    )
+    await storage.delete(image.storage_path)
+    with pytest.raises(ImageNotFoundError):
+        async for _ in service.stream_image(session.id, image.id):
+            pass

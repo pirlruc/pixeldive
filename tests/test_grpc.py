@@ -158,6 +158,65 @@ async def test_grpc_mapped_service_errors(stub) -> None:
 
 
 @pytest.mark.asyncio
+async def test_grpc_rejects_oversize_and_batch_cap(stub, service: SessionService) -> None:
+    """Assembly aborts when bytes or cardinality exceed settings."""
+    created = await stub.CreateSession(_create_request())
+    session_id = created.session.id
+    service._settings.max_image_bytes = 8
+
+    async def huge():
+        yield pb.ImageChunk(
+            session_id=session_id,
+            filename="frame.png",
+            content_type="image/png",
+            data=PNG_1X1,
+        )
+
+    with pytest.raises(grpc.aio.AioRpcError) as huge_err:
+        await stub.UploadImage(huge())
+    assert huge_err.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+
+    async def huge_batch():
+        yield pb.BatchImageChunk(
+            session_id=session_id,
+            image_index=0,
+            filename="a.png",
+            content_type="image/png",
+            data=PNG_1X1,
+            end_of_image=True,
+        )
+
+    with pytest.raises(grpc.aio.AioRpcError) as huge_batch_err:
+        await stub.UploadImagesBatch(huge_batch())
+    assert huge_batch_err.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+
+    service._settings.max_image_bytes = 1024 * 1024
+    service._settings.max_batch_images = 1
+
+    async def two():
+        yield pb.BatchImageChunk(
+            session_id=session_id,
+            image_index=0,
+            filename="a.png",
+            content_type="image/png",
+            data=PNG_1X1,
+            end_of_image=True,
+        )
+        yield pb.BatchImageChunk(
+            session_id=session_id,
+            image_index=1,
+            filename="b.png",
+            content_type="image/png",
+            data=PNG_1X1,
+            end_of_image=True,
+        )
+
+    with pytest.raises(grpc.aio.AioRpcError) as cap_err:
+        await stub.UploadImagesBatch(two())
+    assert cap_err.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+
+
+@pytest.mark.asyncio
 async def test_grpc_invalid_uuid(stub) -> None:
     """Malformed UUIDs are INVALID_ARGUMENT."""
     with pytest.raises(grpc.aio.AioRpcError) as err:

@@ -7,6 +7,7 @@ from grpc.aio import ServicerContext
 from pydantic import ValidationError
 
 from app.exceptions import (
+    BatchLimitError,
     EmptyImageError,
     ImageNotFoundError,
     ImageTooLargeError,
@@ -26,6 +27,7 @@ GRPC_STATUS: dict[type[SessionServiceError], grpc.StatusCode] = {
     InvalidMetadataError: grpc.StatusCode.INVALID_ARGUMENT,
     UnsupportedContentTypeError: grpc.StatusCode.INVALID_ARGUMENT,
     EmptyImageError: grpc.StatusCode.INVALID_ARGUMENT,
+    BatchLimitError: grpc.StatusCode.INVALID_ARGUMENT,
     ImageTooLargeError: grpc.StatusCode.INVALID_ARGUMENT,
 }
 
