@@ -11,7 +11,7 @@
 
 ## Current slice
 
-Phase 1 session platform is implemented: SQLModel session/image tables, content-addressed local (and S3-compatible) storage, FastAPI `/api/v1` routes, gRPC `SessionService`, and a dual-server `main.py` runner. Analog submodule pins ([TOOL-001-T1](issues.yml)) still need a token that can clone private `pirlruc/guardrails` and `pirlruc/github-scaffold`.
+Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19): SQLModel session/image tables, content-addressed local (and S3-compatible) storage, FastAPI `/api/v1` routes, gRPC `SessionService`, dual-server `main.py`, and the REV-001 ingest hardening. Analog submodule pins ([TOOL-001-T1](issues.yml)) still need a token that can clone private `pirlruc/guardrails` and `pirlruc/github-scaffold`. GitHub Epic/Task issues are not published; statuses live in [`docs/issues.yml`](issues.yml).
 
 | Module | Path | Notes |
 | --- | --- | --- |
@@ -55,7 +55,7 @@ bash scripts/sync-templates.sh
 
 Issue content lives only in `docs/issues.yml`. Changing an `id` orphans the GitHub issue. Do not `gh issue create` by hand.
 
-GitHub issue publish needs Issues: Read and write. Until then, keep the manifest as the decision log.
+GitHub issue publish needs Issues: Read and write. Until then, keep the manifest as the decision log. Phase 1 + REV-001 shipped in [PR #1](https://github.com/pirlruc/pixeldive/pull/1); those epic/task rows are `status: done` in the YAML.
 
 ## Android payload contract
 
