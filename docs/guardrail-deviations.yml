@@ -1,0 +1,11 @@
+# Recorded departures from the guardrails pinned at docs/guardrails/.
+#
+# One entry per deviation, and only here — issues-sync.py renders matching entries into the
+# Epic body, so nothing is copied into docs/issues.yml or into issue text by hand.
+#
+# Field definitions: https://github.com/pirlruc/guardrails#deviation-rule
+# Approval flow:     https://github.com/pirlruc/methodologies/blob/1.2.0/github-issue-adr/docs/process/guardrail-compliance.md
+#
+# Being stricter than the org default is always allowed and needs no entry here.
+
+deviations: []

@@ -1,0 +1,20 @@
+---
+description: Scanner ignore rules must be documented; prefer a code fix
+globs: .github/workflows/security.yml,.github/codeql/**,scripts/run-*.sh,scripts/fail-on-sarif-severity.py,docs/scanner-exceptions.md
+alwaysApply: false
+---
+
+# Scanner exceptions
+
+Do not add `mobsf-ignore`, `nosemgrep`, CodeQL suppressions, OSV ignore lists, or extra
+`paths-ignore` / `--exclude` entries to make a check pass.
+
+1. Fix the code (example: Room `AutoMigration` instead of annotated `execSQL`).
+2. If the skip is **scope** (analog pins, `build/`, test classpaths, generated protobuf), add a row to
+   [`docs/scanner-exceptions.md`](../../docs/scanner-exceptions.md) explaining why this is
+   not a product finding and why a code change is the wrong tool.
+3. Finding-level ignores are allowed only with a table row: rule id, location, why the
+   code cannot be the fix, and a review date.
+
+Guardrails-compliance already forbids silent suppressions. This file is the consuming-repo
+place those scanner skips must be listed.

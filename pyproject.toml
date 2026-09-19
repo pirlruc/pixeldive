@@ -1,0 +1,99 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=69"]
+
+[project]
+name = "pixeldive"
+version = "0.1.0"
+description = "Image-processing session management (FastAPI + gRPC)"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{name = "Nuno Monteiro"}]
+license = "MIT"
+
+[tool.coverage.run]
+branch = true
+source = ["app", "main"]
+omit = ["app/pb/*"]
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
+exclude_lines = [
+  "pragma: no cover",
+  "if __name__ == .__main__.:",
+]
+
+[tool.interrogate]
+fail-under = 95
+ignore-init-method = false
+ignore-init-module = true
+ignore-module = false
+ignore-nested-functions = false
+ignore-private = false
+ignore-semiprivate = false
+ignore-magic = true
+omit-covered-files = false
+ignore-regex = ["^test_"]
+exclude = ["app/pb", "tests"]
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+explicit_package_bases = true
+plugins = ["pydantic.mypy"]
+python_version = "3.12"
+show_error_codes = true
+warn_return_any = true
+warn_unused_configs = true
+mypy_path = ["."]
+
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = [
+  "boto3",
+  "google.protobuf.*",
+  "grpc",
+  "grpc.*",
+]
+
+[[tool.mypy.overrides]]
+ignore_errors = true
+module = ["app.pb.*"]
+
+[[tool.mypy.overrides]]
+disallow_untyped_defs = false
+module = ["tests.*"]
+
+[tool.pydantic-mypy]
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=app --cov=main --cov-branch --cov-report=term-missing"
+asyncio_default_fixture_loop_scope = "function"
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+extend-exclude = ["app/pb"]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = ["B", "C4", "D", "E", "F", "I", "SIM", "UP", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/api.py" = ["B008"]
+"app/pb/**" = ["D", "E", "F", "I", "UP"]
+"scripts/**" = ["D", "E501"]
+"tests/**" = ["D", "DOC", "E501"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

@@ -1,0 +1,35 @@
+# Byte-compiled
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+.env
+.envrc
+
+# Coverage / test
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Local data
+/data/
+*.db
+*.sqlite3
+
+# OS / IDE
+.DS_Store
+.idea/
+
+# Generated scratch
+*.tmp

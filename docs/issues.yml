@@ -1,0 +1,293 @@
+# Authored backlog for pixeldive. Source of truth for GitHub Epic/Task issues.
+#
+# Schema: https://github.com/pirlruc/github-scaffold/blob/1.2.0/docs/issues-schema.md
+# Methodology: https://github.com/pirlruc/methodologies/tree/1.2.0/github-issue-adr
+#
+# The Epic is the decision record — there are no ADR markdown files.
+# Deviations from guardrails go in docs/guardrail-deviations.yml, not here.
+#
+# `id` values are permanent: issues are matched by the [ID] in their title.
+#
+# Sync (after Issues: Read and write on the token, and github-scaffold is cloned):
+#   bash scripts/setup-issue-scaffold.sh
+#   bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml --validate-only
+#   bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml --dry-run
+#   bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml
+
+milestones:
+  - name: Tooling — Analog & methodology
+    epics:
+      - id: TOOL-001
+        status: open
+        title: Pin analog repos and adopt github-issue-adr
+        overview:
+          problem: >-
+            pixeldive started empty, so agents had no pinned guardrails, no
+            authored backlog, and no issue templates. github-issue-adr requires
+            Epic issues as decision records and docs/issues.yml as the manifest.
+          goal: >-
+            Adopt the same analog pins as FinSilo/Heimdall (guardrails 1.3.0,
+            github-scaffold 1.2.0, methodologies cited at 1.2.0), sync Cursor
+            rules and GitHub templates, and keep docs/issues.yml as the
+            decision log. No docs/adr/ tree.
+        architecture:
+          target: Analog pins plus docs/issues.yml as the decision log
+          modules:
+            - docs/guardrails
+            - .github/scaffold
+            - docs/issues.yml
+            - docs/issues-sync-targets.yml
+            - scripts/issues-sync.sh
+            - .cursor/rules
+        acceptance_criteria:
+          - Cursor rules and issue/PR templates match github-scaffold 1.2.0
+          - docs/issues.yml is the authored backlog; no docs/adr/
+          - Wrapper scripts under scripts/ call the scaffold copies
+          - docs/guardrails is pinned at tag 1.3.0 when GUARDRAILS_READ_TOKEN exists
+          - .github/scaffold is pinned at tag 1.2.0 when a Contents-read token exists
+        guardrail_refs:
+          - PY-TEST-002
+          - CI-022
+        tasks:
+          - id: TOOL-001-T1
+            status: open
+            title: Pin guardrails and github-scaffold submodules
+            instructions:
+              files:
+                - .gitmodules
+                - docs/guardrails
+                - .github/scaffold
+            verification:
+              - git -C docs/guardrails describe --tags --exact-match HEAD
+              - git -C .github/scaffold describe --tags --exact-match HEAD
+          - id: TOOL-001-T2
+            status: done
+            title: Sync GitHub templates and Cursor rules from the scaffold analog
+            instructions:
+              files:
+                - .github/ISSUE_TEMPLATE
+                - .github/pull_request_template.md
+                - .cursor/rules
+                - docs/guardrail-deviations.yml
+            verification:
+              - test -f .github/ISSUE_TEMPLATE/epic-template.md
+              - test -f .cursor/rules/github-issue-adr.mdc
+          - id: TOOL-001-T3
+            status: done
+            title: Author issues.yml, targets, and root wrapper scripts
+            instructions:
+              files:
+                - docs/issues.yml
+                - docs/issues-sync-targets.yml
+                - scripts/issues-sync.sh
+                - scripts/setup-issue-scaffold.sh
+                - scripts/sync-templates.sh
+            verification:
+              - test -f docs/issues.yml
+              - test -x scripts/issues-sync.sh
+
+  - name: Phase 1 — Session platform
+    epics:
+      - id: ARCH-001
+        status: done
+        title: Dual-transport session service with a single business layer
+        overview:
+          problem: >-
+            Android capture clients (Heimdall app→kit→core SDK stack, FinSilo-style
+            :app/:domain modules) need to open an image-processing session, attach
+            device/camera identity, and upload frames. REST is convenient for
+            mobile multipart; gRPC streaming is required for large/batch transfers.
+            Two independent implementations would drift.
+          goal: >-
+            One SessionService owns sessions, images, and storage. FastAPI and
+            gRPC are transports only. Device JSON matches Android Build,
+            ActivityManager, DisplayMetrics, and Camera2 fields those clients
+            already collect.
+        architecture:
+          target: >-
+            In the context of Android capture clients uploading processing
+            sessions, facing dual REST and gRPC needs, we decided on a single
+            asyncio SessionService behind FastAPI and grpcio with SQLModel as
+            the shared schema, to achieve one validation and storage path,
+            accepting dual-server process complexity.
+          modules:
+            - app/service.py
+            - app/api.py
+            - app/grpc_server.py
+            - app/models.py
+            - main.py
+        acceptance_criteria:
+          - FastAPI handlers and gRPC servicers call the same SessionService methods
+          - No business SQL or disk I/O lives in transport modules beyond mapping
+          - Phone/camera JSON field names match the Android sources listed on the models
+          - HTTP 404/422 map to gRPC NOT_FOUND/INVALID_ARGUMENT
+        guardrail_refs:
+          - PY-RUN-002
+          - PY-CPLX-001
+        tasks:
+          - id: ARCH-001-T1
+            status: done
+            title: Factor SessionService out of REST and gRPC transports
+            instructions:
+              files:
+                - app/service.py
+                - app/api.py
+                - app/grpc_server.py
+                - main.py
+            verification:
+              - rg -n "SessionService" app/api.py app/grpc_server.py app/service.py
+              - bash scripts/ci-local.sh
+
+      - id: DATA-001
+        status: done
+        title: SQLModel session/image schema, async PostgreSQL, content-addressed storage
+        overview:
+          problem: >-
+            Sessions must persist device specs and image blobs with cascade
+            delete. A naive UUID-per-file store duplicates burst frames from
+            Camera2. SQLAlchemy `metadata` is reserved, so the JSON bag needs
+            an explicit column mapping.
+          goal: >-
+            SQLModel tables for Session and SessionImage, async engine via
+            asyncpg, init_db() for empty databases, and a StorageBackend with
+            local filesystem plus S3-compatible adapter. Blobs are SHA-256
+            addressed so identical payloads share a path; DB rows stay unique.
+        architecture:
+          target: Async SQLModel + StorageBackend protocol
+          modules:
+            - app/models.py
+            - app/database.py
+            - app/storage.py
+            - app/config.py
+        acceptance_criteria:
+          - Session.images cascade delete on session removal (FK ondelete CASCADE)
+          - extra_metadata maps to column metadata without colliding with MetaData
+          - init_db() creates tables when absent
+          - Identical payloads reuse storage_path; delete GCs a path only at refcount 0
+          - STORAGE_BACKEND=s3 uses the S3-compatible adapter
+        guardrail_refs:
+          - PY-TEST-002
+        tasks:
+          - id: DATA-001-T1
+            status: done
+            title: Define SQLModel tables and async engine
+            instructions:
+              files:
+                - app/models.py
+                - app/database.py
+                - app/config.py
+            verification:
+              - uv run pytest tests/test_models.py tests/test_service.py
+          - id: DATA-001-T2
+            status: done
+            title: Implement local and S3-compatible storage backends
+            instructions:
+              files:
+                - app/storage.py
+            verification:
+              - uv run pytest tests/test_storage.py
+
+      - id: API-001
+        status: done
+        title: REST and gRPC session/image transports
+        overview:
+          problem: >-
+            Mobile clients need multipart REST; high-throughput capture needs
+            client-streaming gRPC. The surface must cover create/get/update/delete
+            session plus single, batch, list, and download image operations.
+          goal: >-
+            Implement every REST route under /api/v1 and every rpc in
+            proto/session_service.proto against SessionService, including
+            concurrent batch disk writes and streamed image bytes.
+        architecture:
+          target: FastAPI router + grpcio aio servicer
+          modules:
+            - app/api.py
+            - app/grpc_server.py
+            - proto/session_service.proto
+        acceptance_criteria:
+          - POST/GET/PUT/DELETE /api/v1/sessions and image routes behave as specified
+          - Batch REST upload accepts List[UploadFile] and saves concurrently
+          - gRPC UploadImage / UploadImagesBatch are client-streaming
+          - gRPC DownloadImage is server-streaming
+          - Missing resources are HTTP 404 / gRPC NOT_FOUND
+        guardrail_refs:
+          - PY-RUN-002
+          - PY-TEST-002
+        tasks:
+          - id: API-001-T1
+            status: done
+            title: Implement FastAPI session and image routes
+            instructions:
+              files:
+                - app/api.py
+                - proto/session_service.proto
+            verification:
+              - uv run pytest tests/test_api.py
+          - id: API-001-T2
+            status: done
+            title: Implement gRPC SessionService servicer
+            instructions:
+              files:
+                - app/grpc_server.py
+                - proto/session_service.proto
+            verification:
+              - uv run pytest tests/test_grpc.py
+
+      - id: QUAL-001
+        status: done
+        title: Dual-server runner, Python quality gates, container
+        overview:
+          problem: >-
+            REST and gRPC must share one asyncio loop. Python PY-* gates need
+            a consumer threshold copy because pirlruc/guardrails is private.
+            The image is a product artifact (DOCKER-*), not a tool container.
+          goal: >-
+            main.py runs Uvicorn and the gRPC aio server together. ci-local.sh
+            enforces ruff, mypy, pytest 95/95, interrogate, and radon against
+            config/python.profile.thresholds.yml. Dockerfile is multi-stage,
+            non-root, and env-configured.
+        architecture:
+          target: Concurrent asyncio runner plus PY-* CI parity
+          modules:
+            - main.py
+            - Dockerfile
+            - docker-compose.yml
+            - scripts/ci-local.sh
+            - .github/workflows
+        acceptance_criteria:
+          - FastAPI and gRPC start in one process and one event loop
+          - bash scripts/ci-local.sh is the local PY-* parity entrypoint
+          - Dockerfile uses a non-root USER and exec-form ENTRYPOINT
+          - Tests use SQLite aiosqlite; production default is PostgreSQL asyncpg
+        guardrail_refs:
+          - PY-QUAL-001
+          - PY-TEST-002
+          - PY-DOC-001
+          - PY-CPLX-001
+          - PY-CPLX-002
+          - DOCKER-BUILD-001
+          - DOCKER-RUN-001
+        tasks:
+          - id: QUAL-001-T1
+            status: done
+            title: Dual-server runner and container image
+            instructions:
+              files:
+                - main.py
+                - Dockerfile
+                - docker-compose.yml
+            verification:
+              - test -f Dockerfile
+              - test -f main.py
+          - id: QUAL-001-T2
+            status: done
+            title: Pytest coverage and local CI parity scripts
+            instructions:
+              files:
+                - tests
+                - scripts/ci-local.sh
+                - scripts/check-complexity.py
+                - config/python.profile.thresholds.yml
+            verification:
+              - bash scripts/ci-local.sh

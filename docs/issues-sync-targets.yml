@@ -1,0 +1,24 @@
+# Which repos to sync and what to bootstrap them with.
+#
+# Read by issues-sync-all.sh and setup-issue-scaffold.sh
+# (via scripts/*.sh wrappers that call .github/scaffold/scripts/).
+#
+# Milestone `name` values must match docs/issues.yml exactly. Create them with
+# bash scripts/setup-issue-scaffold.sh before the first issues-sync.
+
+targets:
+  - repo: pirlruc/pixeldive
+    yaml: docs/issues.yml
+
+labels:
+  - {name: epic, color: "5319E7", description: "Decision record"}
+  - {name: task, color: "0E8A16", description: "Unit of work under an epic"}
+  - {name: ai-architect, color: "7057FF", description: "Architecture or planning"}
+  - {name: ai-implementer, color: "1D76DB", description: "Implementation"}
+  - {name: ai-reviewer, color: "ededed", description: "Review or triage"}
+
+milestones:
+  - name: Tooling — Analog & methodology
+    description: Guardrails, github-scaffold, github-issue-adr
+  - name: Phase 1 — Session platform
+    description: Dual REST/gRPC session service, SQLModel, storage, quality gates
