@@ -55,7 +55,12 @@ class S3CompatibleStorage:
 
     async def stream(self, storage_path: str, chunk_size: int) -> AsyncIterator[bytes]:
         """Download the object and yield it in chunks."""
-        response = await self._client.get_object(Bucket=self._bucket, Key=storage_path)
+        try:
+            response = await self._client.get_object(Bucket=self._bucket, Key=storage_path)
+        except Exception as exc:  # noqa: BLE001 — botocore ClientError is optional
+            if is_missing(exc):
+                raise FileNotFoundError(storage_path) from exc
+            raise
         async for chunk in iter_body(response["Body"], chunk_size):
             yield chunk
 

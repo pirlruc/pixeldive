@@ -29,7 +29,7 @@ async def assemble_single(
     try:
         return await collect_single(chunks, context, writer)
     except ImageTooLargeError:
-        await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "image exceeds max_image_bytes")
+        await context.abort(grpc.StatusCode.RESOURCE_EXHAUSTED, "image exceeds max_image_bytes")
         raise
     except EmptyImageError:
         await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "empty image stream")

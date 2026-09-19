@@ -59,13 +59,11 @@ async def assemble_batch(
 
 
 async def abort_limit(context: ServicerContext, exc: BaseException) -> None:
-    """Map spool errors onto gRPC INVALID_ARGUMENT."""
-    message = (
-        "image exceeds max_image_bytes"
-        if isinstance(exc, ImageTooLargeError)
-        else "empty image stream"
-    )
-    await context.abort(grpc.StatusCode.INVALID_ARGUMENT, message)
+    """Map oversize images to RESOURCE_EXHAUSTED; empty streams stay INVALID_ARGUMENT."""
+    if isinstance(exc, ImageTooLargeError):
+        await context.abort(grpc.StatusCode.RESOURCE_EXHAUSTED, "image exceeds max_image_bytes")
+        return
+    await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "empty image stream")
 
 
 async def finish_batch(

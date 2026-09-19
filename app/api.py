@@ -69,7 +69,7 @@ async def create_session(
 async def list_sessions(
     service: ServiceDep,
     principal: PrincipalDep,
-    limit: int = Query(default=50, ge=0),
+    limit: int = Query(default=50, ge=1),
     cursor: str | None = None,
 ) -> SessionPage:
     """List sessions newest-first with an opaque cursor."""

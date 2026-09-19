@@ -18,6 +18,8 @@ async def commit_tmp(tmp_path: Path, destination: Path) -> None:
         await aiofiles.os.replace(tmp_path, destination)
     except FileExistsError:
         await aiofiles.os.remove(tmp_path)
+        if not await aiofiles.os.path.isfile(destination):
+            raise
     except FileNotFoundError:
         if not await aiofiles.os.path.isfile(destination):
             raise

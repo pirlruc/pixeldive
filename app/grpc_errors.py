@@ -30,7 +30,7 @@ GRPC_STATUS: dict[type[SessionServiceError], grpc.StatusCode] = {
     UnsupportedContentTypeError: grpc.StatusCode.INVALID_ARGUMENT,
     EmptyImageError: grpc.StatusCode.INVALID_ARGUMENT,
     BatchLimitError: grpc.StatusCode.INVALID_ARGUMENT,
-    ImageTooLargeError: grpc.StatusCode.INVALID_ARGUMENT,
+    ImageTooLargeError: grpc.StatusCode.RESOURCE_EXHAUSTED,
     UnauthenticatedError: grpc.StatusCode.UNAUTHENTICATED,
     ForbiddenError: grpc.StatusCode.PERMISSION_DENIED,
 }

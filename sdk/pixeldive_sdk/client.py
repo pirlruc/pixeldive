@@ -20,19 +20,20 @@ class RestClient(RestSessionMixin, RestImageMixin):
         token: str | None = None,
         client: httpx.AsyncClient | None = None,
         timeout: float = 60.0,
+        owns_client: bool | None = None,
     ) -> None:
         """Bind a base URL, optional bearer token, and optional shared client."""
         self._base = base_url.rstrip("/")
         headers: dict[str, str] = {}
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        self._owns_client = client is None
+        self._owns_client = client is None if owns_client is None else owns_client
         self._http = client or httpx.AsyncClient(
             base_url=self._base,
             headers=headers,
             timeout=timeout,
         )
-        if client is not None and token:
+        if self._owns_client and token:
             self._http.headers["Authorization"] = f"Bearer {token}"
 
     async def __aenter__(self) -> Self:

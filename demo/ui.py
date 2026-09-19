@@ -84,9 +84,14 @@ async function refresh() {
     const images = await json("/api/sessions/" + sessionId + "/images");
     $("images").textContent = JSON.stringify(images, null, 2);
     const first = images.items[0];
-    $("download").innerHTML = first
-      ? '<a href="/api/sessions/' + sessionId + '/images/' + first.id + '/download">download latest</a>'
-      : "";
+    const holder = $("download");
+    holder.replaceChildren();
+    if (first) {
+      const link = document.createElement("a");
+      link.href = "/api/sessions/" + sessionId + "/images/" + first.id + "/download";
+      link.textContent = "download latest";
+      holder.appendChild(link);
+    }
     showError("");
   } catch (err) {
     showError(err);

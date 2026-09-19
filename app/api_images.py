@@ -61,7 +61,7 @@ async def list_images(
     session_id: uuid.UUID,
     service: ServiceDep,
     principal: PrincipalDep,
-    limit: int = Query(default=50, ge=0),
+    limit: int = Query(default=50, ge=1),
     cursor: str | None = None,
 ) -> ImagePage:
     """List image metadata for a session."""

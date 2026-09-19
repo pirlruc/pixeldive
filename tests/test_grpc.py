@@ -177,7 +177,7 @@ async def test_grpc_rejects_oversize_and_batch_cap(stub, service: SessionService
 
     with pytest.raises(grpc.aio.AioRpcError) as huge_err:
         await stub.UploadImage(huge())
-    assert huge_err.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+    assert huge_err.value.code() == grpc.StatusCode.RESOURCE_EXHAUSTED
 
     async def huge_batch():
         yield pb.BatchImageChunk(
@@ -191,7 +191,7 @@ async def test_grpc_rejects_oversize_and_batch_cap(stub, service: SessionService
 
     with pytest.raises(grpc.aio.AioRpcError) as huge_batch_err:
         await stub.UploadImagesBatch(huge_batch())
-    assert huge_batch_err.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+    assert huge_batch_err.value.code() == grpc.StatusCode.RESOURCE_EXHAUSTED
 
     service._settings.max_image_bytes = 1024 * 1024
     service._settings.max_batch_images = 1

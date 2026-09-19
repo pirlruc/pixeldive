@@ -56,6 +56,8 @@ class RestImageMixin:
             "GET",
             f"/api/v1/sessions/{session_id}/images/{image_id}",
         ) as response:
+            if response.status_code >= 400:
+                await response.aread()
             response.raise_for_status()
             async for chunk in response.aiter_bytes():
                 yield chunk

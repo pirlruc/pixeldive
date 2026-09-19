@@ -21,6 +21,7 @@ class FakeS3:
         self.objects: dict[str, bytes] = {}
         self.content_types: dict[str, str] = {}
         self.mtimes: dict[str, datetime] = {}
+        self.last_body: _BytesReader | None = None
 
     async def put_object(self, **kwargs: object) -> None:
         """Store Body under Key."""
@@ -32,8 +33,12 @@ class FakeS3:
     async def get_object(self, **kwargs: object) -> dict[str, object]:
         """Return a file-like Body."""
         key = str(kwargs["Key"])
+        if key not in self.objects:
+            raise _Missing()
         payload = self.objects[key]
-        return {"Body": _BytesReader(payload)}
+        reader = _BytesReader(payload)
+        self.last_body = reader
+        return {"Body": reader}
 
     async def delete_object(self, **kwargs: object) -> None:
         """Drop Key if present."""
@@ -70,6 +75,7 @@ class _BytesReader:
         """Wrap bytes."""
         self._payload = payload
         self._offset = 0
+        self.closed = False
 
     async def read(self, size: int = -1) -> bytes:
         """Read the next window."""
@@ -78,6 +84,10 @@ class _BytesReader:
         chunk = self._payload[self._offset : self._offset + size]
         self._offset += len(chunk)
         return chunk
+
+    def close(self) -> None:
+        """Mark the body closed."""
+        self.closed = True
 
 
 class _Missing(Exception):
@@ -115,13 +125,14 @@ async def test_replace_races(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     backend = LocalFilesystemStorage(tmp_path)
     import aiofiles.os as aio_os
 
-    async def exists_err(src: object, dst: object) -> None:
-        del src, dst
+    async def exists_and_present(src: object, dst: object) -> None:
+        Path(dst).write_bytes(PNG_1X1)
         raise FileExistsError
 
-    monkeypatch.setattr(aio_os, "replace", exists_err)
+    monkeypatch.setattr(aio_os, "replace", exists_and_present)
     key = await backend.save(PNG_1X1, "image/png")
     assert key.endswith(".png")
+    assert (tmp_path / key).is_file()
 
     async def missing_but_present(src: object, dst: object) -> None:
         Path(dst).write_bytes(PNG_1X1)
@@ -145,6 +156,23 @@ async def test_replace_missing_destination(tmp_path: Path, monkeypatch: pytest.M
     monkeypatch.setattr(aio_os, "replace", gone)
     with pytest.raises(FileNotFoundError):
         await backend.save(b"unique-payload-for-missing-dest", "image/png")
+
+
+@pytest.mark.asyncio
+async def test_replace_exists_without_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FileExistsError is re-raised when the destination was never created."""
+    backend = LocalFilesystemStorage(tmp_path)
+    import aiofiles.os as aio_os
+
+    async def exists_gone(src: object, dst: object) -> None:
+        del src, dst
+        raise FileExistsError
+
+    monkeypatch.setattr(aio_os, "replace", exists_gone)
+    with pytest.raises(FileExistsError):
+        await backend.save(b"unique-payload-for-exists-missing-dest", "image/png")
 
 
 @pytest.mark.asyncio
@@ -190,6 +218,7 @@ async def test_s3_adapter_round_trip() -> None:
     assert again == key
     payload = b"".join([chunk async for chunk in backend.stream(key, chunk_size=32)])
     assert payload == PNG_1X1
+    assert client.last_body is not None and client.last_body.closed is True
     await backend.delete(key)
     assert not await backend.exists(key)
 
@@ -360,3 +389,63 @@ async def test_local_save_file_and_list_blobs(tmp_path: Path) -> None:
     assert key in keys
     assert not any(item.startswith(".incoming") for item in keys)
     assert await backend.age_seconds(key) >= 0
+
+
+@pytest.mark.asyncio
+async def test_s3_stream_missing_is_file_not_found() -> None:
+    """S3 404 on GET maps to FileNotFoundError like the local backend."""
+    backend = S3CompatibleStorage(FakeS3(), bucket="pixeldive")
+    with pytest.raises(FileNotFoundError):
+        async for _ in backend.stream("missing", chunk_size=8):
+            pass
+
+
+@pytest.mark.asyncio
+async def test_s3_stream_reraises_unexpected() -> None:
+    """Non-404 GET failures propagate from stream."""
+
+    class Boom(FakeS3):
+        async def get_object(self, **kwargs: object) -> dict[str, object]:
+            raise RuntimeError("timeout")
+
+    backend = S3CompatibleStorage(Boom(), bucket="pixeldive")
+    with pytest.raises(RuntimeError):
+        async for _ in backend.stream("k", chunk_size=8):
+            pass
+
+
+@pytest.mark.asyncio
+async def test_iter_body_closes_async_and_sync() -> None:
+    """iter_body closes bodies that expose aclose or close."""
+    from app.s3_stream import close_body, iter_body
+
+    closed = {"async": 0, "sync": 0}
+
+    class AsyncBody:
+        async def read(self, size: int = -1) -> bytes:
+            del size
+            return b""
+
+        async def aclose(self) -> None:
+            closed["async"] += 1
+
+    class SyncBody:
+        def __init__(self) -> None:
+            self._sent = False
+
+        async def read(self, size: int = -1) -> bytes:
+            del size
+            if self._sent:
+                return b""
+            self._sent = True
+            return b"xy"
+
+        def close(self) -> None:
+            closed["sync"] += 1
+
+    async for _ in iter_body(AsyncBody(), 8):
+        pass
+    chunks = [chunk async for chunk in iter_body(SyncBody(), 8)]
+    assert chunks == [b"xy"]
+    assert closed == {"async": 1, "sync": 1}
+    await close_body(object())

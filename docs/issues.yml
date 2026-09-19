@@ -23,7 +23,7 @@
 #   done  TOOL-001-T2, TOOL-001-T3
 #   done  SEC-001, PERF-001, DATA-002, OPS-001, API-002, SDK-001, PERF-002
 #   open  TOOL-001 / TOOL-001-T1 (analog submodule pins)
-#   open  TOOL-002, SEC-002, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003
+#   open  TOOL-002, SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
 
 milestones:
   - name: Tooling — Analog & methodology
@@ -768,6 +768,42 @@ milestones:
             verification:
               - bash scripts/ci-local.sh
 
+      - id: SEC-003
+        status: open
+        title: Do not distinguish missing sessions from other tenants
+        overview:
+          problem: >-
+            _require_session raises SessionNotFoundError (404 / NOT_FOUND) when
+            the UUID is absent, and ForbiddenError (403 / PERMISSION_DENIED)
+            when it belongs to another tenant. That is an existence oracle for
+            session ids.
+          goal: >-
+            Treat wrong-owner the same as missing for public session and image
+            APIs so REST 404 and gRPC NOT_FOUND are the only client-visible
+            outcomes. Keep 403 only if a future admin role is added.
+        architecture:
+          target: Uniform not-found mapping in SessionService._require_session
+          modules:
+            - app/service.py
+            - tests/test_auth.py
+            - tests/test_grpc_auth.py
+        acceptance_criteria:
+          - Cross-tenant GET/PUT/DELETE/upload return 404 / NOT_FOUND
+          - Owner access is unchanged
+          - Unauthenticated requests remain 401 / UNAUTHENTICATED
+        guardrail_refs:
+          - PY-TEST-002
+        tasks:
+          - id: SEC-003-T1
+            status: open
+            title: Map wrong-owner session access to SessionNotFoundError
+            instructions:
+              files:
+                - app/service.py
+                - tests/test_auth.py
+            verification:
+              - bash scripts/ci-local.sh
+
       - id: API-003
         status: open
         title: Bring GrpcClient to RestClient session/image parity
@@ -974,4 +1010,41 @@ milestones:
                 - .github/workflows/quality.yml
             verification:
               - rg -n "postgres" .github/workflows/quality.yml
+
+      - id: DATA-004
+        status: open
+        title: Schedule the orphan blob sweeper in the running process
+        overview:
+          problem: >-
+            sweep_orphans exists and is unit-tested, but main.run never calls
+            it. Failed DB commits after persist_upload, and any remaining
+            ingest races, leave content-addressed objects until an operator
+            invokes the helper by hand. Default gc_min_age_seconds is 0, so
+            delete-time GC also skips the DATA-002 age window unless configured.
+          goal: >-
+            Run sweep_orphans on an interval from the dual-server process, and
+            document production GC_MIN_AGE_SECONDS / ORPHAN_MIN_AGE_SECONDS so
+            concurrent same-hash uploads are not deleted before the row commits.
+        architecture:
+          target: Periodic sweeper task owned by main.run
+          modules:
+            - main.py
+            - app/blob_gc.py
+            - app/settings_storage.py
+        acceptance_criteria:
+          - A configurable interval greater than 0 runs sweep_orphans
+          - Interval 0 keeps current test/dev behaviour (no background sweep)
+          - README or .env.example documents a non-zero GC_MIN_AGE_SECONDS for production
+        guardrail_refs:
+          - PY-TEST-002
+        tasks:
+          - id: DATA-004-T1
+            status: open
+            title: Add an optional orphan-sweep loop to main.run
+            instructions:
+              files:
+                - main.py
+                - app/settings_storage.py
+            verification:
+              - bash scripts/ci-local.sh
 

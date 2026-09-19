@@ -66,4 +66,13 @@ async def test_rest_auth_and_tenant_isolation(tmp_path: Path) -> None:
         assert upload.status_code == 201
         listed = await http.get("/api/v1/sessions", headers={"Authorization": "Bearer beta"})
         assert listed.json()["items"] == []
+        before = {path for path in (tmp_path / "images").rglob("*") if path.is_file()}
+        foreign = await http.post(
+            f"/api/v1/sessions/{session_id}/images",
+            files={"file": ("frame.png", PNG_1X1, "image/png")},
+            headers={"Authorization": "Bearer beta"},
+        )
+        assert foreign.status_code == 403
+        after = {path for path in (tmp_path / "images").rglob("*") if path.is_file()}
+        assert after == before
     await engine.dispose()

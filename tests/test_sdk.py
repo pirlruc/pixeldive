@@ -71,6 +71,10 @@ async def test_demo_app_uses_sdk(service: SessionService) -> None:
         download = await http.get(f"/api/sessions/{session_id}/images/{image_id}/download")
         assert download.status_code == 200
         assert download.content == PNG_1X1
+        missing = await http.get(
+            f"/api/sessions/{session_id}/images/00000000-0000-0000-0000-000000000000/download"
+        )
+        assert missing.status_code == 404
         deleted = await http.delete(f"/api/sessions/{session_id}")
         assert deleted.status_code == 200
         gone = await http.get("/api/sessions/00000000-0000-0000-0000-000000000000/images")

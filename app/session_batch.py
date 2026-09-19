@@ -25,11 +25,11 @@ class SessionBatchMixin(SessionHost):
     ) -> list[SessionImage]:
         """Save payloads with bounded fan-out, then insert rows in one transaction."""
         reject_bad_batch(uploads, self._settings.max_batch_images)
-        for upload in uploads:
-            validate_upload(upload, self._settings)
-        async with self._factory() as db:
-            await self._require_session(db, session_id, principal)
         try:
+            for upload in uploads:
+                validate_upload(upload, self._settings)
+            async with self._factory() as db:
+                await self._require_session(db, session_id, principal)
             return await self._commit_batch(session_id, uploads, principal)
         finally:
             for upload in uploads:

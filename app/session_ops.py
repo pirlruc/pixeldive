@@ -22,8 +22,10 @@ class SessionOpsMixin(SessionHost):
         principal: Principal | None = None,
     ) -> SessionImage:
         """Validate, store, and attach a single image."""
-        validate_upload(upload, self._settings)
         try:
+            validate_upload(upload, self._settings)
+            async with self._factory() as db:
+                await self._require_session(db, session_id, principal)
             storage_path = await persist_upload(self._storage, upload, self._write_sema)
             async with self._factory() as db:
                 session = await self._require_session(db, session_id, principal)

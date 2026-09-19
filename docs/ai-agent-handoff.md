@@ -100,12 +100,14 @@ Clients should send the same keys they already read on-device:
 - [TOOL-001-T1](issues.yml) pin analog submodules once tokens exist
 - [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
 - [SEC-002](issues.yml) per-tenant rate limits and upload quotas
+- [SEC-003](issues.yml) hide other tenants' session existence
 - [API-003](issues.yml) GrpcClient parity with RestClient
 - [PERF-003](issues.yml) multipart S3 PUT (O(chunk) save_file)
 - [PERF-004](issues.yml) chunked SDK uploads
 - [OPS-002](issues.yml) coordinated dual-server shutdown
 - [OPS-003](issues.yml) MinIO Compose profile
 - [DATA-003](issues.yml) PostgreSQL CI job
+- [DATA-004](issues.yml) schedule orphan sweeper in-process
 
 ## Recent history
 

@@ -169,6 +169,22 @@ async def test_sdk_cursors_owned_client_and_demo_settings(
     owned = RestClient("http://test", token="abc")
     await owned.aclose()
 
+    captured: dict[str, object] = {}
+
+    def fake_insecure(target: str, options: object = None) -> str:
+        captured["target"] = target
+        captured["options"] = options
+        return "channel"
+
+    monkeypatch.setattr("grpc.aio.insecure_channel", fake_insecure)
+    from pixeldive_sdk.grpc_channel import open_channel
+    from pixeldive_sdk.grpc_options import MAX_MESSAGE_BYTES
+
+    assert open_channel("127.0.0.1:9", insecure=True) == "channel"
+    options = captured["options"]
+    assert isinstance(options, list)
+    assert options[0][1] == MAX_MESSAGE_BYTES
+
     req = Request("GET", "http://x")
     text_err = HTTPStatusError(
         "bad",

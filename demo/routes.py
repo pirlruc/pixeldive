@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pixeldive_sdk import RestClient, sample_session_payload
 
+from demo.download import continue_download, open_download
 from demo.ui import PAGE
 
 SdkFactory = Callable[[], Awaitable[RestClient]]
@@ -69,9 +70,8 @@ def register_demo_routes(app: FastAPI, sdk: SdkFactory) -> None:
     async def download_image(session_id: str, image_id: str) -> StreamingResponse:
         """Proxy a binary download through the SDK."""
         remote = await sdk()
-
-        async def chunks() -> AsyncIterator[bytes]:
-            async for chunk in remote.download_image(session_id, image_id):
-                yield chunk
-
-        return StreamingResponse(chunks(), media_type="application/octet-stream")
+        first, stream = await open_download(remote, session_id, image_id)
+        return StreamingResponse(
+            continue_download(first, stream),
+            media_type="application/octet-stream",
+        )

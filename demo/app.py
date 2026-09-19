@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Any
 
 from fastapi import FastAPI
@@ -56,6 +56,8 @@ def create_demo_app(client: RestClient | None = None) -> FastAPI:
     @app.exception_handler(HTTPStatusError)
     async def upstream_error(_request: object, exc: HTTPStatusError) -> JSONResponse:
         """Surface upstream HTTP errors as JSON."""
+        with suppress(Exception):
+            await exc.response.aread()
         return JSONResponse(status_code=exc.response.status_code, content=_error_body(exc))
 
     return app
@@ -76,4 +78,4 @@ def asgi_client_for(app: object, token: str | None = None) -> RestClient:
     """Build a RestClient that talks to an in-process pixeldive ASGI app."""
     transport = ASGITransport(app=app)  # type: ignore[arg-type]
     http = AsyncClient(transport=transport, base_url="http://pixeldive")
-    return RestClient("http://pixeldive", token=token, client=http)
+    return RestClient("http://pixeldive", token=token, client=http, owns_client=True)

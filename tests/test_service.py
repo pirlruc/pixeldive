@@ -167,3 +167,36 @@ async def test_missing_blob_maps_to_image_not_found(service: SessionService, sto
     with pytest.raises(ImageNotFoundError):
         async for _ in service.stream_image(session.id, image.id):
             pass
+
+
+@pytest.mark.asyncio
+async def test_add_image_requires_session_before_persist(service: SessionService, storage) -> None:
+    """Missing sessions do not leave content-addressed blobs."""
+    with pytest.raises(SessionNotFoundError):
+        await service.add_image(
+            uuid.uuid4(),
+            ImageUpload(filename="frame.png", content_type="image/png", payload=PNG_1X1),
+        )
+    assert await storage.list_blobs() == []
+
+
+@pytest.mark.asyncio
+async def test_invalid_type_discards_spool(service: SessionService, tmp_path) -> None:
+    """Validation failures still delete the incoming spool file."""
+    session = await service.create_session(sample_create())
+    spool = tmp_path / "images" / ".incoming" / "partial.part"
+    spool.parent.mkdir(parents=True, exist_ok=True)
+    spool.write_bytes(b"hi")
+    with pytest.raises(UnsupportedContentTypeError):
+        await service.add_image(
+            session.id,
+            ImageUpload(
+                filename="note.txt",
+                content_type="text/plain",
+                payload=b"",
+                spool_path=str(spool),
+                digest_hex="ab",
+                size_bytes=2,
+            ),
+        )
+    assert not spool.exists()
