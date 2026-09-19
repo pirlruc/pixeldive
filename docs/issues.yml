@@ -21,7 +21,11 @@
 # (merged 2026-09-19, commit c1eda05):
 #   done  ARCH-001, DATA-001, API-001, QUAL-001, REV-001
 #   done  TOOL-001-T2, TOOL-001-T3
+#
+# Shipped on main via https://github.com/pirlruc/pixeldive/pull/7
+# (merged 2026-09-19, commit 96192bf):
 #   done  SEC-001, PERF-001, DATA-002, OPS-001, API-002, SDK-001, PERF-002
+#
 #   open  TOOL-001 / TOOL-001-T1 (analog submodule pins)
 #   open  TOOL-002, SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
 
@@ -391,6 +395,7 @@ milestones:
           - Unauthenticated gRPC calls return UNAUTHENTICATED/PERMISSION_DENIED
           - Production gRPC is TLS (or mTLS); insecure bind is explicit/dev-only
           - Authz is session-scoped (a token cannot read another tenant's images)
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/7
         guardrail_refs:
           - PY-RUN-002
         tasks:
@@ -441,6 +446,7 @@ milestones:
           - Concurrent blob writes are capped (semaphore), not one task per file
           - List endpoints accept limit/cursor and do not return unbounded rows
           - S3 save does not require a blocking HEAD+PUT round trip on the loop
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/7
         guardrail_refs:
           - PY-CPLX-001
         tasks:
@@ -492,6 +498,7 @@ milestones:
             session that inserted concurrently
           - Orphan objects are reclaimed by a sweeper
           - Invalid status strings cannot persist
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/7
         guardrail_refs:
           - PY-TEST-002
         tasks:
@@ -541,6 +548,7 @@ milestones:
           - pool_pre_ping (or equivalent) is on for PostgreSQL
           - Request/rpc identifiers appear in logs
           - At least request count, error count, and upload bytes are exported
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/7
         guardrail_refs:
           - DOCKER-RUN-006
         tasks:
@@ -580,6 +588,7 @@ milestones:
           - Metadata update has documented merge or replace semantics on both
             transports
           - camera_count must equal len(cameras)
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/7
         guardrail_refs:
           - PY-TEST-002
         tasks:
@@ -622,6 +631,7 @@ milestones:
           - GrpcClient can create a session, list sessions, and upload an image
           - Demo UI creates a session, uploads an image, and downloads it via the SDK
           - Public image JSON from the SDK does not include storage_path
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/7
         guardrail_refs:
           - PY-TEST-002
           - PY-DOC-001
@@ -672,6 +682,7 @@ milestones:
           - S3 save_file and stream await an async client (no boto3, no to_thread)
           - Local filesystem backend behaviour is unchanged
           - Tests cover the async adapter with a fake client
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/7
         guardrail_refs:
           - PY-CPLX-001
         tasks:
