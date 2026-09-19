@@ -180,6 +180,12 @@ async def test_sdk_cursors_owned_client_and_demo_settings(
         response=Response(400, json={"a": 1}),
     )
     assert _error_body(json_err)["detail"] == {"a": 1}
+    nested = HTTPStatusError(
+        "bad",
+        request=req,
+        response=Response(404, json={"detail": "missing"}),
+    )
+    assert _error_body(nested) == {"detail": "missing"}
     demo = create_demo_app()
     async with demo.router.lifespan_context(demo):
         assert demo.state.client is not None

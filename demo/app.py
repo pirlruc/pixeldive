@@ -64,9 +64,12 @@ def create_demo_app(client: RestClient | None = None) -> FastAPI:
 def _error_body(exc: HTTPStatusError) -> dict[str, Any]:
     """Prefer JSON error payloads from the session service."""
     try:
-        return {"detail": exc.response.json()}
+        payload = exc.response.json()
     except Exception:  # noqa: BLE001
         return {"detail": exc.response.text}
+    if isinstance(payload, dict) and "detail" in payload:
+        return payload
+    return {"detail": payload}
 
 
 def asgi_client_for(app: object, token: str | None = None) -> RestClient:
