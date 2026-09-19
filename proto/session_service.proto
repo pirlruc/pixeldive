@@ -15,6 +15,7 @@ service SessionService {
   rpc GetSession(GetSessionRequest) returns (SessionResponse);
   rpc UpdateSession(UpdateSessionRequest) returns (SessionResponse);
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
+  rpc ListSessions(ListSessionsRequest) returns (SessionListResponse);
   rpc UploadImage(stream ImageChunk) returns (ImageUploadResponse);
   rpc UploadImagesBatch(stream BatchImageChunk) returns (BatchUploadResponse);
   rpc ListSessionImages(ListImagesRequest) returns (ImageListResponse);
@@ -79,7 +80,8 @@ message SessionImage {
   string filename = 3;
   string content_type = 4;
   int64 size_bytes = 5;
-  string storage_path = 6;
+  reserved 6;
+  reserved "storage_path";
   google.protobuf.Timestamp uploaded_at = 7;
   google.protobuf.Struct metadata = 8;
 }
@@ -101,6 +103,8 @@ message UpdateSessionRequest {
   optional string session_name = 2;
   optional string status = 3;
   google.protobuf.Struct metadata = 4;
+  optional bool merge_metadata = 5;
+  optional bool clear_metadata = 6;
 }
 
 message DeleteSessionRequest {
@@ -109,6 +113,16 @@ message DeleteSessionRequest {
 
 message DeleteSessionResponse {
   bool deleted = 1;
+}
+
+message ListSessionsRequest {
+  uint32 limit = 1;
+  string cursor = 2;
+}
+
+message SessionListResponse {
+  repeated Session sessions = 1;
+  string next_cursor = 2;
 }
 
 message ImageChunk {
@@ -140,10 +154,13 @@ message BatchUploadResponse {
 
 message ListImagesRequest {
   string session_id = 1;
+  uint32 limit = 2;
+  string cursor = 3;
 }
 
 message ImageListResponse {
   repeated SessionImage images = 1;
+  string next_cursor = 2;
 }
 
 message DownloadImageRequest {

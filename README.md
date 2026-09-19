@@ -7,8 +7,10 @@ device/camera identity, then upload frames over REST (multipart) or gRPC (client
 |-----------|---------|
 | REST | FastAPI `/api/v1/sessions` |
 | gRPC | `proto/session_service.proto` (`pixeldive.session.v1.SessionService`) |
-| Data | SQLModel + async PostgreSQL (`asyncpg`) |
+| Data | SQLModel + async PostgreSQL (`asyncpg`); Alembic when `AUTO_CREATE_TABLES=false` |
 | Blobs | SHA-256 local filesystem, or S3-compatible adapter |
+| SDK | `sdk/pixeldive_sdk` (`RestClient`, `GrpcClient`) |
+| Demo | `python -m demo` (FastAPI UI that talks to the service only through the SDK) |
 
 Both transports call the same `SessionService` ([ARCH-001](docs/issues.yml)).
 
@@ -35,14 +37,35 @@ DATABASE_URL=sqlite+aiosqlite:///./pixeldive.db STORAGE_ROOT=./data/images \
   .venv/bin/python main.py
 ```
 
+If the host has no `ensurepip`/`venv`, install into a project-local prefix instead of the system OS:
+
+```bash
+python3 -m pip install --target .venv -r requirements.txt -r requirements-dev.txt
+PYTHONPATH=.venv python3 main.py
+```
+
 Compose (Postgres + app):
 
 ```bash
 docker compose up --build
 ```
 
-- REST: `http://127.0.0.1:8000/health` and `/api/v1/sessions`
+- REST: `http://127.0.0.1:8000/health`, `/ready`, `/metrics`, `/api/v1/sessions`
 - gRPC: `127.0.0.1:50051`
+
+Production-shaped auth: set `AUTH_REQUIRED=true` and `API_KEYS=token:owner-id` (see `.env.example`).
+gRPC TLS is off until `GRPC_INSECURE=false` plus cert/key paths.
+
+## Demo (SDK on an app)
+
+With the session service running:
+
+```bash
+PYTHONPATH=sdk:. PIXELDIVE_BASE_URL=http://127.0.0.1:8000 python3 -m demo
+```
+
+Open `http://127.0.0.1:8080`. The UI creates Android-shaped sessions, uploads images, and
+downloads them through `pixeldive_sdk.RestClient`.
 
 ## Quality gates
 
@@ -52,6 +75,7 @@ bash scripts/ci-local.sh
 
 Floors live in `config/python.profile.thresholds.yml` (PY-TEST-002 95/95, PY-DOC-001, PY-CPLX-*).
 When `GUARDRAILS_READ_TOKEN` is set, CI clones the analog pin and refuses drift (CI-022).
+`docs/guardrail-deviations.yml` is empty — gates are not lowered.
 
 ## Agent handoff
 

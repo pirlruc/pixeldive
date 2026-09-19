@@ -1,6 +1,7 @@
 """Content-addressed image storage: local filesystem or S3-compatible blobs."""
 
 from collections.abc import AsyncIterator, Callable
+from pathlib import Path
 from typing import Protocol
 
 from app.config import Settings
@@ -28,6 +29,9 @@ class StorageBackend(Protocol):
     async def save(self, payload: bytes, content_type: str) -> str:
         """Persist bytes and return a backend-relative storage path."""
 
+    async def save_file(self, source: Path, digest_hex: str, content_type: str) -> str:
+        """Persist a local file under the content-addressed key for ``digest_hex``."""
+
     def stream(self, storage_path: str, chunk_size: int) -> AsyncIterator[bytes]:
         """Yield file bytes in ``chunk_size`` windows."""
 
@@ -36,6 +40,12 @@ class StorageBackend(Protocol):
 
     async def exists(self, storage_path: str) -> bool:
         """Return whether ``storage_path`` is present."""
+
+    async def list_blobs(self) -> list[tuple[str, float]]:
+        """Return ``(key, mtime_unix)`` for every stored object."""
+
+    async def age_seconds(self, storage_path: str) -> float:
+        """Return object age in seconds; missing objects are age 0."""
 
 
 def build_storage(

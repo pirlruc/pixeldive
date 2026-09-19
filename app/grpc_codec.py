@@ -102,7 +102,6 @@ def image_to_pb(image: SessionImage) -> pb.SessionImage:
         filename=image.filename,
         content_type=image.content_type,
         size_bytes=image.size_bytes,
-        storage_path=image.storage_path,
         uploaded_at=timestamp(image.uploaded_at),
         metadata=dict_to_struct(image.extra_metadata),
     )

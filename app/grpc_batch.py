@@ -4,46 +4,24 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 import grpc
 from grpc.aio import ServicerContext
 
-from app.grpc_codec import as_uuid
-from app.metadata import parse_metadata_json
+from app.exceptions import EmptyImageError, ImageTooLargeError
+from app.grpc_batch_ingest import ingest_batch_chunk
 from app.models import ImageUpload
 from app.pb import session_service_pb2 as pb
+from app.spool import SpoolWriter
 
 
-def new_batch_slot(chunk: pb.BatchImageChunk) -> dict[str, Any]:
-    """Start a pending image accumulator from the first chunk of that index."""
-    return {
-        "filename": chunk.filename or "upload.bin",
-        "content_type": chunk.content_type or "application/octet-stream",
-        "metadata": parse_metadata_json(chunk.metadata_json or None),
-        "buffer": bytearray(),
-    }
-
-
-def apply_batch_chunk(slot: dict[str, Any], chunk: pb.BatchImageChunk) -> None:
-    """Merge filename/type/metadata/bytes into an accumulator slot."""
-    if chunk.filename:
-        slot["filename"] = chunk.filename
-    if chunk.content_type:
-        slot["content_type"] = chunk.content_type
-    if chunk.metadata_json:
-        slot["metadata"] = parse_metadata_json(chunk.metadata_json)
-    slot["buffer"].extend(chunk.data)
-
-
-def upload_from_slot(slot: dict[str, Any]) -> ImageUpload:
-    """Convert an accumulator slot into an ImageUpload."""
-    return ImageUpload(
-        filename=slot["filename"],
-        content_type=slot["content_type"],
-        payload=bytes(slot["buffer"]),
-        extra_metadata=slot["metadata"],
-    )
+async def abort_pending(pending: dict[int, dict[str, Any]]) -> None:
+    """Delete partial spools for images that never completed."""
+    for slot in pending.values():
+        writer: SpoolWriter = slot["writer"]
+        await writer.abort()
 
 
 async def assemble_batch(
@@ -52,31 +30,60 @@ async def assemble_batch(
     *,
     max_bytes: int,
     max_images: int,
+    spool_dir: Path,
 ) -> tuple[uuid.UUID, list[ImageUpload]]:
     """Collect a client-streamed batch into ImageUpload values."""
     session_id: uuid.UUID | None = None
     pending: dict[int, dict[str, Any]] = {}
     completed: list[ImageUpload] = []
-    async for chunk in chunks:
-        if session_id is None:
-            if not chunk.session_id:
-                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "session_id is required")
-            session_id = as_uuid(chunk.session_id, context)
-        if chunk.image_index not in pending and (len(pending) + len(completed)) >= max_images:
-            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "batch exceeds max_batch_images")
-        slot = pending.setdefault(chunk.image_index, new_batch_slot(chunk))
-        apply_batch_chunk(slot, chunk)
-        if len(slot["buffer"]) > max_bytes:
-            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "image exceeds max_image_bytes")
-        if chunk.end_of_image:
-            completed.append(upload_from_slot(slot))
-            del pending[chunk.image_index]
+    try:
+        async for chunk in chunks:
+            session_id = await ingest_batch_chunk(
+                chunk,
+                session_id=session_id,
+                pending=pending,
+                completed=completed,
+                context=context,
+                max_bytes=max_bytes,
+                max_images=max_images,
+                spool_dir=spool_dir,
+            )
+    except (ImageTooLargeError, EmptyImageError) as exc:
+        await abort_pending(pending)
+        await abort_limit(context, exc)
+        raise
+    except Exception:
+        await abort_pending(pending)
+        raise
+    return await finish_batch(session_id, pending, completed, context)
+
+
+async def abort_limit(context: ServicerContext, exc: BaseException) -> None:
+    """Map spool errors onto gRPC INVALID_ARGUMENT."""
+    message = (
+        "image exceeds max_image_bytes"
+        if isinstance(exc, ImageTooLargeError)
+        else "empty image stream"
+    )
+    await context.abort(grpc.StatusCode.INVALID_ARGUMENT, message)
+
+
+async def finish_batch(
+    session_id: uuid.UUID | None,
+    pending: dict[int, dict[str, Any]],
+    completed: list[ImageUpload],
+    context: ServicerContext,
+) -> tuple[uuid.UUID, list[ImageUpload]]:
+    """Reject empty or partial batches after the stream ends."""
     if session_id is None:
+        await abort_pending(pending)
         await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "empty batch stream")
-        raise RuntimeError("unreachable")
+        raise RuntimeError("unreachable")  # pragma: no cover
     if pending:
+        await abort_pending(pending)
         await context.abort(
             grpc.StatusCode.INVALID_ARGUMENT,
             "batch stream ended with partial image",
         )
+        raise RuntimeError("unreachable")  # pragma: no cover
     return session_id, completed

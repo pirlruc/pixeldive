@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from app.exceptions import (
     BatchLimitError,
     EmptyImageError,
+    ForbiddenError,
     ImageNotFoundError,
     ImageTooLargeError,
     InvalidIdError,
@@ -13,6 +14,7 @@ from app.exceptions import (
     InvalidStatusError,
     SessionNotFoundError,
     SessionServiceError,
+    UnauthenticatedError,
     UnsupportedContentTypeError,
 )
 
@@ -26,6 +28,8 @@ ERROR_STATUS: dict[type[SessionServiceError], int] = {
     EmptyImageError: 422,
     BatchLimitError: 422,
     ImageTooLargeError: 413,
+    UnauthenticatedError: 401,
+    ForbiddenError: 403,
 }
 
 

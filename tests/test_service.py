@@ -63,7 +63,7 @@ async def test_add_image_marks_in_progress(service: SessionService) -> None:
     assert loaded.status == SessionStatus.IN_PROGRESS.value
     assert image.size_bytes == len(PNG_1X1)
     listed = await service.list_images(session.id)
-    assert len(listed) == 1
+    assert len(listed.items) == 1
 
 
 @pytest.mark.asyncio

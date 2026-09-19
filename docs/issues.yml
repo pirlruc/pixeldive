@@ -22,7 +22,8 @@
 #   done  ARCH-001, DATA-001, API-001, QUAL-001, REV-001
 #   done  TOOL-001-T2, TOOL-001-T3
 #   open  TOOL-001 / TOOL-001-T1 (analog submodule pins)
-#   open  SEC-001, PERF-001, DATA-002, OPS-001, API-002 (Phase 2)
+#   done  SEC-001, PERF-001, DATA-002, OPS-001, API-002, SDK-001 (Phase 2)
+#   open  PERF-002 (async S3 client)
 
 milestones:
   - name: Tooling — Analog & methodology
@@ -361,7 +362,7 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: SEC-001
-        status: open
+        status: done
         title: Authenticate REST and gRPC; terminate TLS
         overview:
           problem: >-
@@ -394,7 +395,7 @@ milestones:
           - PY-RUN-002
         tasks:
           - id: SEC-001-T1
-            status: open
+            status: done
             title: Design the shared credential and session-ownership model
             instructions:
               files:
@@ -403,7 +404,7 @@ milestones:
             verification:
               - rg -n "UNAUTHENTICATED|401" app docs/issues.yml
           - id: SEC-001-T2
-            status: open
+            status: done
             title: Implement REST and gRPC auth plus TLS bind options
             instructions:
               files:
@@ -414,7 +415,7 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: PERF-001
-        status: open
+        status: done
         title: Stream ingest, bound concurrency, and paginate lists
         overview:
           problem: >-
@@ -444,7 +445,7 @@ milestones:
           - PY-CPLX-001
         tasks:
           - id: PERF-001-T1
-            status: open
+            status: done
             title: Replace in-memory ImageUpload.payload with a spool + digest
             instructions:
               files:
@@ -454,7 +455,7 @@ milestones:
             verification:
               - bash scripts/ci-local.sh
           - id: PERF-001-T2
-            status: open
+            status: done
             title: Paginate list_images and bound batch fan-out
             instructions:
               files:
@@ -465,7 +466,7 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: DATA-002
-        status: open
+        status: done
         title: Alembic migrations, GC races, and orphan blob sweeper
         overview:
           problem: >-
@@ -495,16 +496,18 @@ milestones:
           - PY-TEST-002
         tasks:
           - id: DATA-002-T1
-            status: open
+            status: done
             title: Add Alembic and stop using create_all in production
             instructions:
               files:
                 - app/database.py
-                - alembic
+                - app/migrate.py
+                - migrations
+                - alembic.ini
             verification:
-              - test -d alembic
+              - test -d migrations
           - id: DATA-002-T2
-            status: open
+            status: done
             title: Make blob GC race-safe and add an orphan sweeper
             instructions:
               files:
@@ -514,7 +517,7 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: OPS-001
-        status: open
+        status: done
         title: Readiness probe, pool settings, metrics, and structured logs
         overview:
           problem: >-
@@ -542,7 +545,7 @@ milestones:
           - DOCKER-RUN-006
         tasks:
           - id: OPS-001-T1
-            status: open
+            status: done
             title: Add /ready that checks PostgreSQL and tune the engine pool
             instructions:
               files:
@@ -553,7 +556,7 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: API-002
-        status: open
+        status: done
         title: Session listing, metadata patch semantics, hide storage_path
         overview:
           problem: >-
@@ -581,12 +584,95 @@ milestones:
           - PY-TEST-002
         tasks:
           - id: API-002-T1
-            status: open
+            status: done
             title: Add paginated session list and hide storage_path
             instructions:
               files:
                 - app/api.py
                 - app/models.py
                 - proto/session_service.proto
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: SDK-001
+        status: done
+        title: Python SDK and capture demo application
+        overview:
+          problem: >-
+            Phase 2 transports are usable from curl and grpcurl, but there is no
+            first-party client or sample app for Android-shaped session payloads.
+            Agents and capture clients need a thin SDK plus a browser demo that
+            exercises create/list/upload/download through that SDK.
+          goal: >-
+            Ship pixeldive_sdk (async REST + gRPC) and a FastAPI demo UI that
+            talks to the session service only through RestClient, so SDK usage
+            is tested on an application rather than only in unit tests.
+        architecture:
+          target: >-
+            In the context of capture clients integrating pixeldive, facing
+            dual REST/gRPC surfaces, we decided on a thin Python SDK plus a
+            demo FastAPI app rather than embedding HTTP calls in the UI, to
+            keep the public client contract testable and documented.
+          modules:
+            - sdk/pixeldive_sdk
+            - demo
+            - tests/test_sdk.py
+        acceptance_criteria:
+          - RestClient covers health, ready, session CRUD, image upload/list/download
+          - GrpcClient can create a session, list sessions, and upload an image
+          - Demo UI creates a session, uploads an image, and downloads it via the SDK
+          - Public image JSON from the SDK does not include storage_path
+        guardrail_refs:
+          - PY-TEST-002
+          - PY-DOC-001
+        tasks:
+          - id: SDK-001-T1
+            status: done
+            title: Implement pixeldive_sdk RestClient and GrpcClient
+            instructions:
+              files:
+                - sdk/pixeldive_sdk
+            verification:
+              - bash scripts/ci-local.sh
+          - id: SDK-001-T2
+            status: done
+            title: Implement demo FastAPI app that uses the SDK
+            instructions:
+              files:
+                - demo
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: PERF-002
+        status: open
+        title: Replace boto3 to_thread with an async S3 client
+        overview:
+          problem: >-
+            S3 save/stream still uses blocking boto3 via asyncio.to_thread.
+            PERF-001 removed the extra HEAD-before-PUT and spools uploads, but
+            a large object still occupies a worker thread for the whole PUT.
+          goal: >-
+            Use an async S3 client (aiobotocore or equivalent) so blob I/O does
+            not occupy the default executor. Keep SessionService as the owner
+            of storage limits.
+        architecture:
+          target: Async S3 adapter behind StorageBackend
+          modules:
+            - app/s3_storage.py
+            - requirements.txt
+        acceptance_criteria:
+          - S3 save_file and stream do not call boto3 on the event loop
+          - Local filesystem backend behaviour is unchanged
+          - Tests cover the async adapter with a fake client
+        guardrail_refs:
+          - PY-CPLX-001
+        tasks:
+          - id: PERF-002-T1
+            status: open
+            title: Swap S3CompatibleStorage to an async client
+            instructions:
+              files:
+                - app/s3_storage.py
+                - requirements.txt
             verification:
               - bash scripts/ci-local.sh

@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from app.exceptions import (
     BatchLimitError,
     EmptyImageError,
+    ForbiddenError,
     ImageNotFoundError,
     ImageTooLargeError,
     InvalidIdError,
@@ -16,6 +17,7 @@ from app.exceptions import (
     InvalidStatusError,
     SessionNotFoundError,
     SessionServiceError,
+    UnauthenticatedError,
     UnsupportedContentTypeError,
 )
 
@@ -29,6 +31,8 @@ GRPC_STATUS: dict[type[SessionServiceError], grpc.StatusCode] = {
     EmptyImageError: grpc.StatusCode.INVALID_ARGUMENT,
     BatchLimitError: grpc.StatusCode.INVALID_ARGUMENT,
     ImageTooLargeError: grpc.StatusCode.INVALID_ARGUMENT,
+    UnauthenticatedError: grpc.StatusCode.UNAUTHENTICATED,
+    ForbiddenError: grpc.StatusCode.PERMISSION_DENIED,
 }
 
 

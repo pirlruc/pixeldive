@@ -13,7 +13,7 @@ license = "MIT"
 
 [tool.coverage.run]
 branch = true
-source = ["app", "main"]
+source = ["app", "main", "sdk", "demo"]
 omit = ["app/pb/*"]
 
 [tool.coverage.report]
@@ -35,7 +35,7 @@ ignore-semiprivate = false
 ignore-magic = true
 omit-covered-files = false
 ignore-regex = ["^test_"]
-exclude = ["app/pb", "tests"]
+exclude = ["app/pb", "tests", "migrations"]
 
 [tool.mypy]
 check_untyped_defs = true
@@ -47,7 +47,7 @@ python_version = "3.12"
 show_error_codes = true
 warn_return_any = true
 warn_unused_configs = true
-mypy_path = ["."]
+mypy_path = [".", "sdk"]
 
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
@@ -72,10 +72,10 @@ warn_required_dynamic_aliases = true
 warn_untyped_fields = true
 
 [tool.pytest.ini_options]
-addopts = "--cov=app --cov=main --cov-branch --cov-report=term-missing"
+addopts = "--cov=app --cov=main --cov=sdk --cov=demo --cov-branch --cov-report=term-missing"
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
-pythonpath = ["."]
+pythonpath = [".", "sdk"]
 testpaths = ["tests"]
 
 [tool.ruff]
@@ -91,6 +91,12 @@ select = ["B", "C4", "D", "E", "F", "I", "SIM", "UP", "W"]
 
 [tool.ruff.lint.per-file-ignores]
 "app/api.py" = ["B008"]
+"app/api_images.py" = ["B008"]
+"app/api_deps.py" = ["B008"]
+"app/models.py" = ["UP037", "UP007"]
+"demo/app.py" = ["B008"]
+"demo/routes.py" = ["B008"]
+"demo/ui.py" = ["E501"]
 "app/pb/**" = ["D", "E", "F", "I", "UP"]
 "scripts/**" = ["D", "E501"]
 "tests/**" = ["D", "DOC", "E501"]

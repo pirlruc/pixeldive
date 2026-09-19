@@ -96,13 +96,12 @@ class Session(_message.Message):
     def __init__(self, id: _Optional[str] = ..., session_name: _Optional[str] = ..., status: _Optional[str] = ..., created_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., phone_info: _Optional[_Union[PhoneInfo, _Mapping]] = ..., phone_capabilities: _Optional[_Union[PhoneCapabilities, _Mapping]] = ..., camera_capabilities: _Optional[_Union[CameraCapabilities, _Mapping]] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
 
 class SessionImage(_message.Message):
-    __slots__ = ("id", "session_id", "filename", "content_type", "size_bytes", "storage_path", "uploaded_at", "metadata")
+    __slots__ = ("id", "session_id", "filename", "content_type", "size_bytes", "uploaded_at", "metadata")
     ID_FIELD_NUMBER: _ClassVar[int]
     SESSION_ID_FIELD_NUMBER: _ClassVar[int]
     FILENAME_FIELD_NUMBER: _ClassVar[int]
     CONTENT_TYPE_FIELD_NUMBER: _ClassVar[int]
     SIZE_BYTES_FIELD_NUMBER: _ClassVar[int]
-    STORAGE_PATH_FIELD_NUMBER: _ClassVar[int]
     UPLOADED_AT_FIELD_NUMBER: _ClassVar[int]
     METADATA_FIELD_NUMBER: _ClassVar[int]
     id: str
@@ -110,10 +109,9 @@ class SessionImage(_message.Message):
     filename: str
     content_type: str
     size_bytes: int
-    storage_path: str
     uploaded_at: _timestamp_pb2.Timestamp
     metadata: _struct_pb2.Struct
-    def __init__(self, id: _Optional[str] = ..., session_id: _Optional[str] = ..., filename: _Optional[str] = ..., content_type: _Optional[str] = ..., size_bytes: _Optional[int] = ..., storage_path: _Optional[str] = ..., uploaded_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+    def __init__(self, id: _Optional[str] = ..., session_id: _Optional[str] = ..., filename: _Optional[str] = ..., content_type: _Optional[str] = ..., size_bytes: _Optional[int] = ..., uploaded_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
 
 class CreateSessionRequest(_message.Message):
     __slots__ = ("session_name", "phone_info", "phone_capabilities", "camera_capabilities", "metadata")
@@ -136,16 +134,20 @@ class GetSessionRequest(_message.Message):
     def __init__(self, session_id: _Optional[str] = ...) -> None: ...
 
 class UpdateSessionRequest(_message.Message):
-    __slots__ = ("session_id", "session_name", "status", "metadata")
+    __slots__ = ("session_id", "session_name", "status", "metadata", "merge_metadata", "clear_metadata")
     SESSION_ID_FIELD_NUMBER: _ClassVar[int]
     SESSION_NAME_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
     METADATA_FIELD_NUMBER: _ClassVar[int]
+    MERGE_METADATA_FIELD_NUMBER: _ClassVar[int]
+    CLEAR_METADATA_FIELD_NUMBER: _ClassVar[int]
     session_id: str
     session_name: str
     status: str
     metadata: _struct_pb2.Struct
-    def __init__(self, session_id: _Optional[str] = ..., session_name: _Optional[str] = ..., status: _Optional[str] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+    merge_metadata: bool
+    clear_metadata: bool
+    def __init__(self, session_id: _Optional[str] = ..., session_name: _Optional[str] = ..., status: _Optional[str] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., merge_metadata: bool = ..., clear_metadata: bool = ...) -> None: ...
 
 class DeleteSessionRequest(_message.Message):
     __slots__ = ("session_id",)
@@ -158,6 +160,22 @@ class DeleteSessionResponse(_message.Message):
     DELETED_FIELD_NUMBER: _ClassVar[int]
     deleted: bool
     def __init__(self, deleted: bool = ...) -> None: ...
+
+class ListSessionsRequest(_message.Message):
+    __slots__ = ("limit", "cursor")
+    LIMIT_FIELD_NUMBER: _ClassVar[int]
+    CURSOR_FIELD_NUMBER: _ClassVar[int]
+    limit: int
+    cursor: str
+    def __init__(self, limit: _Optional[int] = ..., cursor: _Optional[str] = ...) -> None: ...
+
+class SessionListResponse(_message.Message):
+    __slots__ = ("sessions", "next_cursor")
+    SESSIONS_FIELD_NUMBER: _ClassVar[int]
+    NEXT_CURSOR_FIELD_NUMBER: _ClassVar[int]
+    sessions: _containers.RepeatedCompositeFieldContainer[Session]
+    next_cursor: str
+    def __init__(self, sessions: _Optional[_Iterable[_Union[Session, _Mapping]]] = ..., next_cursor: _Optional[str] = ...) -> None: ...
 
 class ImageChunk(_message.Message):
     __slots__ = ("session_id", "image_id", "filename", "content_type", "data", "metadata_json")
@@ -206,16 +224,22 @@ class BatchUploadResponse(_message.Message):
     def __init__(self, images: _Optional[_Iterable[_Union[SessionImage, _Mapping]]] = ...) -> None: ...
 
 class ListImagesRequest(_message.Message):
-    __slots__ = ("session_id",)
+    __slots__ = ("session_id", "limit", "cursor")
     SESSION_ID_FIELD_NUMBER: _ClassVar[int]
+    LIMIT_FIELD_NUMBER: _ClassVar[int]
+    CURSOR_FIELD_NUMBER: _ClassVar[int]
     session_id: str
-    def __init__(self, session_id: _Optional[str] = ...) -> None: ...
+    limit: int
+    cursor: str
+    def __init__(self, session_id: _Optional[str] = ..., limit: _Optional[int] = ..., cursor: _Optional[str] = ...) -> None: ...
 
 class ImageListResponse(_message.Message):
-    __slots__ = ("images",)
+    __slots__ = ("images", "next_cursor")
     IMAGES_FIELD_NUMBER: _ClassVar[int]
+    NEXT_CURSOR_FIELD_NUMBER: _ClassVar[int]
     images: _containers.RepeatedCompositeFieldContainer[SessionImage]
-    def __init__(self, images: _Optional[_Iterable[_Union[SessionImage, _Mapping]]] = ...) -> None: ...
+    next_cursor: str
+    def __init__(self, images: _Optional[_Iterable[_Union[SessionImage, _Mapping]]] = ..., next_cursor: _Optional[str] = ...) -> None: ...
 
 class DownloadImageRequest(_message.Message):
     __slots__ = ("session_id", "image_id")

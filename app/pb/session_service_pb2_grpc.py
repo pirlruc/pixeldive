@@ -57,6 +57,11 @@ class SessionServiceStub(object):
                 request_serializer=session__service__pb2.DeleteSessionRequest.SerializeToString,
                 response_deserializer=session__service__pb2.DeleteSessionResponse.FromString,
                 _registered_method=True)
+        self.ListSessions = channel.unary_unary(
+                '/pixeldive.session.v1.SessionService/ListSessions',
+                request_serializer=session__service__pb2.ListSessionsRequest.SerializeToString,
+                response_deserializer=session__service__pb2.SessionListResponse.FromString,
+                _registered_method=True)
         self.UploadImage = channel.stream_unary(
                 '/pixeldive.session.v1.SessionService/UploadImage',
                 request_serializer=session__service__pb2.ImageChunk.SerializeToString,
@@ -109,6 +114,12 @@ class SessionServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ListSessions(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def UploadImage(self, request_iterator, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -155,6 +166,11 @@ def add_SessionServiceServicer_to_server(servicer, server):
                     servicer.DeleteSession,
                     request_deserializer=session__service__pb2.DeleteSessionRequest.FromString,
                     response_serializer=session__service__pb2.DeleteSessionResponse.SerializeToString,
+            ),
+            'ListSessions': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListSessions,
+                    request_deserializer=session__service__pb2.ListSessionsRequest.FromString,
+                    response_serializer=session__service__pb2.SessionListResponse.SerializeToString,
             ),
             'UploadImage': grpc.stream_unary_rpc_method_handler(
                     servicer.UploadImage,
@@ -288,6 +304,33 @@ class SessionService(object):
             '/pixeldive.session.v1.SessionService/DeleteSession',
             session__service__pb2.DeleteSessionRequest.SerializeToString,
             session__service__pb2.DeleteSessionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListSessions(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/pixeldive.session.v1.SessionService/ListSessions',
+            session__service__pb2.ListSessionsRequest.SerializeToString,
+            session__service__pb2.SessionListResponse.FromString,
             options,
             channel_credentials,
             insecure,

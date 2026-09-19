@@ -4,33 +4,13 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from typing import Protocol, cast
+from pathlib import Path
+from typing import cast
 
 from app.config import Settings
 from app.hash_keys import object_key, sha256_hex
-
-
-class S3Body(Protocol):
-    """Streaming body returned by ``get_object``."""
-
-    def read(self, size: int = -1) -> bytes:
-        """Read the next window of object bytes."""
-
-
-class S3ObjectClient(Protocol):
-    """Minimal S3 client surface used by ``S3CompatibleStorage``."""
-
-    def put_object(self, **kwargs: object) -> object:
-        """Upload an object."""
-
-    def get_object(self, **kwargs: object) -> dict[str, S3Body]:
-        """Download an object."""
-
-    def delete_object(self, **kwargs: object) -> object:
-        """Delete an object."""
-
-    def head_object(self, **kwargs: object) -> object:
-        """Probe object existence."""
+from app.s3_listing import age_from_head, contents, is_missing, mtime
+from app.s3_types import S3ObjectClient
 
 
 class S3CompatibleStorage:
@@ -42,10 +22,8 @@ class S3CompatibleStorage:
         self._bucket = bucket
 
     async def save(self, payload: bytes, content_type: str) -> str:
-        """PUT the object unless a HEAD shows it already exists."""
+        """PUT the object on a worker thread (idempotent; no HEAD round trip)."""
         key = object_key(sha256_hex(payload), content_type)
-        if await self.exists(key):
-            return key
         await asyncio.to_thread(
             self._client.put_object,
             Bucket=self._bucket,
@@ -53,6 +31,22 @@ class S3CompatibleStorage:
             Body=payload,
             ContentType=content_type,
         )
+        return key
+
+    def _put_file(self, source: Path, key: str, content_type: str) -> None:
+        """Upload a local file handle without loading it fully in-process."""
+        with source.open("rb") as handle:
+            self._client.put_object(
+                Bucket=self._bucket,
+                Key=key,
+                Body=handle,
+                ContentType=content_type,
+            )
+
+    async def save_file(self, source: Path, digest_hex: str, content_type: str) -> str:
+        """PUT a spool file using the precomputed digest as the object key."""
+        key = object_key(digest_hex, content_type)
+        await asyncio.to_thread(self._put_file, source, key, content_type)
         return key
 
     async def stream(self, storage_path: str, chunk_size: int) -> AsyncIterator[bytes]:
@@ -92,17 +86,37 @@ class S3CompatibleStorage:
             raise
         return True
 
+    async def list_blobs(self) -> list[tuple[str, float]]:
+        """Page through ``list_objects_v2`` and return keys with mtimes."""
+        blobs: list[tuple[str, float]] = []
+        token: object | None = None
+        while True:
+            kwargs: dict[str, object] = {"Bucket": self._bucket}
+            if token:
+                kwargs["ContinuationToken"] = token
+            response = await asyncio.to_thread(self._client.list_objects_v2, **kwargs)
+            for item in contents(response):
+                blobs.append((str(item["Key"]), mtime(item.get("LastModified"))))
+            if not response.get("IsTruncated"):
+                break
+            token = response.get("NextContinuationToken")
+            if not token:
+                break
+        return blobs
 
-def is_missing(exc: BaseException) -> bool:
-    """Return True for S3 404 / NotFound client errors."""
-    response = getattr(exc, "response", None) if hasattr(exc, "response") else None
-    status = None
-    if isinstance(response, dict):
-        status = response.get("Error", {}).get("Code")
-    if status in {"404", "NotFound", "NoSuchKey"}:
-        return True
-    name = type(exc).__name__
-    return name in {"NoSuchKey", "ClientError"} and "404" in str(exc)
+    async def age_seconds(self, storage_path: str) -> float:
+        """HEAD LastModified; missing objects are age 0."""
+        try:
+            response = await asyncio.to_thread(
+                self._client.head_object,
+                Bucket=self._bucket,
+                Key=storage_path,
+            )
+        except Exception as exc:  # noqa: BLE001 — boto3 ClientError is optional
+            if is_missing(exc):
+                return 0.0
+            raise
+        return age_from_head(response)
 
 
 def default_s3_client(settings: Settings) -> S3ObjectClient:

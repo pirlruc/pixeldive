@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncIterator
-from typing import Any
+from pathlib import Path
 
 import grpc
 from grpc.aio import ServicerContext
 
-from app.grpc_codec import as_uuid
-from app.metadata import parse_metadata_json
+from app.exceptions import EmptyImageError, ImageTooLargeError
+from app.grpc_single_fill import collect_single
 from app.models import ImageUpload
 from app.pb import session_service_pb2 as pb
+from app.spool import SpoolWriter
 
 
 async def assemble_single(
@@ -20,31 +21,19 @@ async def assemble_single(
     context: ServicerContext,
     *,
     max_bytes: int,
+    spool_dir: Path,
 ) -> tuple[uuid.UUID, ImageUpload]:
-    """Collect a client-streamed image into one ImageUpload."""
-    session_id: uuid.UUID | None = None
-    filename = "upload.bin"
-    content_type = "application/octet-stream"
-    metadata: dict[str, Any] = {}
-    buffer = bytearray()
-    async for chunk in chunks:
-        if session_id is None:
-            if not chunk.session_id:
-                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "session_id is required")
-            session_id = as_uuid(chunk.session_id, context)
-            filename = chunk.filename or filename
-            content_type = chunk.content_type or content_type
-            metadata = parse_metadata_json(chunk.metadata_json or None)
-        buffer.extend(chunk.data)
-        if len(buffer) > max_bytes:
-            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "image exceeds max_image_bytes")
-    if session_id is None:
+    """Collect a client-streamed image into one spooled ImageUpload."""
+    writer = SpoolWriter(spool_dir, max_bytes)
+    await writer.start()
+    try:
+        return await collect_single(chunks, context, writer)
+    except ImageTooLargeError:
+        await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "image exceeds max_image_bytes")
+        raise
+    except EmptyImageError:
         await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "empty image stream")
-        raise RuntimeError("unreachable")
-    upload = ImageUpload(
-        filename=filename,
-        content_type=content_type,
-        payload=bytes(buffer),
-        extra_metadata=metadata,
-    )
-    return session_id, upload
+        raise
+    except Exception:
+        await writer.abort()
+        raise

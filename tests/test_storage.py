@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -17,12 +18,16 @@ class FakeS3:
         """Start with an empty bucket dict."""
         self.objects: dict[str, bytes] = {}
         self.content_types: dict[str, str] = {}
+        self.mtimes: dict[str, datetime] = {}
 
     def put_object(self, **kwargs: object) -> None:
         """Store Body under Key."""
         key = str(kwargs["Key"])
-        self.objects[key] = bytes(kwargs["Body"])  # type: ignore[arg-type]
+        body = kwargs["Body"]
+        payload = body.read() if hasattr(body, "read") else bytes(body)  # type: ignore[arg-type]
+        self.objects[key] = payload
         self.content_types[key] = str(kwargs.get("ContentType", ""))
+        self.mtimes[key] = datetime.now(UTC)
 
     def get_object(self, **kwargs: object) -> dict[str, object]:
         """Return a file-like Body."""
@@ -32,14 +37,22 @@ class FakeS3:
 
     def delete_object(self, **kwargs: object) -> None:
         """Drop Key if present."""
-        self.objects.pop(str(kwargs["Key"]), None)
+        key = str(kwargs["Key"])
+        self.objects.pop(key, None)
+        self.mtimes.pop(key, None)
 
-    def head_object(self, **kwargs: object) -> dict[str, str]:
+    def head_object(self, **kwargs: object) -> dict[str, object]:
         """Raise a 404-like error when missing."""
         key = str(kwargs["Key"])
         if key not in self.objects:
             raise _Missing()
-        return {"Key": key}
+        return {"Key": key, "LastModified": self.mtimes.get(key, datetime.now(UTC))}
+
+    def list_objects_v2(self, **kwargs: object) -> dict[str, object]:
+        """Return every stored key in one page."""
+        del kwargs
+        contents = [{"Key": key, "LastModified": self.mtimes[key]} for key in self.objects]
+        return {"Contents": contents, "IsTruncated": False}
 
 
 class _BytesReader:
@@ -171,3 +184,35 @@ async def test_s3_adapter_round_trip() -> None:
     assert payload == PNG_1X1
     await backend.delete(key)
     assert not await backend.exists(key)
+
+
+@pytest.mark.asyncio
+async def test_s3_save_file_and_list_blobs(tmp_path: Path) -> None:
+    """save_file streams a path; list_blobs returns keys."""
+    client = FakeS3()
+    backend = S3CompatibleStorage(client, bucket="pixeldive")
+    source = tmp_path / "frame.png"
+    source.write_bytes(PNG_1X1)
+    digest = sha256_hex(PNG_1X1)
+    key = await backend.save_file(source, digest, "image/png")
+    blobs = await backend.list_blobs()
+    assert blobs[0][0] == key
+    assert await backend.age_seconds(key) >= 0
+    assert await backend.age_seconds("missing") == 0.0
+
+
+@pytest.mark.asyncio
+async def test_local_save_file_and_list_blobs(tmp_path: Path) -> None:
+    """Local save_file copies a spool; list_blobs skips hidden paths."""
+    backend = LocalFilesystemStorage(tmp_path)
+    source = tmp_path / "frame.png"
+    source.write_bytes(PNG_1X1)
+    key = await backend.save_file(source, sha256_hex(PNG_1X1), "image/png")
+    hidden = tmp_path / ".incoming"
+    hidden.mkdir()
+    (hidden / "partial.part").write_bytes(b"tmp")
+    blobs = await backend.list_blobs()
+    keys = [item[0] for item in blobs]
+    assert key in keys
+    assert not any(item.startswith(".incoming") for item in keys)
+    assert await backend.age_seconds(key) >= 0
