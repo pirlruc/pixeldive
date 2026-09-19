@@ -11,7 +11,7 @@
 
 ## Current slice
 
-Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19). Phase 2 hardening, Python SDK, capture demo, and async S3 (PERF-002) live on this branch: bearer auth + gRPC TLS options, spool+digest ingest, cursor pagination, Alembic under `migrations/`, race-aware GC, `/ready` + `/metrics`, `pixeldive_sdk`, `python -m demo`, and a lazy aiobotocore adapter. Analog submodule pins ([TOOL-001-T1](issues.yml)) still need a token that can clone private `pirlruc/guardrails` and `pirlruc/github-scaffold`. GitHub Epic/Task issues are not published ([TOOL-002](issues.yml)); statuses live in [`docs/issues.yml`](issues.yml).
+Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19). Phase 2 hardening, Python SDK, capture demo, and async S3 (PERF-002) are **on main** ([PR #7](https://github.com/pirlruc/pixeldive/pull/7), merged 2026-09-19): bearer auth + gRPC TLS options, spool+digest ingest, cursor pagination, Alembic under `migrations/`, race-aware GC, `/ready` + `/metrics`, `pixeldive_sdk`, `python -m demo`, and a lazy aiobotocore adapter. Analog submodule pins ([TOOL-001-T1](issues.yml)) still need a token that can clone private `pirlruc/guardrails` and `pirlruc/github-scaffold`. GitHub Epic/Task issues are not published ([TOOL-002](issues.yml)); statuses live in [`docs/issues.yml`](issues.yml).
 
 | Module | Path | Notes |
 | --- | --- | --- |
@@ -72,7 +72,7 @@ bash scripts/sync-templates.sh
 
 Issue content lives only in `docs/issues.yml`. Changing an `id` orphans the GitHub issue. Do not `gh issue create` by hand.
 
-GitHub issue publish needs Issues: Read and write ([TOOL-002](issues.yml)). Until then, keep the manifest as the decision log. Phase 1 + REV-001 shipped in [PR #1](https://github.com/pirlruc/pixeldive/pull/1); Phase 2 + SDK-001 + PERF-002 are `status: done` in the YAML on this branch.
+GitHub issue publish needs Issues: Read and write ([TOOL-002](issues.yml)). Until then, keep the manifest as the decision log. Phase 1 + REV-001 shipped in [PR #1](https://github.com/pirlruc/pixeldive/pull/1); Phase 2 + SDK-001 + PERF-002 shipped in [PR #7](https://github.com/pirlruc/pixeldive/pull/7).
 
 ## Android payload contract
 
@@ -113,6 +113,6 @@ Clients should send the same keys they already read on-device:
 
 - Phase 1 + REV-001 shipped in [PR #1](https://github.com/pirlruc/pixeldive/pull/1) (`c1eda05`)
 - `docs(issues): record PR #1 ship on Phase 1 and REV-001` (`a7e8ee2`)
-- This branch: Phase 2 (SEC/PERF/DATA/OPS/API), SDK-001, demo app, PERF-002 async S3; PY-* gates held without `docs/guardrail-deviations.yml` entries
+- Phase 2 (SEC/PERF/DATA/OPS/API), SDK-001, demo, PERF-002 async S3 shipped in [PR #7](https://github.com/pirlruc/pixeldive/pull/7) (`96192bf`)
 
 *Last updated: 2026-09-19*
