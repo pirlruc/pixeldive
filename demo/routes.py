@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -42,35 +43,35 @@ def register_demo_routes(app: FastAPI, sdk: SdkFactory) -> None:
         return await remote.list_sessions()
 
     @app.delete("/api/sessions/{session_id}")
-    async def delete_session(session_id: str) -> dict[str, str]:
+    async def delete_session(session_id: uuid.UUID) -> dict[str, str]:
         """Delete a session through the SDK."""
         remote = await sdk()
-        await remote.delete_session(session_id)
-        return {"deleted": session_id}
+        await remote.delete_session(str(session_id))
+        return {"deleted": str(session_id)}
 
     @app.get("/api/sessions/{session_id}/images")
-    async def list_images(session_id: str) -> dict[str, Any]:
+    async def list_images(session_id: uuid.UUID) -> dict[str, Any]:
         """List images for one session."""
         remote = await sdk()
-        return await remote.list_images(session_id)
+        return await remote.list_images(str(session_id))
 
     @app.post("/api/sessions/{session_id}/images")
-    async def upload_image(session_id: str, file: UploadFile = File(...)) -> dict[str, Any]:
+    async def upload_image(session_id: uuid.UUID, file: UploadFile = File(...)) -> dict[str, Any]:
         """Upload a browser-selected image through the SDK."""
         remote = await sdk()
         payload = await file.read()
         return await remote.upload_image(
-            session_id,
+            str(session_id),
             file.filename or "frame.png",
             payload,
             file.content_type or "image/png",
         )
 
     @app.get("/api/sessions/{session_id}/images/{image_id}/download")
-    async def download_image(session_id: str, image_id: str) -> StreamingResponse:
+    async def download_image(session_id: uuid.UUID, image_id: uuid.UUID) -> StreamingResponse:
         """Proxy a binary download through the SDK."""
         remote = await sdk()
-        first, stream = await open_download(remote, session_id, image_id)
+        first, stream = await open_download(remote, str(session_id), str(image_id))
         return StreamingResponse(
             continue_download(first, stream),
             media_type="application/octet-stream",

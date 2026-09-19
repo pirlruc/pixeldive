@@ -7,6 +7,8 @@ from typing import Any
 
 import httpx
 
+from pixeldive_sdk.ids import resource_id
+
 
 class RestImageMixin:
     """Image routes under ``/api/v1/sessions/{id}/images``."""
@@ -26,7 +28,7 @@ class RestImageMixin:
         if metadata is not None:
             data["metadata"] = metadata
         response = await self._http.post(
-            f"/api/v1/sessions/{session_id}/images",
+            f"/api/v1/sessions/{resource_id(session_id)}/images",
             files={"file": (filename, payload, content_type)},
             data=data,
         )
@@ -45,7 +47,10 @@ class RestImageMixin:
         params: dict[str, Any] = {"limit": limit}
         if cursor:
             params["cursor"] = cursor
-        response = await self._http.get(f"/api/v1/sessions/{session_id}/images", params=params)
+        response = await self._http.get(
+            f"/api/v1/sessions/{resource_id(session_id)}/images",
+            params=params,
+        )
         response.raise_for_status()
         payload: dict[str, Any] = response.json()
         return payload
@@ -54,7 +59,7 @@ class RestImageMixin:
         """Stream GET /api/v1/sessions/{id}/images/{image_id}."""
         async with self._http.stream(
             "GET",
-            f"/api/v1/sessions/{session_id}/images/{image_id}",
+            f"/api/v1/sessions/{resource_id(session_id)}/images/{resource_id(image_id)}",
         ) as response:
             if response.status_code >= 400:
                 await response.aread()

@@ -6,6 +6,8 @@ from typing import Any
 
 import httpx
 
+from pixeldive_sdk.ids import resource_id
+
 
 class RestSessionMixin:
     """Health, ready, and session CRUD against ``/api/v1``."""
@@ -50,7 +52,7 @@ class RestSessionMixin:
 
     async def get_session(self, session_id: str) -> dict[str, Any]:
         """GET /api/v1/sessions/{id}."""
-        response = await self._http.get(f"/api/v1/sessions/{session_id}")
+        response = await self._http.get(f"/api/v1/sessions/{resource_id(session_id)}")
         response.raise_for_status()
         payload: dict[str, Any] = response.json()
         return payload
@@ -65,12 +67,15 @@ class RestSessionMixin:
         """PUT /api/v1/sessions/{id}."""
         body = dict(payload)
         body["merge_metadata"] = merge_metadata
-        response = await self._http.put(f"/api/v1/sessions/{session_id}", json=body)
+        response = await self._http.put(
+            f"/api/v1/sessions/{resource_id(session_id)}",
+            json=body,
+        )
         response.raise_for_status()
         data: dict[str, Any] = response.json()
         return data
 
     async def delete_session(self, session_id: str) -> None:
         """DELETE /api/v1/sessions/{id}."""
-        response = await self._http.delete(f"/api/v1/sessions/{session_id}")
+        response = await self._http.delete(f"/api/v1/sessions/{resource_id(session_id)}")
         response.raise_for_status()

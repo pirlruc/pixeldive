@@ -44,6 +44,17 @@ async def test_rest_sdk_round_trip(service: SessionService) -> None:
 
 
 @pytest.mark.asyncio
+async def test_rest_sdk_rejects_non_uuid_ids() -> None:
+    """Path ids must be UUIDs so callers cannot inject extra URL segments."""
+    from pixeldive_sdk.ids import resource_id
+
+    with pytest.raises(ValueError):
+        resource_id("../secret")
+    with pytest.raises(ValueError):
+        resource_id("not-a-uuid")
+
+
+@pytest.mark.asyncio
 async def test_demo_app_uses_sdk(service: SessionService) -> None:
     """Demo UI and JSON routes talk to pixeldive through RestClient."""
     backend = create_app(service)
