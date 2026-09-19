@@ -1,38 +1,20 @@
 """Nested Android device JSON schemas persisted on Session rows."""
 
-from typing import Any
+from typing import Self
 
-from pydantic import field_validator
-from sqlalchemy import JSON
-from sqlalchemy.types import TypeDecorator
+from pydantic import field_validator, model_validator
 from sqlmodel import Field as SQLField
 from sqlmodel import SQLModel
 
+from app.json_columns import PydanticJSON
 
-class PydanticJSON(TypeDecorator):
-    """Persist a Pydantic/SQLModel instance as a JSON column."""
-
-    impl = JSON
-    cache_ok = True
-
-    def __init__(self, pydantic_model: type[SQLModel]) -> None:
-        """Bind the decorator to a nested schema class."""
-        super().__init__()
-        self.pydantic_model = pydantic_model
-
-    def process_bind_param(self, value: Any, dialect: Any) -> Any:
-        """Dump nested models to JSON-compatible dicts."""
-        if value is None:
-            return None
-        if isinstance(value, self.pydantic_model):
-            return value.model_dump(mode="json")
-        return self.pydantic_model.model_validate(value).model_dump(mode="json")
-
-    def process_result_value(self, value: Any, dialect: Any) -> Any:
-        """Rehydrate nested models from JSON."""
-        if value is None:
-            return None
-        return self.pydantic_model.model_validate(value)
+__all__ = [
+    "CameraCapabilities",
+    "CameraInfo",
+    "PhoneCapabilities",
+    "PhoneInfo",
+    "PydanticJSON",
+]
 
 
 class PhoneInfo(SQLModel):
@@ -90,3 +72,11 @@ class CameraCapabilities(SQLModel):
             msg = "camera_count must be >= 0"
             raise ValueError(msg)
         return value
+
+    @model_validator(mode="after")
+    def _count_matches_cameras(self) -> Self:
+        """Require camera_count to equal the enumerated cameras list (API-002)."""
+        if self.camera_count != len(self.cameras):
+            msg = "camera_count must equal len(cameras)"
+            raise ValueError(msg)
+        return self

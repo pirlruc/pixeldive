@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Fail closed if radon CC / MI disagree with the Python profile (PY-CPLX-*)."""
 
 from __future__ import annotations
@@ -12,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from read_python_threshold import read_threshold  # noqa: E402
 
-TARGETS = ["app", "main.py"]
+TARGETS = ["app", "main.py", "sdk", "demo"]
 
 
 def _run(args: list[str]) -> str:
@@ -50,15 +49,15 @@ def _cc_blocks() -> list[dict]:
     return blocks
 
 
-def _mi_values() -> list[float]:
-    """Parse radon mi JSON into maintainability scores."""
+def _mi_items() -> list[tuple[str, float]]:
+    """Parse radon mi JSON into (path, score) pairs."""
     raw = json.loads(
         _run([sys.executable, "-m", "radon", "mi", "-j", "-e", "app/pb/*", *TARGETS]),
     )
-    scores: list[float] = []
-    for item in raw.values():
-        scores.append(float(item["mi"]))
-    return scores
+    items: list[tuple[str, float]] = []
+    for path, item in raw.items():
+        items.append((path, float(item["mi"])))
+    return items
 
 
 def main() -> int:
@@ -83,11 +82,13 @@ def main() -> int:
         print(f"PY-CPLX-001 avg CC {mean:.2f} > {avg_cc}", file=sys.stderr)
         return 1
 
-    scores = _mi_values()
+    mi_items = _mi_items()
+    scores = [score for _path, score in mi_items]
     lowest = min(scores)
     mean_mi = sum(scores) / len(scores)
     if lowest < min_mi:
-        print(f"PY-CPLX-002 min MI {lowest:.2f} < {min_mi}", file=sys.stderr)
+        offenders = [(path, score) for path, score in mi_items if score < min_mi]
+        print(f"PY-CPLX-002 min MI {lowest:.2f} < {min_mi}: {offenders}", file=sys.stderr)
         return 1
     if mean_mi < avg_mi:
         print(f"PY-CPLX-002 avg MI {mean_mi:.2f} < {avg_mi}", file=sys.stderr)

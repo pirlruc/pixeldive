@@ -28,6 +28,8 @@ COPY --from=builder /opt/venv /opt/venv
 WORKDIR /app
 COPY app /app/app
 COPY proto /app/proto
+COPY migrations /app/migrations
+COPY alembic.ini /app/alembic.ini
 COPY main.py /app/main.py
 
 RUN mkdir -p /data/images && chown -R 65532:65532 /app /data
@@ -37,8 +39,8 @@ EXPOSE 8000 50051
 VOLUME ["/data/images"]
 
 # HEALTHCHECK uses stdlib so the runtime image needs no curl (DOCKER-RUN-006).
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"
 
 # Run as non-root numeric UID; config is env-only (DOCKER-RUN-001/004/005).
 # Harden with: --read-only --cap-drop ALL --security-opt no-new-privileges

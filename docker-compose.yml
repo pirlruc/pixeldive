@@ -27,6 +27,9 @@ services:
       HTTP_HOST: 0.0.0.0
       HTTP_PORT: "8000"
       GRPC_PORT: "50051"
+      AUTO_CREATE_TABLES: "false"
+      LOG_JSON: "true"
+      GRPC_INSECURE: "true"
     ports:
       - "8000:8000"
       - "50051:50051"

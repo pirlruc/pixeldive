@@ -1,5 +1,7 @@
 """SQLModel nested JSON and status helpers."""
 
+import pytest
+
 from app.models import CameraCapabilities, PhoneInfo, SessionStatus
 from tests.conftest import sample_create, sample_phone_info
 
@@ -38,6 +40,12 @@ def test_camera_count_rejects_negative() -> None:
     except ValueError:
         return
     raise AssertionError("expected ValueError")
+
+
+def test_camera_count_must_match_list() -> None:
+    """camera_count must equal len(cameras)."""
+    with pytest.raises(ValueError, match="camera_count"):
+        CameraCapabilities(camera_count=1, cameras=[])
 
 
 def test_promote_metadata_leaves_explicit_extra_alone() -> None:

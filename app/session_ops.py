@@ -1,0 +1,83 @@
+"""Image ingest operations mixed into SessionService."""
+
+from __future__ import annotations
+
+import uuid
+from collections.abc import AsyncIterator
+
+from app.auth import Principal
+from app.exceptions import ImageNotFoundError
+from app.models import ImageUpload, Session, SessionImage, SessionStatus, utcnow
+from app.session_host import SessionHost
+from app.uploads import discard_spool, new_image, persist_upload, upload_size, validate_upload
+
+
+class SessionOpsMixin(SessionHost):
+    """Single-image ingest helpers used by SessionService."""
+
+    async def add_image(
+        self,
+        session_id: uuid.UUID,
+        upload: ImageUpload,
+        principal: Principal | None = None,
+    ) -> SessionImage:
+        """Validate, store, and attach a single image."""
+        try:
+            validate_upload(upload, self._settings)
+            async with self._factory() as db:
+                await self._require_session(db, session_id, principal)
+            storage_path = await persist_upload(self._storage, upload, self._write_sema)
+            async with self._factory() as db:
+                session = await self._require_session(db, session_id, principal)
+                image = new_image(session, upload, storage_path)
+                touch_in_progress(session)
+                db.add(image)
+                db.add(session)
+                await db.commit()
+                await db.refresh(image)
+            self._metrics.observe_upload(upload_size(upload))
+            return image
+        finally:
+            await discard_spool(upload)
+
+    async def get_image(
+        self,
+        session_id: uuid.UUID,
+        image_id: uuid.UUID,
+        principal: Principal | None = None,
+    ) -> SessionImage:
+        """Load one image row scoped to a session."""
+        async with self._factory() as db:
+            await self._require_session(db, session_id, principal)
+            image = await db.get(SessionImage, image_id)
+            if image is None or image.session_id != session_id:
+                raise ImageNotFoundError(f"image {image_id} not found")
+            return image
+
+    async def stream_image(
+        self,
+        session_id: uuid.UUID,
+        image_id: uuid.UUID,
+        principal: Principal | None = None,
+    ) -> AsyncIterator[bytes]:
+        """Yield stored bytes for download endpoints."""
+        image = await self.get_image(session_id, image_id, principal)
+        try:
+            async for chunk in self._storage.stream(
+                image.storage_path,
+                self._settings.download_chunk_bytes,
+            ):
+                yield chunk
+        except FileNotFoundError as exc:
+            raise ImageNotFoundError(f"image {image_id} blob is missing") from exc
+
+    def validate_upload(self, upload: ImageUpload) -> None:
+        """Reject empty, oversized, or non-image payloads."""
+        validate_upload(upload, self._settings)
+
+
+def touch_in_progress(session: Session) -> None:
+    """Move CREATED sessions to IN_PROGRESS on first successful upload."""
+    if session.status == SessionStatus.CREATED.value:
+        session.status = SessionStatus.IN_PROGRESS.value
+    session.updated_at = utcnow()

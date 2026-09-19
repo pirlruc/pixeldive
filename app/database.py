@@ -16,9 +16,13 @@ from app.config import Settings
 
 def create_engine(settings: Settings) -> AsyncEngine:
     """Create an AsyncEngine for PostgreSQL (asyncpg) or SQLite (aiosqlite)."""
-    connect_args: dict[str, object] = {}
     url = settings.database_url
-    engine = create_async_engine(url, echo=False, future=True, connect_args=connect_args)
+    kwargs: dict[str, object] = {"echo": False, "future": True, "connect_args": {}}
+    if not url.startswith("sqlite"):
+        kwargs["pool_pre_ping"] = settings.db_pool_pre_ping
+        kwargs["pool_size"] = settings.db_pool_size
+        kwargs["max_overflow"] = settings.db_max_overflow
+    engine = create_async_engine(url, **kwargs)  # type: ignore[arg-type]
     if url.startswith("sqlite"):
         _enable_sqlite_foreign_keys(engine)
     return engine
@@ -41,7 +45,7 @@ def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
 
 
 async def init_db(engine: AsyncEngine) -> None:
-    """Create tables if they do not already exist."""
+    """Create tables if they do not already exist (test/dev)."""
     async with engine.begin() as connection:
         await connection.run_sync(SQLModel.metadata.create_all)
 

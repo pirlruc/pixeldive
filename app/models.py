@@ -1,4 +1,4 @@
-"""SQLModel tables and Pydantic schemas for sessions and images.
+"""SQLModel tables for sessions and images.
 
 Nested JSON payloads use the same keys Android clients already collect:
 
@@ -15,9 +15,8 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import AliasChoices, ConfigDict, model_validator
-from pydantic import Field as PydField
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Text
+from pydantic import ConfigDict
+from sqlalchemy import JSON, CheckConstraint, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.types import Uuid
 from sqlmodel import Field as SQLField
 from sqlmodel import Relationship, SQLModel
@@ -30,13 +29,22 @@ from app.device_models import (
     PhoneInfo,
     PydanticJSON,
 )
-from app.metadata import promote_metadata
+from app.schemas import (
+    ImagePage,
+    ImageUpload,
+    SessionCreate,
+    SessionImageRead,
+    SessionPage,
+    SessionRead,
+    SessionUpdate,
+)
 from app.timestamps import SessionStatus, utcnow
 
 __all__ = [
     "ALLOWED_CONTENT_TYPES",
     "CameraCapabilities",
     "CameraInfo",
+    "ImagePage",
     "ImageUpload",
     "PhoneCapabilities",
     "PhoneInfo",
@@ -45,6 +53,7 @@ __all__ = [
     "SessionCreate",
     "SessionImage",
     "SessionImageRead",
+    "SessionPage",
     "SessionRead",
     "SessionStatus",
     "SessionUpdate",
@@ -56,6 +65,12 @@ class Session(SQLModel, table=True):
     """Persisted capture session and device specification."""
 
     __tablename__ = "sessions"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('CREATED', 'IN_PROGRESS', 'COMPLETED', 'FAILED')",
+            name="ck_session_status",
+        ),
+    )
     model_config = ConfigDict(populate_by_name=True)  # type: ignore[assignment]
 
     id: uuid.UUID = SQLField(default_factory=uuid.uuid4, primary_key=True)
@@ -81,6 +96,7 @@ class Session(SQLModel, table=True):
         alias="metadata",
         sa_column=Column("metadata", JSON, nullable=False, default=dict),
     )
+    owner_id: str | None = SQLField(default=None, max_length=128, index=True)
     images: list["SessionImage"] = Relationship(
         back_populates="session",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
@@ -116,103 +132,3 @@ class SessionImage(SQLModel, table=True):
         sa_column=Column("metadata", JSON, nullable=False, default=dict),
     )
     session: Optional["Session"] = Relationship(back_populates="images")
-
-
-class SessionCreate(SQLModel):
-    """POST /sessions payload."""
-
-    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)  # type: ignore[assignment]
-
-    session_name: str = SQLField(min_length=1, max_length=255)
-    phone_info: PhoneInfo
-    phone_capabilities: PhoneCapabilities
-    camera_capabilities: CameraCapabilities
-    extra_metadata: dict[str, Any] = PydField(
-        default_factory=dict,
-        validation_alias=AliasChoices("metadata", "extra_metadata"),
-        serialization_alias="metadata",
-    )
-
-    @model_validator(mode="before")
-    @classmethod
-    def _metadata_key(cls, data: Any) -> Any:
-        """Accept ``metadata`` as the public JSON name."""
-        return promote_metadata(data)
-
-
-class SessionUpdate(SQLModel):
-    """PUT /sessions/{id} payload — all fields optional."""
-
-    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)  # type: ignore[assignment]
-
-    session_name: str | None = SQLField(default=None, min_length=1, max_length=255)
-    status: SessionStatus | None = None
-    extra_metadata: dict[str, Any] | None = PydField(
-        default=None,
-        validation_alias=AliasChoices("metadata", "extra_metadata"),
-        serialization_alias="metadata",
-    )
-
-    @model_validator(mode="before")
-    @classmethod
-    def _metadata_key(cls, data: Any) -> Any:
-        """Accept ``metadata`` as the public JSON name."""
-        return promote_metadata(data)
-
-
-class SessionRead(SQLModel):
-    """Public session representation."""
-
-    model_config = ConfigDict(populate_by_name=True, from_attributes=True, serialize_by_alias=True)  # type: ignore[assignment]
-
-    id: uuid.UUID
-    session_name: str
-    status: str
-    created_at: datetime
-    updated_at: datetime
-    phone_info: PhoneInfo
-    phone_capabilities: PhoneCapabilities
-    camera_capabilities: CameraCapabilities
-    extra_metadata: dict[str, Any] = PydField(
-        default_factory=dict,
-        serialization_alias="metadata",
-    )
-
-
-class SessionImageRead(SQLModel):
-    """Public image metadata (no raw bytes)."""
-
-    model_config = ConfigDict(populate_by_name=True, from_attributes=True, serialize_by_alias=True)  # type: ignore[assignment]
-
-    id: uuid.UUID
-    session_id: uuid.UUID
-    filename: str
-    content_type: str
-    size_bytes: int
-    storage_path: str
-    uploaded_at: datetime
-    extra_metadata: dict[str, Any] = PydField(
-        default_factory=dict,
-        serialization_alias="metadata",
-    )
-
-
-class ImageUpload(SQLModel):
-    """In-memory upload accepted by SessionService."""
-
-    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)  # type: ignore[assignment]
-
-    filename: str
-    content_type: str
-    payload: bytes
-    extra_metadata: dict[str, Any] = PydField(
-        default_factory=dict,
-        validation_alias=AliasChoices("metadata", "extra_metadata"),
-        serialization_alias="metadata",
-    )
-
-    @model_validator(mode="before")
-    @classmethod
-    def _metadata_key(cls, data: Any) -> Any:
-        """Accept ``metadata`` as the public JSON name."""
-        return promote_metadata(data)

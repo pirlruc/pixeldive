@@ -3,33 +3,17 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.settings_runtime import RuntimeSettingsMixin
+from app.settings_storage import StorageSettingsMixin
 
-class Settings(BaseSettings):
+
+class Settings(StorageSettingsMixin, RuntimeSettingsMixin, BaseSettings):
     """Process-wide settings for the dual REST/gRPC server."""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
-
-    database_url: str = Field(
-        default="postgresql+asyncpg://pixeldive:pixeldive@127.0.0.1:5432/pixeldive",
-        description="SQLAlchemy async URL (asyncpg in production, aiosqlite in tests).",
-    )
-    storage_backend: str = Field(default="local", description="local or s3")
-    storage_root: Path = Field(default=Path("/data/images"))
-    s3_endpoint_url: str | None = None
-    s3_bucket: str = "pixeldive"
-    s3_region: str = "us-east-1"
-    aws_access_key_id: str | None = None
-    aws_secret_access_key: str | None = None
-    http_host: str = "0.0.0.0"
-    http_port: int = 8000
-    grpc_host: str = "0.0.0.0"
-    grpc_port: int = 50051
-    max_image_bytes: int = 32 * 1024 * 1024
-    max_batch_images: int = 100
-    download_chunk_bytes: int = 64 * 1024
 
     @field_validator("storage_backend")
     @classmethod
@@ -40,6 +24,18 @@ class Settings(BaseSettings):
             msg = f"storage_backend must be one of {sorted(allowed)}"
             raise ValueError(msg)
         return value
+
+    def api_key_map(self) -> dict[str, str]:
+        """Parse ``api_keys`` into token → owner_id."""
+        from app.auth import parse_api_keys
+
+        return parse_api_keys(self.api_keys)
+
+    def spool_dir(self) -> Path:
+        """Directory for hashed upload spools under the storage root."""
+        path = self.storage_root / ".incoming"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
 
 
 @lru_cache(maxsize=1)

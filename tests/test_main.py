@@ -61,6 +61,50 @@ async def test_run_starts_http_and_grpc(monkeypatch, tmp_path: Path) -> None:
     assert flags["stopped"] is True
 
 
+@pytest.mark.asyncio
+async def test_run_uses_alembic_when_create_all_disabled(monkeypatch, tmp_path: Path) -> None:
+    """Production path runs Alembic instead of create_all."""
+    flags: dict[str, bool] = {}
+
+    class FakeGrpc:
+        async def wait_for_termination(self) -> None:
+            flags["grpc"] = True
+
+        async def stop(self, grace: object = None) -> None:
+            del grace
+            flags["stopped"] = True
+
+    class FakeHttp:
+        async def serve(self) -> None:
+            flags["http"] = True
+
+    async def fake_start(*args, **kwargs):
+        del args, kwargs
+        return FakeGrpc(), 9
+
+    async def fake_upgrade(url: str) -> None:
+        flags["migrated"] = True
+        from app.database import create_engine, init_db
+
+        engine = create_engine(Settings(database_url=url))
+        await init_db(engine)
+        await engine.dispose()
+
+    monkeypatch.setattr(main_mod, "start_grpc_server", fake_start)
+    monkeypatch.setattr(main_mod.uvicorn, "Server", lambda config: FakeHttp())
+    monkeypatch.setattr(main_mod, "upgrade_head", fake_upgrade)
+    settings = Settings(
+        database_url=f"sqlite+aiosqlite:///{tmp_path / 'run.db'}",
+        storage_root=tmp_path / "img",
+        storage_backend="local",
+        auto_create_tables=False,
+        log_json=False,
+    )
+    await main_mod.run(settings)
+    assert flags["migrated"] is True
+    assert flags["http"] is True
+
+
 def test_get_settings_cache() -> None:
     """get_settings is lru-cached."""
     get_settings.cache_clear()

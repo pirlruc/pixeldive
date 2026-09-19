@@ -60,6 +60,9 @@ async def test_grpc_crud_and_images(stub) -> None:
     fetched = await stub.GetSession(pb.GetSessionRequest(session_id=session_id))
     assert fetched.session.session_name == "grpc-run"
 
+    listed_sessions = await stub.ListSessions(pb.ListSessionsRequest(limit=10))
+    assert any(item.id == session_id for item in listed_sessions.sessions)
+
     updated = await stub.UpdateSession(
         pb.UpdateSessionRequest(session_id=session_id, status="COMPLETED"),
     )
@@ -174,7 +177,7 @@ async def test_grpc_rejects_oversize_and_batch_cap(stub, service: SessionService
 
     with pytest.raises(grpc.aio.AioRpcError) as huge_err:
         await stub.UploadImage(huge())
-    assert huge_err.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+    assert huge_err.value.code() == grpc.StatusCode.RESOURCE_EXHAUSTED
 
     async def huge_batch():
         yield pb.BatchImageChunk(
@@ -188,7 +191,7 @@ async def test_grpc_rejects_oversize_and_batch_cap(stub, service: SessionService
 
     with pytest.raises(grpc.aio.AioRpcError) as huge_batch_err:
         await stub.UploadImagesBatch(huge_batch())
-    assert huge_batch_err.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+    assert huge_batch_err.value.code() == grpc.StatusCode.RESOURCE_EXHAUSTED
 
     service._settings.max_image_bytes = 1024 * 1024
     service._settings.max_batch_images = 1
@@ -295,6 +298,19 @@ async def test_grpc_error_paths(stub, service: SessionService) -> None:
     )
     assert renamed.session.session_name == "renamed"
 
+    from google.protobuf.struct_pb2 import Struct
+
+    extra = Struct()
+    extra.update({"merged": True})
+    merged = await stub.UpdateSession(
+        pb.UpdateSessionRequest(session_id=session_id, metadata=extra, merge_metadata=True),
+    )
+    assert merged.session.metadata["merged"] is True
+    cleared = await stub.UpdateSession(
+        pb.UpdateSessionRequest(session_id=session_id, clear_metadata=True),
+    )
+    assert dict(cleared.session.metadata) == {}
+
     missing = str(uuid.uuid4())
     with pytest.raises(grpc.aio.AioRpcError) as del_err:
         await stub.DeleteSession(pb.DeleteSessionRequest(session_id=missing))
@@ -358,6 +374,10 @@ class _FakeContext:
         """Track abort arguments."""
         self.code: grpc.StatusCode | None = None
         self.details: str = ""
+
+    def invocation_metadata(self) -> tuple:
+        """Return empty gRPC metadata."""
+        return ()
 
     async def abort(self, code: grpc.StatusCode, details: str) -> None:
         """Record and raise like grpc.aio."""
