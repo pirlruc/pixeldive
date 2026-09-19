@@ -1,5 +1,5 @@
 # python:3.12.14-slim-bookworm (linux/amd64 digest; DOCKER-BUILD-002/003)
-FROM python:3.12.14-slim-bookworm@sha256:356b0d18f9385f4bdcc673af60e1e64c9d1504952e4ec36ee32044c722a6bc4e AS builder
+FROM python:3.14.6-slim-bookworm@sha256:4c92ffcde4dd6f1ff72a24518f49fd4990b27134987dfa31a733badde66df9f8 AS builder
 
 WORKDIR /build
 RUN python -m venv /opt/venv
@@ -7,7 +7,7 @@ ENV PATH="/opt/venv/bin:${PATH}"
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-FROM python:3.12.14-slim-bookworm@sha256:356b0d18f9385f4bdcc673af60e1e64c9d1504952e4ec36ee32044c722a6bc4e
+FROM python:3.14.6-slim-bookworm@sha256:4c92ffcde4dd6f1ff72a24518f49fd4990b27134987dfa31a733badde66df9f8
 
 LABEL org.opencontainers.image.title="pixeldive" \
       org.opencontainers.image.description="Image-processing session management (REST + gRPC)" \
