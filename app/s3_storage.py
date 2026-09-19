@@ -10,6 +10,8 @@ import aiofiles
 from app.hash_keys import object_key, sha256_hex
 from app.s3_client import default_s3_client
 from app.s3_listing import age_from_head, contents, is_missing, mtime
+from app.s3_pages import iter_list_pages
+from app.s3_stream import iter_body
 from app.s3_types import S3ObjectClient
 
 __all__ = [
@@ -54,11 +56,7 @@ class S3CompatibleStorage:
     async def stream(self, storage_path: str, chunk_size: int) -> AsyncIterator[bytes]:
         """Download the object and yield it in chunks."""
         response = await self._client.get_object(Bucket=self._bucket, Key=storage_path)
-        body = response["Body"]
-        while True:
-            chunk = await body.read(chunk_size)
-            if not chunk:
-                break
+        async for chunk in iter_body(response["Body"], chunk_size):
             yield chunk
 
     async def delete(self, storage_path: str) -> None:
@@ -81,16 +79,9 @@ class S3CompatibleStorage:
     async def list_blobs(self) -> list[tuple[str, float]]:
         """Page through ``list_objects_v2`` and return keys with mtimes."""
         blobs: list[tuple[str, float]] = []
-        token: object | None = None
-        while True:
-            response = await self._list_page(token)
+        async for response in iter_list_pages(self._list_page):
             for item in contents(response):
                 blobs.append((str(item["Key"]), mtime(item.get("LastModified"))))
-            if not response.get("IsTruncated"):
-                break
-            token = response.get("NextContinuationToken")
-            if not token:
-                break
         return blobs
 
     async def _list_page(self, token: object | None) -> dict[str, object]:

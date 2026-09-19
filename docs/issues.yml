@@ -665,6 +665,7 @@ milestones:
           modules:
             - app/s3_storage.py
             - app/s3_client.py
+            - app/s3_session.py
             - app/s3_types.py
             - requirements.txt
         acceptance_criteria:

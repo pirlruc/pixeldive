@@ -6,6 +6,8 @@ import asyncio
 from typing import Any, cast
 
 from app.config import Settings
+from app.s3_invoke import invoke
+from app.s3_session import s3_client_context
 from app.s3_types import S3ObjectClient
 
 
@@ -26,21 +28,9 @@ class AioS3Adapter:
         async with self._lock:
             if self._client is not None:
                 return self._client
-            self._client = await self._open()
+            self._cm = s3_client_context(self._settings)
+            self._client = await self._cm.__aenter__()
             return self._client
-
-    async def _open(self) -> Any:
-        """Enter the aiobotocore client context manager."""
-        from aiobotocore.session import get_session
-
-        self._cm = get_session().create_client(
-            "s3",
-            endpoint_url=self._settings.s3_endpoint_url,
-            region_name=self._settings.s3_region,
-            aws_access_key_id=self._settings.aws_access_key_id,
-            aws_secret_access_key=self._settings.aws_secret_access_key,
-        )
-        return await self._cm.__aenter__()
 
     async def aclose(self) -> None:
         """Exit the client context if it was opened."""
@@ -50,28 +40,23 @@ class AioS3Adapter:
 
     async def put_object(self, **kwargs: object) -> object:
         """Upload an object."""
-        client = await self._ensure()
-        return cast(object, await client.put_object(**kwargs))
+        return await invoke(self._ensure, "put_object", **kwargs)
 
     async def get_object(self, **kwargs: object) -> dict[str, Any]:
         """Download an object."""
-        client = await self._ensure()
-        return cast(dict[str, Any], await client.get_object(**kwargs))
+        return cast(dict[str, Any], await invoke(self._ensure, "get_object", **kwargs))
 
     async def delete_object(self, **kwargs: object) -> object:
         """Delete an object."""
-        client = await self._ensure()
-        return cast(object, await client.delete_object(**kwargs))
+        return await invoke(self._ensure, "delete_object", **kwargs)
 
     async def head_object(self, **kwargs: object) -> object:
         """Probe object existence."""
-        client = await self._ensure()
-        return cast(object, await client.head_object(**kwargs))
+        return await invoke(self._ensure, "head_object", **kwargs)
 
     async def list_objects_v2(self, **kwargs: object) -> dict[str, object]:
         """List object keys in the bucket."""
-        client = await self._ensure()
-        return cast(dict[str, object], await client.list_objects_v2(**kwargs))
+        return cast(dict[str, object], await invoke(self._ensure, "list_objects_v2", **kwargs))
 
 
 def default_s3_client(settings: Settings) -> S3ObjectClient:
