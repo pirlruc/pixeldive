@@ -52,7 +52,8 @@ mypy_path = [".", "sdk"]
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
 module = [
-  "boto3",
+  "aiobotocore",
+  "aiobotocore.*",
   "google.protobuf.*",
   "grpc",
   "grpc.*",

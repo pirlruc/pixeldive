@@ -21,9 +21,9 @@
 # (merged 2026-09-19, commit c1eda05):
 #   done  ARCH-001, DATA-001, API-001, QUAL-001, REV-001
 #   done  TOOL-001-T2, TOOL-001-T3
+#   done  SEC-001, PERF-001, DATA-002, OPS-001, API-002, SDK-001, PERF-002
 #   open  TOOL-001 / TOOL-001-T1 (analog submodule pins)
-#   done  SEC-001, PERF-001, DATA-002, OPS-001, API-002, SDK-001 (Phase 2)
-#   open  PERF-002 (async S3 client)
+#   open  TOOL-002, SEC-002, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003
 
 milestones:
   - name: Tooling — Analog & methodology
@@ -426,9 +426,9 @@ milestones:
             list_images has no cursor. High-throughput Camera2 bursts will OOM
             or stall the event loop.
           goal: >-
-            Spool uploads to disk (or S3 multipart) while hashing incrementally,
-            cap concurrent saves, paginate image lists, and use an async S3
-            client. Keep SessionService as the owner of those limits.
+            Spool uploads to disk while hashing incrementally, cap concurrent
+            saves, and paginate image lists. Keep SessionService as the owner
+            of those limits. Async S3 I/O is PERF-002.
         architecture:
           target: Streaming ingest with bounded fan-out behind SessionService
           modules:
@@ -644,35 +644,333 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: PERF-002
-        status: open
+        status: done
         title: Replace boto3 to_thread with an async S3 client
         overview:
           problem: >-
-            S3 save/stream still uses blocking boto3 via asyncio.to_thread.
+            S3 save/stream still used blocking boto3 via asyncio.to_thread.
             PERF-001 removed the extra HEAD-before-PUT and spools uploads, but
-            a large object still occupies a worker thread for the whole PUT.
+            a large object still occupied a worker thread for the whole PUT.
           goal: >-
-            Use an async S3 client (aiobotocore or equivalent) so blob I/O does
-            not occupy the default executor. Keep SessionService as the owner
-            of storage limits.
+            Use an async S3 client (aiobotocore) so blob I/O does not occupy
+            the default executor. Keep SessionService as the owner of storage
+            limits. Whole-file PUT memory remains PERF-003.
         architecture:
-          target: Async S3 adapter behind StorageBackend
+          target: >-
+            In the context of S3-compatible blob I/O on the asyncio loop,
+            facing blocking boto3, we decided on a lazy aiobotocore adapter
+            behind StorageBackend rather than wrapping boto3 in to_thread, to
+            keep PUT/GET off the default executor while build_storage stays
+            synchronous.
           modules:
             - app/s3_storage.py
+            - app/s3_client.py
+            - app/s3_types.py
             - requirements.txt
         acceptance_criteria:
-          - S3 save_file and stream do not call boto3 on the event loop
+          - S3 save_file and stream await an async client (no boto3, no to_thread)
           - Local filesystem backend behaviour is unchanged
           - Tests cover the async adapter with a fake client
         guardrail_refs:
           - PY-CPLX-001
         tasks:
           - id: PERF-002-T1
-            status: open
+            status: done
             title: Swap S3CompatibleStorage to an async client
             instructions:
               files:
                 - app/s3_storage.py
+                - app/s3_client.py
                 - requirements.txt
             verification:
               - bash scripts/ci-local.sh
+
+  - name: Phase 3 — Remaining hardening
+    epics:
+      - id: TOOL-002
+        status: open
+        title: Publish GitHub Epic/Task issues from docs/issues.yml
+        overview:
+          problem: >-
+            github-issue-adr treats GitHub issues as the decision log, but
+            pixeldive has never run issues-sync.py against the live tracker.
+            Statuses live only in docs/issues.yml. Publishing is gated on
+            Issues: write plus the github-scaffold analog (TOOL-001-T1).
+          goal: >-
+            After TOOL-001-T1 and an Issues: write token, dry-run then apply
+            issues-sync.py so every authored Epic/Task exists on GitHub with
+            stable [ID] titles. Do not gh issue create by hand.
+        architecture:
+          target: Manifest-driven GitHub issues via issues-sync.py
+          modules:
+            - docs/issues.yml
+            - scripts/issues-sync.sh
+            - docs/issues-sync-targets.yml
+        acceptance_criteria:
+          - issues-sync.py --dry-run shows create/update with no schema errors
+          - Applying the sync creates GitHub issues whose titles contain the YAML ids
+          - No issues are created outside the manifest
+        guardrail_refs:
+          - CI-022
+        tasks:
+          - id: TOOL-002-T1
+            status: open
+            title: Dry-run and apply issues-sync.py to pirlruc/pixeldive
+            instructions:
+              files:
+                - docs/issues.yml
+                - scripts/issues-sync.sh
+            verification:
+              - bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml --validate-only
+              - bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml --dry-run
+
+      - id: SEC-002
+        status: open
+        title: Per-tenant rate limits and upload quotas
+        overview:
+          problem: >-
+            AUTH_REQUIRED plus API_KEYS identify a tenant, but there is no
+            request-rate or upload-byte quota. A captured key (or a bursty
+            Camera2 client) can spool unbounded objects and stall the event
+            loop or fill the blob store.
+          goal: >-
+            Enforce per-tenant request rate and per-session/per-tenant upload
+            byte caps in SessionService so REST and gRPC share one limiter.
+            Unauthenticated local/dev remains unlimited when AUTH_REQUIRED is
+            false.
+        architecture:
+          target: >-
+            In the context of tenant-scoped ingest, facing unbounded request
+            and byte volume, we decided on SessionService-owned quotas rather
+            than a reverse-proxy-only limiter, to keep REST and gRPC under the
+            same cap.
+          modules:
+            - app/service.py
+            - app/auth.py
+            - app/config.py
+        acceptance_criteria:
+          - Authenticated tenants have a configurable request-rate cap
+          - Upload bytes per tenant (or per session) are capped
+          - AUTH_REQUIRED=false does not require quota configuration
+          - REST 429 and gRPC RESOURCE_EXHAUSTED map to the same service error
+        guardrail_refs:
+          - PY-TEST-002
+        tasks:
+          - id: SEC-002-T1
+            status: open
+            title: Add per-tenant rate and byte quotas behind SessionService
+            instructions:
+              files:
+                - app/service.py
+                - app/auth.py
+                - app/config.py
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: API-003
+        status: open
+        title: Bring GrpcClient to RestClient session/image parity
+        overview:
+          problem: >-
+            RestClient covers health, ready, session CRUD, image list, and
+            download. GrpcClient only wraps CreateSession, ListSessions, and
+            UploadImage. Capture clients that prefer gRPC cannot get, update,
+            delete, list images, download, or batch-upload through the SDK.
+          goal: >-
+            Expose the remaining SessionService RPCs on GrpcClient with the
+            same call shapes the REST client already documents, without
+            changing proto.
+        architecture:
+          target: Additive GrpcClient methods over the existing proto
+          modules:
+            - sdk/pixeldive_sdk/grpc_calls.py
+            - sdk/pixeldive_sdk/grpc_mapping.py
+            - tests/test_sdk.py
+        acceptance_criteria:
+          - GrpcClient can get, update, and delete a session
+          - GrpcClient can list images, download an image, and batch-upload
+          - Public image messages still omit storage_path
+        guardrail_refs:
+          - PY-TEST-002
+          - PY-DOC-001
+        tasks:
+          - id: API-003-T1
+            status: open
+            title: Wrap remaining SessionService RPCs on GrpcClient
+            instructions:
+              files:
+                - sdk/pixeldive_sdk/grpc_calls.py
+                - sdk/pixeldive_sdk/grpc_mapping.py
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: PERF-003
+        status: open
+        title: Multipart or chunked S3 PUT so save_file is O(chunk)
+        overview:
+          problem: >-
+            PERF-002 awaits aiobotocore, but save_file still reads the whole
+            spool into process memory before put_object(Body=bytes). Large
+            Camera2 frames therefore remain O(file) on the S3 path.
+          goal: >-
+            Upload spooled files with S3 multipart (or an equivalent streaming
+            PUT) so peak memory per object is O(chunk), matching the local
+            filesystem spool.
+        architecture:
+          target: Streaming/multipart PUT behind S3CompatibleStorage.save_file
+          modules:
+            - app/s3_storage.py
+            - app/s3_client.py
+        acceptance_criteria:
+          - save_file peak memory is O(chunk), not O(file)
+          - Content-addressed keys and idempotent overwrite behaviour are unchanged
+          - Local filesystem backend behaviour is unchanged
+        guardrail_refs:
+          - PY-CPLX-001
+        tasks:
+          - id: PERF-003-T1
+            status: open
+            title: Stream spool files to S3 with multipart upload
+            instructions:
+              files:
+                - app/s3_storage.py
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: PERF-004
+        status: open
+        title: Chunk SDK uploads instead of one in-memory payload
+        overview:
+          problem: >-
+            RestClient.upload_image POSTs the whole bytes blob as one multipart
+            part. GrpcClient.UploadImage yields a single ImageChunk. Capture
+            clients that already have a file on disk still load it entirely
+            before the SDK call.
+          goal: >-
+            Accept a path or async iterator on both clients and stream chunks
+            to REST multipart / gRPC client-streaming, keeping peak SDK memory
+            O(chunk).
+        architecture:
+          target: Streaming upload helpers on RestClient and GrpcClient
+          modules:
+            - sdk/pixeldive_sdk/rest_images.py
+            - sdk/pixeldive_sdk/grpc_calls.py
+        acceptance_criteria:
+          - Both clients can upload from a file path without buffering the whole file
+          - gRPC yields multiple ImageChunk messages above a documented size
+          - Existing bytes-in APIs remain for small payloads and tests
+        guardrail_refs:
+          - PY-CPLX-001
+        tasks:
+          - id: PERF-004-T1
+            status: open
+            title: Add path/iterator upload APIs to RestClient and GrpcClient
+            instructions:
+              files:
+                - sdk/pixeldive_sdk/rest_images.py
+                - sdk/pixeldive_sdk/grpc_calls.py
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: OPS-002
+        status: open
+        title: Coordinated dual-server shutdown and storage close
+        overview:
+          problem: >-
+            run() gathers uvicorn.serve() and grpc wait_for_termination().
+            SIGTERM stops them independently; the lazy aiobotocore client is
+            never aclosed, and gRPC stop(grace=5) runs only in finally after
+            one of the two tasks ends.
+          goal: >-
+            On SIGTERM/SIGINT, stop HTTP and gRPC together, await storage
+            client close when present, then dispose the engine, so replicas
+            drain in-flight RPCs without leaking HTTP sessions to S3.
+        architecture:
+          target: Single shutdown path in main.run
+          modules:
+            - main.py
+            - app/s3_client.py
+            - app/storage.py
+        acceptance_criteria:
+          - One signal handler (or equivalent) stops both servers
+          - AioS3Adapter.aclose is invoked when STORAGE_BACKEND=s3
+          - Engine dispose still runs after servers stop
+        guardrail_refs:
+          - DOCKER-RUN-006
+        tasks:
+          - id: OPS-002-T1
+            status: open
+            title: Drain REST and gRPC together and close the S3 adapter
+            instructions:
+              files:
+                - main.py
+                - app/storage.py
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: OPS-003
+        status: open
+        title: MinIO Compose profile for S3-backend integration tests
+        overview:
+          problem: >-
+            STORAGE_BACKEND=s3 is unit-tested with FakeS3 only. Compose runs
+            local filesystem storage. A mis-pinned aiobotocore/botocore pair
+            or a real MinIO listing quirk would not be caught in CI.
+          goal: >-
+            Add an optional Compose profile (or CI job) that boots MinIO,
+            points the app at STORAGE_BACKEND=s3, and runs a small ingest
+            round-trip. Default Compose stays local-disk for cheap dev.
+        architecture:
+          target: Optional MinIO service plus S3 env overlay
+          modules:
+            - docker-compose.yml
+            - .github/workflows/quality.yml
+        acceptance_criteria:
+          - docker compose --profile s3 up boots MinIO and the app on S3
+          - A documented command uploads and downloads one image via REST
+          - Default (no profile) Compose behaviour is unchanged
+        guardrail_refs:
+          - DOCKER-RUN-006
+        tasks:
+          - id: OPS-003-T1
+            status: open
+            title: Add a Compose s3 profile with MinIO
+            instructions:
+              files:
+                - docker-compose.yml
+            verification:
+              - docker compose --profile s3 config
+
+      - id: DATA-003
+        status: open
+        title: Run a PostgreSQL integration job beside SQLite unit tests
+        overview:
+          problem: >-
+            Unit tests use sqlite+aiosqlite. Production is PostgreSQL+asyncpg
+            with Alembic. JSON columns, pool_pre_ping, and dialect-specific
+            CHECK behaviour can pass SQLite and fail on Postgres.
+          goal: >-
+            Keep SQLite for fast PY-TEST-002 unit gates, and add a CI job
+            (service container or Compose) that applies Alembic and runs the
+            service tests against PostgreSQL.
+        architecture:
+          target: Extra CI job with Postgres; SQLite remains the local default
+          modules:
+            - .github/workflows/quality.yml
+            - tests
+        acceptance_criteria:
+          - CI runs SessionService tests against PostgreSQL
+          - Local `bash scripts/ci-local.sh` still uses SQLite
+          - Alembic upgrade is the schema path in that job (AUTO_CREATE_TABLES=false)
+        guardrail_refs:
+          - PY-TEST-002
+        tasks:
+          - id: DATA-003-T1
+            status: open
+            title: Add a PostgreSQL pytest job to quality.yml
+            instructions:
+              files:
+                - .github/workflows/quality.yml
+            verification:
+              - rg -n "postgres" .github/workflows/quality.yml
+

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -12,47 +13,54 @@ from tests.conftest import PNG_1X1
 
 
 class FakeS3:
-    """In-memory boto3-like client for S3CompatibleStorage tests."""
+    """In-memory async S3 client for S3CompatibleStorage tests."""
 
-    def __init__(self) -> None:
+    def __init__(self, page_size: int | None = None) -> None:
         """Start with an empty bucket dict."""
+        self.page_size = page_size
         self.objects: dict[str, bytes] = {}
         self.content_types: dict[str, str] = {}
         self.mtimes: dict[str, datetime] = {}
 
-    def put_object(self, **kwargs: object) -> None:
+    async def put_object(self, **kwargs: object) -> None:
         """Store Body under Key."""
         key = str(kwargs["Key"])
-        body = kwargs["Body"]
-        payload = body.read() if hasattr(body, "read") else bytes(body)  # type: ignore[arg-type]
-        self.objects[key] = payload
+        self.objects[key] = bytes(kwargs["Body"])
         self.content_types[key] = str(kwargs.get("ContentType", ""))
         self.mtimes[key] = datetime.now(UTC)
 
-    def get_object(self, **kwargs: object) -> dict[str, object]:
+    async def get_object(self, **kwargs: object) -> dict[str, object]:
         """Return a file-like Body."""
         key = str(kwargs["Key"])
         payload = self.objects[key]
         return {"Body": _BytesReader(payload)}
 
-    def delete_object(self, **kwargs: object) -> None:
+    async def delete_object(self, **kwargs: object) -> None:
         """Drop Key if present."""
         key = str(kwargs["Key"])
         self.objects.pop(key, None)
         self.mtimes.pop(key, None)
 
-    def head_object(self, **kwargs: object) -> dict[str, object]:
+    async def head_object(self, **kwargs: object) -> dict[str, object]:
         """Raise a 404-like error when missing."""
         key = str(kwargs["Key"])
         if key not in self.objects:
             raise _Missing()
         return {"Key": key, "LastModified": self.mtimes.get(key, datetime.now(UTC))}
 
-    def list_objects_v2(self, **kwargs: object) -> dict[str, object]:
-        """Return every stored key in one page."""
-        del kwargs
-        contents = [{"Key": key, "LastModified": self.mtimes[key]} for key in self.objects]
-        return {"Contents": contents, "IsTruncated": False}
+    async def list_objects_v2(self, **kwargs: object) -> dict[str, object]:
+        """Return stored keys, optionally paginated."""
+        keys = sorted(self.objects)
+        token = kwargs.get("ContinuationToken")
+        start = int(str(token)) if token else 0
+        size = self.page_size if self.page_size is not None else max(len(keys), 1)
+        page = keys[start : start + size]
+        listed = [{"Key": key, "LastModified": self.mtimes[key]} for key in page]
+        truncated = start + size < len(keys)
+        result: dict[str, object] = {"Contents": listed, "IsTruncated": truncated}
+        if truncated:
+            result["NextContinuationToken"] = str(start + size)
+        return result
 
 
 class _BytesReader:
@@ -63,7 +71,7 @@ class _BytesReader:
         self._payload = payload
         self._offset = 0
 
-    def read(self, size: int = -1) -> bytes:
+    async def read(self, size: int = -1) -> bytes:
         """Read the next window."""
         if size < 0:
             size = len(self._payload) - self._offset
@@ -155,7 +163,7 @@ async def test_s3_exists_reraises_unexpected() -> None:
     """Non-404 HEAD failures propagate."""
 
     class Boom(FakeS3):
-        def head_object(self, **kwargs: object) -> dict[str, str]:
+        async def head_object(self, **kwargs: object) -> dict[str, str]:
             raise RuntimeError("timeout")
 
     backend = S3CompatibleStorage(Boom(), bucket="pixeldive")
@@ -173,7 +181,7 @@ def test_unknown_content_type_uses_bin_extension() -> None:
 
 @pytest.mark.asyncio
 async def test_s3_adapter_round_trip() -> None:
-    """S3CompatibleStorage talks to a boto3-shaped client."""
+    """S3CompatibleStorage talks to an async S3-shaped client."""
     client = FakeS3()
     backend = S3CompatibleStorage(client, bucket="pixeldive")
     key = await backend.save(PNG_1X1, "image/png")
@@ -199,6 +207,142 @@ async def test_s3_save_file_and_list_blobs(tmp_path: Path) -> None:
     assert blobs[0][0] == key
     assert await backend.age_seconds(key) >= 0
     assert await backend.age_seconds("missing") == 0.0
+
+
+@pytest.mark.asyncio
+async def test_s3_list_blobs_paginates() -> None:
+    """list_objects_v2 continuation tokens are followed."""
+    client = FakeS3(page_size=1)
+    backend = S3CompatibleStorage(client, bucket="pixeldive")
+    first = await backend.save(b"page-one", "image/png")
+    second = await backend.save(b"page-two", "image/png")
+    keys = sorted(item[0] for item in await backend.list_blobs())
+    assert keys == sorted([first, second])
+
+
+@pytest.mark.asyncio
+async def test_s3_list_blobs_stops_without_token() -> None:
+    """Truncated pages without NextContinuationToken end the loop."""
+
+    class Truncated(FakeS3):
+        async def list_objects_v2(self, **kwargs: object) -> dict[str, object]:
+            del kwargs
+            return {"Contents": [{"Key": "only", "LastModified": 1.0}], "IsTruncated": True}
+
+    blobs = await S3CompatibleStorage(Truncated(), bucket="pixeldive").list_blobs()
+    assert blobs == [("only", 1.0)]
+
+
+@pytest.mark.asyncio
+async def test_s3_age_seconds_reraises_unexpected() -> None:
+    """Non-404 HEAD failures propagate from age_seconds."""
+
+    class Boom(FakeS3):
+        async def head_object(self, **kwargs: object) -> dict[str, str]:
+            raise RuntimeError("timeout")
+
+    backend = S3CompatibleStorage(Boom(), bucket="pixeldive")
+    with pytest.raises(RuntimeError):
+        await backend.age_seconds("nope")
+
+
+@pytest.mark.asyncio
+async def test_aio_s3_adapter_lazy_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    """AioS3Adapter opens aiobotocore once and reuses the client."""
+    captured: dict[str, object] = {}
+    calls = {"put": 0}
+
+    class FakeClient:
+        async def put_object(self, **kwargs: object) -> str:
+            calls["put"] += 1
+            captured["put"] = kwargs
+            return "ok"
+
+        async def get_object(self, **kwargs: object) -> dict[str, object]:
+            return {"Body": _BytesReader(b"x"), "args": kwargs}
+
+        async def delete_object(self, **kwargs: object) -> str:
+            captured["delete"] = kwargs
+            return "deleted"
+
+        async def head_object(self, **kwargs: object) -> dict[str, object]:
+            return {"Key": str(kwargs["Key"])}
+
+        async def list_objects_v2(self, **kwargs: object) -> dict[str, object]:
+            return {"Contents": [], "args": kwargs}
+
+    class FakeCM:
+        async def __aenter__(self) -> FakeClient:
+            captured["entered"] = True
+            return FakeClient()
+
+        async def __aexit__(self, *_exc: object) -> None:
+            captured["exited"] = True
+
+    class FakeSession:
+        def create_client(self, service_name: str, **kwargs: object) -> FakeCM:
+            captured["service"] = service_name
+            captured.update(kwargs)
+            return FakeCM()
+
+    monkeypatch.setattr("aiobotocore.session.get_session", lambda: FakeSession())
+    from app.config import Settings
+    from app.s3_client import AioS3Adapter, default_s3_client
+
+    settings = Settings(
+        storage_backend="s3",
+        s3_endpoint_url="http://127.0.0.1:9000",
+        s3_bucket="b",
+        aws_access_key_id="k",
+        aws_secret_access_key="s",
+    )
+    adapter = default_s3_client(settings)
+    assert isinstance(adapter, AioS3Adapter)
+    await adapter.aclose()
+    await adapter.put_object(Bucket="b", Key="k", Body=b"x")
+    await adapter.put_object(Bucket="b", Key="k2", Body=b"y")
+    await adapter.get_object(Bucket="b", Key="k")
+    await adapter.head_object(Bucket="b", Key="k")
+    await adapter.list_objects_v2(Bucket="b")
+    await adapter.delete_object(Bucket="b", Key="k")
+    assert calls["put"] == 2
+    assert captured["service"] == "s3"
+    assert captured["endpoint_url"] == "http://127.0.0.1:9000"
+    await adapter.aclose()
+    assert captured["exited"] is True
+
+
+@pytest.mark.asyncio
+async def test_aio_s3_adapter_concurrent_ensure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Two first calls share one client after the lock."""
+    from app.config import Settings
+    from app.s3_client import AioS3Adapter
+
+    opened = {"n": 0}
+
+    class FakeClient:
+        async def head_object(self, **kwargs: object) -> dict[str, object]:
+            return {"Key": str(kwargs["Key"])}
+
+    class FakeCM:
+        async def __aenter__(self) -> FakeClient:
+            opened["n"] += 1
+            await asyncio.sleep(0.01)
+            return FakeClient()
+
+        async def __aexit__(self, *_exc: object) -> None:
+            return None
+
+    class FakeSession:
+        def create_client(self, service_name: str, **kwargs: object) -> FakeCM:
+            del service_name, kwargs
+            return FakeCM()
+
+    monkeypatch.setattr("aiobotocore.session.get_session", lambda: FakeSession())
+    adapter = AioS3Adapter(Settings(storage_backend="s3"))
+    await asyncio.gather(adapter.head_object(Key="a"), adapter.head_object(Key="b"))
+    assert opened["n"] == 1
+    await adapter.aclose()
 
 
 @pytest.mark.asyncio

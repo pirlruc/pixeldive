@@ -24,3 +24,5 @@ milestones:
     description: Dual REST/gRPC session service, SQLModel, storage, quality gates
   - name: Phase 2 — Hardening & scale
     description: Auth/TLS, streaming ingest, Alembic, probes, public API tightening
+  - name: Phase 3 — Remaining hardening
+    description: Issue publish, quotas, SDK gRPC parity, S3 multipart, shutdown, MinIO/Postgres CI

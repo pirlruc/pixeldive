@@ -66,26 +66,14 @@ def test_postgres_engine_skips_sqlite_pragma() -> None:
     assert str(engine.url).startswith("postgresql")
 
 
-def test_default_s3_client(monkeypatch) -> None:
-    """_default_s3_client builds a boto3 client with settings."""
-    captured: dict[str, object] = {}
-
-    class FakeBoto:
-        @staticmethod
-        def client(service_name: str, **kwargs: object) -> str:
-            captured["service"] = service_name
-            captured.update(kwargs)
-            return "s3-client"
-
-    import sys
-    import types
-
-    monkeypatch.setitem(sys.modules, "boto3", types.SimpleNamespace(client=FakeBoto.client))
+def test_default_s3_client() -> None:
+    """_default_s3_client returns a lazy async adapter bound to settings."""
+    from app.s3_client import AioS3Adapter
     from app.storage import _default_s3_client
 
     settings = Settings(
         storage_backend="s3", s3_endpoint_url="http://127.0.0.1:9000", s3_bucket="b"
     )
-    assert _default_s3_client(settings) == "s3-client"
-    assert captured["service"] == "s3"
-    assert captured["endpoint_url"] == "http://127.0.0.1:9000"
+    client = _default_s3_client(settings)
+    assert isinstance(client, AioS3Adapter)
+    assert client._settings.s3_endpoint_url == "http://127.0.0.1:9000"

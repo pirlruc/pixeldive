@@ -8,7 +8,7 @@ device/camera identity, then upload frames over REST (multipart) or gRPC (client
 | REST | FastAPI `/api/v1/sessions` |
 | gRPC | `proto/session_service.proto` (`pixeldive.session.v1.SessionService`) |
 | Data | SQLModel + async PostgreSQL (`asyncpg`); Alembic when `AUTO_CREATE_TABLES=false` |
-| Blobs | SHA-256 local filesystem, or S3-compatible adapter |
+| Blobs | SHA-256 local filesystem, or async S3-compatible adapter (aiobotocore) |
 | SDK | `sdk/pixeldive_sdk` (`RestClient`, `GrpcClient`) |
 | Demo | `python -m demo` (FastAPI UI that talks to the service only through the SDK) |
 

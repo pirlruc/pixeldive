@@ -11,7 +11,7 @@
 
 ## Current slice
 
-Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19). Phase 2 hardening, Python SDK, and capture demo live on this branch: bearer auth + gRPC TLS options, spool+digest ingest, cursor pagination, Alembic under `migrations/`, race-aware GC, `/ready` + `/metrics`, `pixeldive_sdk`, and `python -m demo`. Analog submodule pins ([TOOL-001-T1](issues.yml)) still need a token that can clone private `pirlruc/guardrails` and `pirlruc/github-scaffold`. GitHub Epic/Task issues are not published; statuses live in [`docs/issues.yml`](issues.yml).
+Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19). Phase 2 hardening, Python SDK, capture demo, and async S3 (PERF-002) live on this branch: bearer auth + gRPC TLS options, spool+digest ingest, cursor pagination, Alembic under `migrations/`, race-aware GC, `/ready` + `/metrics`, `pixeldive_sdk`, `python -m demo`, and a lazy aiobotocore adapter. Analog submodule pins ([TOOL-001-T1](issues.yml)) still need a token that can clone private `pirlruc/guardrails` and `pirlruc/github-scaffold`. GitHub Epic/Task issues are not published ([TOOL-002](issues.yml)); statuses live in [`docs/issues.yml`](issues.yml).
 
 | Module | Path | Notes |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixe
 | service | `app/service.py` | Single business layer for REST and gRPC (mixins for list/ingest/batch) |
 | REST | `app/api.py`, `app/api_images.py` | FastAPI `/api/v1` + `/health` `/ready` `/metrics` |
 | gRPC | `app/grpc_server.py`, `proto/session_service.proto` | aio servicer; generated stubs in `app/pb/` |
-| storage | `app/local_storage.py`, `app/s3_storage.py` | SHA-256 local FS + S3-compatible adapter |
+| storage | `app/local_storage.py`, `app/s3_storage.py`, `app/s3_client.py` | SHA-256 local FS + async S3 adapter (aiobotocore) |
 | SDK | `sdk/pixeldive_sdk/` | `RestClient` + `GrpcClient` |
 | demo | `demo/` | FastAPI UI that uses only the SDK |
 | runner | `main.py` | Uvicorn + grpc.aio on one asyncio loop |
@@ -72,7 +72,7 @@ bash scripts/sync-templates.sh
 
 Issue content lives only in `docs/issues.yml`. Changing an `id` orphans the GitHub issue. Do not `gh issue create` by hand.
 
-GitHub issue publish needs Issues: Read and write. Until then, keep the manifest as the decision log. Phase 1 + REV-001 shipped in [PR #1](https://github.com/pirlruc/pixeldive/pull/1); Phase 2 + SDK-001 are `status: done` in the YAML on this branch.
+GitHub issue publish needs Issues: Read and write ([TOOL-002](issues.yml)). Until then, keep the manifest as the decision log. Phase 1 + REV-001 shipped in [PR #1](https://github.com/pirlruc/pixeldive/pull/1); Phase 2 + SDK-001 + PERF-002 are `status: done` in the YAML on this branch.
 
 ## Android payload contract
 
@@ -98,14 +98,19 @@ Clients should send the same keys they already read on-device:
 ## Suggested next work
 
 - [TOOL-001-T1](issues.yml) pin analog submodules once tokens exist
-- [PERF-002](issues.yml) async S3 client instead of boto3 `to_thread`
-- Rate limiting / per-tenant quotas (not yet an epic)
-- Publish GitHub issues from `docs/issues.yml` once Issues: write exists
+- [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
+- [SEC-002](issues.yml) per-tenant rate limits and upload quotas
+- [API-003](issues.yml) GrpcClient parity with RestClient
+- [PERF-003](issues.yml) multipart S3 PUT (O(chunk) save_file)
+- [PERF-004](issues.yml) chunked SDK uploads
+- [OPS-002](issues.yml) coordinated dual-server shutdown
+- [OPS-003](issues.yml) MinIO Compose profile
+- [DATA-003](issues.yml) PostgreSQL CI job
 
 ## Recent history
 
 - Phase 1 + REV-001 shipped in [PR #1](https://github.com/pirlruc/pixeldive/pull/1) (`c1eda05`)
 - `docs(issues): record PR #1 ship on Phase 1 and REV-001` (`a7e8ee2`)
-- This branch: Phase 2 (SEC/PERF/DATA/OPS/API), SDK-001, demo app; PY-* gates held without `docs/guardrail-deviations.yml` entries
+- This branch: Phase 2 (SEC/PERF/DATA/OPS/API), SDK-001, demo app, PERF-002 async S3; PY-* gates held without `docs/guardrail-deviations.yml` entries
 
 *Last updated: 2026-09-19*

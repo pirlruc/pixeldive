@@ -13,7 +13,7 @@ from app.auth import bearer_token, parse_api_keys
 from app.blob_gc import gc_unreferenced, referenced_paths, sweep_orphans
 from app.exceptions import ImageTooLargeError
 from app.pagination import clamp_limit, next_cursor
-from app.s3_listing import contents, mtime
+from app.s3_listing import age_from_head, contents, mtime
 from app.service import SessionService
 from app.spool import Spool, SpoolWriter, spool_chunks
 from app.uploads import discard_spool
@@ -38,6 +38,8 @@ def test_s3_helpers() -> None:
     assert contents({"Contents": "nope"}) == []
     assert mtime(10) == 10.0
     assert mtime("x") == 0.0
+    assert age_from_head({}) == 0.0
+    assert age_from_head("nope") == 0.0
 
 
 @pytest.mark.asyncio
