@@ -125,7 +125,6 @@ public struct PixeldiveClient: Sendable {
         defer { try? FileManager.default.removeItem(at: dest) }
         let form = try MultipartForm.write(
             to: dest,
-            fileField: "file",
             filename: filename ?? fileURL.lastPathComponent,
             source: fileURL,
             contentType: contentType,

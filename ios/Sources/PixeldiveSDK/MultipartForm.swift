@@ -33,7 +33,6 @@ struct MultipartForm: Sendable {
 
     static func write(
         to dest: URL,
-        fileField: String,
         filename: String,
         source: URL,
         contentType: String,
@@ -43,7 +42,7 @@ struct MultipartForm: Sendable {
         FileManager.default.createFile(atPath: dest.path, contents: nil)
         let handle = try FileHandle(forWritingTo: dest)
         defer { try? handle.close() }
-        handle.write(filePreamble(boundary, field: fileField, filename: filename, contentType: contentType))
+        handle.write(filePreamble(boundary, field: "file", filename: filename, contentType: contentType))
         try copyFile(source, into: handle)
         handle.write(Data("\r\n".utf8))
         for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
