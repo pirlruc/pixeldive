@@ -43,17 +43,13 @@ struct MultipartForm: Sendable {
         FileManager.default.createFile(atPath: dest.path, contents: nil)
         let handle = try FileHandle(forWritingTo: dest)
         defer { try? handle.close() }
-        try appendFileHeader(
-            handle,
-            boundary: boundary,
-            field: fileField,
-            filename: filename,
-            contentType: contentType
-        )
+        handle.write(filePreamble(boundary, field: fileField, filename: filename, contentType: contentType))
         try copyFile(source, into: handle)
         handle.write(Data("\r\n".utf8))
-        try appendFields(handle, boundary: boundary, fields: fields)
-        handle.write(Data("--\(boundary)--\r\n".utf8))
+        for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
+            handle.write(fieldChunk(boundary, name: name, value: value))
+        }
+        handle.write(closer(boundary))
         return MultipartForm(boundary: boundary, body: Data(), fileURL: dest)
     }
 }
@@ -67,12 +63,16 @@ private func assemble(
     let extra = files.reduce(0) { $0 + $1.1.payload.count } + 512
     body.reserveCapacity(extra)
     for (field, part) in files {
-        appendFile(&body, boundary: boundary, field: field, part: part)
+        body.append(
+            filePreamble(boundary, field: field, filename: part.filename, contentType: part.contentType)
+        )
+        body.append(part.payload)
+        appendAscii(&body, "\r\n")
     }
     for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
-        appendField(&body, boundary: boundary, name: name, value: value)
+        body.append(fieldChunk(boundary, name: name, value: value))
     }
-    appendCloser(&body, boundary: boundary)
+    body.append(closer(boundary))
     return MultipartForm(boundary: boundary, body: body)
 }
 
@@ -80,68 +80,41 @@ private func newBoundary() -> String {
     "pixeldive-\(UUID().uuidString.lowercased())"
 }
 
-private func appendFile(
-    _ body: inout Data,
-    boundary: String,
+private func filePreamble(
+    _ boundary: String,
     field: String,
-    part: UploadPart
-) {
+    filename: String,
+    contentType: String
+) -> Data {
     let safeField = MultipartSanitizer.token(field, fallback: "file")
-    let safeName = MultipartSanitizer.filename(part.filename)
-    let safeType = MultipartSanitizer.mediaType(part.contentType)
-    appendAscii(&body, "--\(boundary)\r\n")
+    let safeName = MultipartSanitizer.filename(filename)
+    let safeType = MultipartSanitizer.mediaType(contentType)
+    var data = Data()
+    appendAscii(&data, "--\(boundary)\r\n")
     appendAscii(
-        &body,
+        &data,
         "Content-Disposition: form-data; name=\"\(safeField)\"; filename=\"\(safeName)\"\r\n"
     )
-    appendAscii(&body, "Content-Type: \(safeType)\r\n\r\n")
-    body.append(part.payload)
-    appendAscii(&body, "\r\n")
+    appendAscii(&data, "Content-Type: \(safeType)\r\n\r\n")
+    return data
 }
 
-private func appendField(_ body: inout Data, boundary: String, name: String, value: String) {
+private func fieldChunk(_ boundary: String, name: String, value: String) -> Data {
     let safeName = MultipartSanitizer.token(name, fallback: "field")
-    appendAscii(&body, "--\(boundary)\r\n")
-    appendAscii(&body, "Content-Disposition: form-data; name=\"\(safeName)\"\r\n\r\n")
-    appendAscii(&body, value)
-    appendAscii(&body, "\r\n")
+    var data = Data()
+    appendAscii(&data, "--\(boundary)\r\n")
+    appendAscii(&data, "Content-Disposition: form-data; name=\"\(safeName)\"\r\n\r\n")
+    appendAscii(&data, value)
+    appendAscii(&data, "\r\n")
+    return data
 }
 
-private func appendCloser(_ body: inout Data, boundary: String) {
-    appendAscii(&body, "--\(boundary)--\r\n")
+private func closer(_ boundary: String) -> Data {
+    Data("--\(boundary)--\r\n".utf8)
 }
 
 private func appendAscii(_ body: inout Data, _ text: String) {
     body.append(Data(text.utf8))
-}
-
-private func appendFileHeader(
-    _ handle: FileHandle,
-    boundary: String,
-    field: String,
-    filename: String,
-    contentType: String
-) throws {
-    let safeField = MultipartSanitizer.token(field, fallback: "file")
-    let safeName = MultipartSanitizer.filename(filename)
-    let safeType = MultipartSanitizer.mediaType(contentType)
-    handle.write(Data("--\(boundary)\r\n".utf8))
-    handle.write(
-        Data(
-            "Content-Disposition: form-data; name=\"\(safeField)\"; filename=\"\(safeName)\"\r\n".utf8
-        )
-    )
-    handle.write(Data("Content-Type: \(safeType)\r\n\r\n".utf8))
-}
-
-private func appendFields(_ handle: FileHandle, boundary: String, fields: [String: String]) throws {
-    for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
-        let safeName = MultipartSanitizer.token(name, fallback: "field")
-        handle.write(Data("--\(boundary)\r\n".utf8))
-        handle.write(Data("Content-Disposition: form-data; name=\"\(safeName)\"\r\n\r\n".utf8))
-        handle.write(Data(value.utf8))
-        handle.write(Data("\r\n".utf8))
-    }
 }
 
 private func copyFile(_ source: URL, into handle: FileHandle) throws {

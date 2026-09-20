@@ -295,7 +295,7 @@ final class ClientTests: XCTestCase {
         XCTAssertNotNil(form.fileURL)
         let written = try Data(contentsOf: dest)
         XCTAssertTrue(written.contains(TestPNG.bytes))
-        XCTAssertTrue(String(data: written, encoding: .utf8)?.contains("name=\"metadata\"") == true)
+        XCTAssertTrue(written.contains(Data("name=\"metadata\"".utf8)))
     }
 
     func testRejectsNonUUIDSession() async {

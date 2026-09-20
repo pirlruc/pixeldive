@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+PACKAGE = ROOT / "ios"
 
 
 def parse_line_cover(report: str) -> float:
@@ -25,14 +27,10 @@ def parse_line_cover(report: str) -> float:
     raise SystemExit("llvm-cov report has no TOTAL line (CI-022 fail closed)")
 
 
-def llvm_cov_cmd() -> list[str]:
-    """Return the llvm-cov argv prefix (xcrun on Apple, toolchain elsewhere)."""
-    xcrun = shutil.which("xcrun")
-    if xcrun:
-        return [xcrun, "llvm-cov"]
-    direct = shutil.which("llvm-cov")
-    if direct:
-        return [direct]
+def prepend_llvm_cov_dir() -> None:
+    """Put llvm-cov next to swift on PATH; argv stays the literal name."""
+    if shutil.which("xcrun") or shutil.which("llvm-cov"):
+        return
     swift = shutil.which("swift")
     if not swift:
         raise SystemExit("llvm-cov not found (SWIFT-TEST-002)")
@@ -47,7 +45,8 @@ def llvm_cov_cmd() -> list[str]:
             continue
         seen.add(candidate)
         if candidate.is_file():
-            return [str(candidate)]
+            os.environ["PATH"] = str(candidate.parent) + os.pathsep + os.environ.get("PATH", "")
+            return
     raise SystemExit("llvm-cov not found (SWIFT-TEST-002)")
 
 
@@ -72,28 +71,55 @@ def find_test_binary(package: Path) -> Path:
     raise SystemExit(f"no test binary under {package} (SWIFT-TEST-002)")
 
 
+def run_llvm_cov(binary: Path, profile: Path) -> str:
+    """Run llvm-cov with a literal argv0 (no PATH or CLI paths in the argv list)."""
+    prepend_llvm_cov_dir()
+    profile_flag = f"-instr-profile={profile}"
+    ignore = "-ignore-filename-regex=Tests|checkouts|\\.build"
+    binary_arg = str(binary)
+    if shutil.which("xcrun"):
+        result = subprocess.run(
+            [
+                "xcrun",
+                "llvm-cov",
+                "report",
+                binary_arg,
+                profile_flag,
+                ignore,
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    else:
+        result = subprocess.run(
+            [
+                "llvm-cov",
+                "report",
+                binary_arg,
+                profile_flag,
+                ignore,
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    if result.returncode != 0:
+        sys.stderr.write(result.stderr)
+        raise SystemExit(f"llvm-cov failed ({result.returncode})")
+    return result.stdout
+
+
 def main() -> None:
     """Parse args, run llvm-cov, and fail closed below the threshold."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--package", type=Path, default=ROOT / "ios")
     parser.add_argument("--threshold", type=int, required=True)
     parser.add_argument("--report-file", type=Path, default=None)
     args = parser.parse_args()
     if args.report_file is not None:
         report = args.report_file.read_text(encoding="utf-8")
     else:
-        cmd = [
-            *llvm_cov_cmd(),
-            "report",
-            str(find_test_binary(args.package)),
-            f"-instr-profile={find_profdata(args.package)}",
-            "-ignore-filename-regex=Tests|checkouts|\\.build",
-        ]
-        result = subprocess.run(cmd, check=False, capture_output=True, text=True)
-        if result.returncode != 0:
-            sys.stderr.write(result.stderr)
-            raise SystemExit(f"llvm-cov failed ({result.returncode})")
-        report = result.stdout
+        report = run_llvm_cov(find_test_binary(PACKAGE), find_profdata(PACKAGE))
         sys.stdout.write(report)
     cover = parse_line_cover(report)
     print(f"swift line coverage={cover} threshold={args.threshold}")

@@ -37,6 +37,7 @@
 #   done  SDK-003 (Android Pixeldive SDK + Compose demo; Kotlin proposals in docs/new-guardrails)
 #   done  PERF-005 (camera ingest: unified persist, hardlink, parallel REST spool)
 #   done  SDK-004 (stream file uploads on iOS/Android/Python SDKs)
+#   open  SDK-005 (iOS in-memory multipart still concatenates a second Data copy)
 #
 #   open  TOOL-002 (GitHub issue objects still unpublished)
 #   done  SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
@@ -1528,6 +1529,45 @@ milestones:
                 - sdk/pixeldive_sdk
             verification:
               - bash scripts/ci-local.sh
+
+      - id: SDK-005
+        status: open
+        title: Stream in-memory camera frames without a second Data copy
+        overview:
+          problem: >-
+            Camera capture already holds each frame in RAM. iOS MultipartForm.make
+            concatenates preamble plus payload into a second Data before the
+            URLSession body, so a burst peaks at roughly 2× frame size. Android
+            OkHttp parts and Python httpx file tuples stream the existing bytes.
+            Demos still pick gallery files rather than the live capture APIs.
+          goal: >-
+            Send in-memory iOS frames as streamed multipart parts (no second
+            concatenated Data) and keep the file-URL path for on-disk bursts.
+            Live camera wiring in the demos stays a later slice.
+        architecture:
+          target: >-
+            In the context of a phone camera session sending many in-memory
+            frames, facing a second Data copy on iOS only, we decided to stream
+            multipart parts from the existing payload buffer rather than add a
+            new gRPC mobile client, so REST camera bursts match Android/Python
+            peak RAM.
+          modules:
+            - ios/Sources/PixeldiveSDK
+        acceptance_criteria:
+          - uploadImage(payload:) does not build one Data that contains a copy of payload
+          - File-URL uploads still stream from disk
+          - SWIFT-TEST-002 stays at the consumer overlay
+        guardrail_refs:
+          - SWIFT-TEST-002
+        tasks:
+          - id: SDK-005-T1
+            status: open
+            title: Stream iOS in-memory multipart from the existing frame buffer
+            instructions:
+              files:
+                - ios/Sources/PixeldiveSDK
+            verification:
+              - bash scripts/check-ios-sdk.sh
 
   - name: Camera ingest
     epics:

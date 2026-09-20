@@ -46,7 +46,14 @@ func loadURL(_ session: URLSession, _ request: URLRequest) async throws -> (Data
 }
 
 func uploadURL(_ session: URLSession, _ request: URLRequest, _ fileURL: URL) async throws -> (Data, URLResponse) {
+    #if canImport(FoundationNetworking)
+    // libcurl URLSession's uploadTask(fromFile:) traps in _BodyFileSource on Linux.
+    var copy = request
+    copy.httpBody = try Data(contentsOf: fileURL)
+    return try await loadURL(session, copy)
+    #else
     try await runTask(session, request, fileURL: fileURL)
+    #endif
 }
 
 func runTask(

@@ -134,6 +134,11 @@ def test_swift_coverage_parser() -> None:
     assert module.parse_line_cover(report) == 98.0
     source = path.read_text(encoding="utf-8")
     assert 'parent / "usr" / "bin" / "llvm-cov"' in source
+    assert 'PACKAGE = ROOT / "ios"' in source
+    assert '"xcrun"' in source
+    assert 'subprocess.run(' in source
+    assert "--package" not in source
     script = (root / "scripts" / "check-ios-sdk.sh").read_text(encoding="utf-8")
     assert "--enable-code-coverage" in script
     assert "check-swift-coverage.py" in script
+    assert "--threshold" in script
