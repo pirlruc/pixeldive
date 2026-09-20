@@ -41,7 +41,9 @@ final class ThrowingPerformer: HTTPPerforming, @unchecked Sendable {
 
 final class NonHTTPPerformer: HTTPPerforming, @unchecked Sendable {
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
-        (Data(), URLResponse())
+        // FoundationNetworking has no URLResponse() — use the designated initializer.
+        let url = URL(string: "http://test")!
+        return (Data(), URLResponse(url: url, mimeType: nil, expectedContentLength: 0, textEncodingName: nil))
     }
 }
 
@@ -192,9 +194,12 @@ final class ClientTests: XCTestCase {
         let stub = StubPerformer()
         stub.steps = [jsonStep(imageJSON())]
         let client = makeClient(stub: stub)
+        let rawName = "evil\r\nX-Injected: 1\";.png"
+        let safeName = MultipartSanitizer.filename(rawName)
+        XCTAssertEqual(safeName, "evil__X-Injected_ 1__.png")
         _ = try await client.uploadImage(
             sessionID: sessionID.uuidString,
-            filename: "evil\r\nX-Injected: 1\";.png",
+            filename: rawName,
             payload: TestPNG.bytes,
             contentType: "image/png\r\nX-Injected: yes"
         )
@@ -202,7 +207,7 @@ final class ClientTests: XCTestCase {
         let body = stub.bodies[0]
         XCTAssertFalse(body.contains(Data("\r\nX-Injected".utf8)))
         XCTAssertFalse(body.contains(Data("filename=\"evil\r".utf8)))
-        XCTAssertTrue(body.contains(Data("filename=\"evil_X-Injected_ 1__.png\"".utf8)))
+        XCTAssertTrue(body.contains(Data("filename=\"\(safeName)\"".utf8)))
         XCTAssertTrue(body.contains(Data("Content-Type: image/png".utf8)))
     }
 
