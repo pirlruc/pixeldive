@@ -36,6 +36,13 @@ def test_lookup_owner_is_constant_time_membership() -> None:
     assert lookup_owner("alpha", keys) == "tenant-a"
     assert lookup_owner("missing", keys) is None
     assert lookup_owner("toolong", keys) is None
+    assert lookup_owner("alph", keys) is None
+
+
+def test_lookup_owner_rejects_null_padded_prefix() -> None:
+    """Length is part of the compare so a shorter token cannot match."""
+    keys = {"alpha": "tenant-a"}
+    assert lookup_owner("alpha\0", keys) is None
 
 
 def test_default_bind_is_loopback() -> None:
