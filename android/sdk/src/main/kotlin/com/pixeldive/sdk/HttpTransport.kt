@@ -183,8 +183,9 @@ internal fun clippedUtf8(bytes: ByteArray): String {
     return slice.toString(Charsets.UTF_8)
 }
 
-internal fun metadataFields(metadata: String?): Map<String, String> =
-    if (metadata != null) mapOf("metadata" to metadata) else emptyMap()
+internal fun metadataFields(metadata: String?): Map<String, String> {
+    return if (metadata != null) mapOf("metadata" to metadata) else emptyMap()
+}
 
 internal fun appendFields(
     builder: MultipartBody.Builder,
