@@ -1,0 +1,13 @@
+# Consumer copy of docs/guardrails/docker/profile.thresholds.yml (pin 1.6.0).
+
+image_max_size_mb: 300                 # DOCKER-PERF-001
+ci_image_max_size_mb: 2000             # DOCKER-PERF-002
+min_image_efficiency_percent: 95       # DOCKER-PERF-001
+base_image_max_age_days: 30            # DOCKER-BUILD-006
+hadolint_failure_threshold: warning    # DOCKER-LINT-001
+iac_fail_on: high,medium               # DOCKER-LINT-002
+vuln_fail_on_severity: high            # DOCKER-SEC-001
+max_critical_vulnerabilities: 0        # DOCKER-SEC-001
+vuln_ignore_max_days: 30               # DOCKER-SEC-001
+compose_privileged_services_max: 0    # DOCKER-COMPOSE-005
+compose_default_port_bind: 127.0.0.1  # DOCKER-COMPOSE-006

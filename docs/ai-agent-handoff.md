@@ -11,7 +11,7 @@
 
 ## Current slice
 
-Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19). Phase 2 hardening, Python SDK, capture demo, and async S3 (PERF-002) are **on main** ([PR #7](https://github.com/pirlruc/pixeldive/pull/7), merged 2026-09-19). Phase 3 remaining hardening is **on main** ([PR #9](https://github.com/pirlruc/pixeldive/pull/9)). Analog pins, DRY, and 1.6.0 compliance are on this branch.
+Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19). Phase 2 hardening, Python SDK, capture demo, and async S3 (PERF-002) are **on main** ([PR #7](https://github.com/pirlruc/pixeldive/pull/7), merged 2026-09-19). Phase 3 remaining hardening is **on main** ([PR #9](https://github.com/pirlruc/pixeldive/pull/9)). Analog pins, DRY, and 1.6.0 QUAL-003 gates (hadolint, KICS, uv.lock, Trivy/SBOM, pydoclint) are on this branch.
 
 GitHub Epic/Task issues are not published ([TOOL-002](issues.yml)); statuses live in [`docs/issues.yml`](issues.yml).
 
@@ -47,7 +47,7 @@ python3 -m pip install --target .venv -r requirements.txt -r requirements-dev.tx
 PYTHONPATH=.venv bash scripts/ci-local.sh
 ```
 
-CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres` Alembic job), `security.yml` (gitleaks, CodeQL, bandit, pip-audit, dependency-review). Actions are SHA-pinned. Numeric gates read analog `docs/guardrails/python/profile.thresholds.yml` after `scripts/ci-init-guardrails.sh` (`GUARDRAILS_READ_TOKEN`); otherwise the consumer copy `config/python.profile.thresholds.yml`. The overlay reader allows stricter consumer values and fails on looser ones. Do not clone `.github/scaffold` in CI.
+CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`, `uv-lock`), `security.yml` (gitleaks, CodeQL, bandit, pip-audit, semgrep, dependency-review, Trivy, SBOM). Actions are SHA-pinned. Numeric gates read analog `docs/guardrails/python/profile.thresholds.yml` after `scripts/ci-init-guardrails.sh` (`GUARDRAILS_READ_TOKEN`); otherwise the consumer copy `config/python.profile.thresholds.yml`. The overlay reader allows stricter consumer values and fails on looser ones. Do not clone `.github/scaffold` in CI.
 
 ## Analog pins (TOOL-001)
 
@@ -94,16 +94,17 @@ Clients should send the same keys they already read on-device:
 - PY-CPLX-001 max CC is **8** (guardrails 1.6.0). Prefer a shared helper over copying a wrapper into a new file.
 - Dependabot grouped PRs can be stale vs `aiobotocore` (they may still list `boto3`) and may jump the Docker image to CPython 3.14. Runtime is **3.13** per PY-RUN-003 ([QUAL-002](issues.yml)); 3.14 re-evaluation is 2027-04. boto3 is not a dependency.
 - Compose `depends_on.minio.required: false` needs Compose spec support for profiles; default `docker compose up` must stay local-disk.
-- Host ports are `127.0.0.1` (DOCKER-COMPOSE-006). MinIO server image is scratch — no in-container HTTP healthcheck.
+- Host ports are `127.0.0.1` (DOCKER-COMPOSE-006). MinIO server uses `mc ready local` (quay image includes `mc`). `minio-init` is a one-shot job.
+- Compose secrets have no in-file defaults; `cp .env.example .env` before `docker compose up`.
 - `ENVIRONMENT=production` requires `AUTH_REQUIRED=true` and `GRPC_INSECURE=false`.
 - Host-native HTTP/gRPC defaults are `127.0.0.1`; image/Compose set `0.0.0.0` in-container.
 
 ## Suggested next work
 
 - [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
-- [QUAL-003](issues.yml) hadolint, KICS, Trivy/SBOM, uv.lock, MinIO digest pins
 - [SEC-004](issues.yml) shared quota store on PostgreSQL (first multi-replica tests)
 - [SEC-005](issues.yml) optional Redis quota hot path if Postgres contends
+- First image/GitHub Release publish: SC-SIGN-001, SC-PROV-001, DOCKER-TEST-001
 - Propose [docs/new-guardrails](new-guardrails/README.md) IDs upstream to pirlruc/guardrails
 
 ## Recent history
@@ -111,6 +112,6 @@ Clients should send the same keys they already read on-device:
 - Phase 1 + REV-001 shipped in [PR #1](https://github.com/pirlruc/pixeldive/pull/1) (`c1eda05`)
 - Phase 2 + SDK-001 + PERF-002 shipped in [PR #7](https://github.com/pirlruc/pixeldive/pull/7) (`96192bf`)
 - Phase 3 remaining hardening in [PR #9](https://github.com/pirlruc/pixeldive/pull/9)
-- Analog pins 1.6.0 / 1.5.0, DRY, bandit/pip-audit, production fail-closed (this branch)
+- Analog pins 1.6.0 / 1.5.0, DRY, QUAL-003 1.6.0 gates (this branch)
 
 *Last updated: 2026-09-20*

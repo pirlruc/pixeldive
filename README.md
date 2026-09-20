@@ -47,9 +47,11 @@ python3 -m pip install --target .venv -r requirements.txt -r requirements-dev.tx
 PYTHONPATH=.venv python3 main.py
 ```
 
-Compose (Postgres + app, local disk):
+Compose (Postgres + app, local disk). Secrets are not defaulted in the
+compose file (DOCKER-COMPOSE-004):
 
 ```bash
+cp .env.example .env
 docker compose up --build
 ```
 
@@ -57,7 +59,7 @@ S3-compatible path (MinIO profile, OPS-003):
 
 ```bash
 STORAGE_BACKEND=s3 bash scripts/compose-s3.sh
-# or: STORAGE_BACKEND=s3 docker compose --profile s3 up --build
+# or: cp .env.example .env && STORAGE_BACKEND=s3 docker compose --profile s3 up --build
 ```
 
 Upload one image against that stack:
@@ -110,6 +112,9 @@ PIXELDIVE_TEST_DATABASE_URL=postgresql+asyncpg://pixeldive:pixeldive@127.0.0.1:5
 Floors live in `config/python.profile.thresholds.yml` (PY-TEST-002 95/95, PY-DOC-001, PY-CPLX-* max CC 8).
 When `GUARDRAILS_READ_TOKEN` is set, CI clones the analog pin and refuses a **looser** overlay (CI-022).
 Stricter values (avg MI 70 vs org 60) are allowed. `docs/guardrail-deviations.yml` is empty.
+`uv.lock` is the PY-RUN-001 lockfile; `requirements.txt` is the pip/Docker freeze
+(`uv export`). Local `scripts/ci-local.sh` also runs pydoclint, hadolint, KICS,
+ShellCheck, and markdown link lint.
 
 ## Agent handoff
 

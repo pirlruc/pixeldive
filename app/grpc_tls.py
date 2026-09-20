@@ -10,6 +10,13 @@ from app.config import Settings
 def build_grpc_server_credentials(settings: Settings) -> grpc.ServerCredentials | None:
     """Return TLS credentials, or None when insecure bind is explicitly allowed.
 
+    Args:
+        settings: TLS file paths and the insecure-bind flag.
+
+    Returns:
+        grpc.ServerCredentials | None: Server credentials when cert and key
+        are set; otherwise None.
+
     Raises:
         RuntimeError: production-style bind requested without cert/key files.
     """

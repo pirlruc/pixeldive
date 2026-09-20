@@ -12,4 +12,5 @@ pytest-asyncio==1.4.0
 pytest-cov==7.1.0
 radon==6.0.1
 ruff==0.16.8
+pydoclint==0.7.3
 types-aiofiles==25.1.0.20260518

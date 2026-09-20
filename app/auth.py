@@ -78,6 +78,14 @@ def lookup_owner(token: str, keys: dict[str, str]) -> str | None:
 def authenticate(authorization: str | None, settings: Settings) -> Principal | None:
     """Return a Principal when auth is on; None when auth is disabled.
 
+    Args:
+        authorization: Raw Authorization header, or None.
+        settings: Process settings that own ``auth_required`` and API keys.
+
+    Returns:
+        Principal | None: The authenticated principal, or None when
+        authentication is disabled.
+
     Raises:
         UnauthenticatedError: auth is required and the token is missing/unknown.
     """

@@ -8,7 +8,7 @@ WORKDIR /build
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 FROM python:3.13.15-slim-bookworm@sha256:3e2de9c40ca4e3d73240059f9d48baff27908f10293e985a2f382a0378e6df4a
 
@@ -42,8 +42,7 @@ EXPOSE 8000 50051
 VOLUME ["/data/images"]
 
 # HEALTHCHECK uses stdlib so the runtime image needs no curl (DOCKER-RUN-006).
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
 
 # Run as non-root numeric UID; config is env-only (DOCKER-RUN-001/004/005).
 # Harden with: --read-only --cap-drop ALL --security-opt no-new-privileges

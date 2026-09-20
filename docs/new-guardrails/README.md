@@ -60,8 +60,10 @@ images (MinIO server) often have no `curl`/`sh` to probe with. The org rule shou
 allow an explicit exception: dependents retry/wait, and the gap is listed in the
 consumer’s scanner/limitations doc — not a silent omit.
 
-**Why here:** `minio/minio` is scratch-based; an HTTP healthcheck inside that
-container cannot run.
+**Why here:** Hub `minio/minio` is scratch-based; an HTTP healthcheck inside that
+container cannot run. pixeldive now uses the quay image that ships `mc ready local`.
+The org rule still needs an explicit scratch/distroless exception for images that
+do not.
 
 ### PY-CPLX-003 — File-split vs duplication
 
@@ -76,12 +78,10 @@ Numeric gate stays per-file; this is a design rule, not a second radon number.
 
 ### PY-RUN-001 — Lockfile family, not uv-only
 
-The 1.6.0 profile names `uv` + `uv.lock`. A fully pinned `requirements.txt` (or
-pip-tools `requirements.txt` generated from `pyproject.toml`) already satisfies
-[DOCKER-BUILD-004](https://github.com/pirlruc/guardrails/blob/1.6.0/docker/guardrails.md)
-determinism. Treat uv, poetry, pip-tools, and a committed `requirements.txt` of
-pinned hashes/versions as equivalent lockfiles. Prefer uv for new Python repos;
-do not force a second lockfile onto an existing pip consumer.
+The 1.6.0 profile names `uv` + `uv.lock`. pixeldive now commits `uv.lock` and
+keeps `requirements.txt` as `uv export` for Docker/pip-audit. Treat uv, poetry,
+pip-tools, and a committed `requirements.txt` of pinned versions as equivalent
+lockfiles at the org level so other pip consumers are not forced onto uv.
 
 ### PY-SEC-004 — Audit the lockfile without a throwaway venv
 

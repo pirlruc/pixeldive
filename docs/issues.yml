@@ -33,7 +33,7 @@
 #   open  SEC-004 (Postgres shared quotas), SEC-005 (Redis quota hot path later)
 #   done  QUAL-002 (CPython 3.13 per PY-RUN-003; boto3 stays out)
 #   done  SEC-006 (production fail-closed, magic-byte uploads, HMAC keys)
-#   open  QUAL-003 (hadolint, KICS, Trivy, SBOM, uv.lock, MinIO digest)
+#   done  QUAL-003 (hadolint, KICS, Trivy/SBOM on CI image, uv.lock, MinIO digest)
 
 milestones:
   - name: Tooling — Analog & methodology
@@ -1173,37 +1173,39 @@ milestones:
               - rg -n "boto3" requirements.txt && exit 1 || true
 
       - id: QUAL-003
-        status: open
+        status: done
         title: Close remaining 1.6.0 Docker and supply-chain gates
         overview:
           problem: >-
             Guardrails 1.6.0 adds hadolint, KICS, image vuln scans, SBOM,
             signing/provenance on publish, uv.lock as the Python package
-            manager, and digest pins for every Compose image. pixeldive now
-            runs bandit and pip-audit and digest-pins Postgres, but does not
-            yet publish images or use uv.
+            manager, and digest pins for every Compose image. Leaving those
+            as open follow-up would leave the pin unimplemented.
           goal: >-
-            Add hadolint/KICS/Trivy (or Grype) and a CycloneDX SBOM when an
-            image is published; pin MinIO by digest; migrate install to uv.lock
-            or record a PY-RUN-001 decision. Signing/provenance stay tied to
-            a real publish path (Free-plan private-repo limits documented in
-            supply-chain pack).
+            Run hadolint, KICS, and compose config in CI and ci-local.sh;
+            digest-pin MinIO; commit uv.lock with a pip freeze for Docker;
+            run pydoclint; scan the CI-built image with Trivy and retain a
+            CycloneDX SBOM. Signing/provenance stay tied to a real registry
+            publish (those IDs apply to published artifacts).
         architecture:
           target: >-
-            In the context of guardrails 1.6.0 Docker/SC packs, facing no
-            current image publish workflow, we decided to land SAST and
-            pip-audit now and keep hadolint/Trivy/SBOM/uv as follow-up rather
-            than recording unverified deviations.
+            In the context of guardrails 1.6.0 Docker/SC/Python packs, facing
+            no registry publish workflow, we decided to land the lint, lock,
+            IaC, and CI image-scan gates now and leave cosign/SLSA until the
+            first publish rather than recording unverified deviations.
           modules:
             - Dockerfile
             - docker-compose.yml
             - .github/workflows
+            - uv.lock
             - requirements.txt
+            - pyproject.toml
         acceptance_criteria:
           - hadolint fails at the org warning threshold on Dockerfile
-          - Compose/IaC is KICS-scanned or exclusions are in scanner-exceptions.md
-          - Published images (when a publish path exists) have Trivy + SBOM
-          - MinIO Compose images are digest-pinned or the tag gap is a recorded deviation
+          - Compose/IaC is KICS-scanned; remaining ignores are in scanner-exceptions.md
+          - CI builds pixeldive:ci, runs Trivy HIGH/CRITICAL, and uploads a CycloneDX SBOM
+          - MinIO Compose images are digest-pinned with a tag comment
+          - uv.lock is committed; requirements.txt matches `uv export`
         guardrail_refs:
           - DOCKER-LINT-001
           - DOCKER-LINT-002
@@ -1214,7 +1216,7 @@ milestones:
           - PY-DOC-002
         tasks:
           - id: QUAL-003-T1
-            status: open
+            status: done
             title: Add hadolint, KICS, and MinIO digest pins
             instructions:
               files:
@@ -1224,21 +1226,23 @@ milestones:
             verification:
               - bash scripts/ci-local.sh
           - id: QUAL-003-T2
-            status: open
-            title: Add image vuln scan and SBOM on a publish path
+            status: done
+            title: Scan the CI-built image with Trivy and retain an SBOM
             instructions:
               files:
                 - .github/workflows
             verification:
               - test -f .github/workflows/security.yml
           - id: QUAL-003-T3
-            status: open
-            title: Decide uv.lock vs pinned requirements.txt (PY-RUN-001)
+            status: done
+            title: Commit uv.lock and keep requirements.txt as the pip/Docker freeze
             instructions:
               files:
                 - pyproject.toml
+                - uv.lock
                 - requirements.txt
             verification:
+              - test -f uv.lock
               - test -f requirements.txt
 
       - id: SEC-006

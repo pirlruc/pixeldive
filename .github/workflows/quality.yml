@@ -44,6 +44,55 @@ jobs:
       - name: PY-* gates
         run: bash scripts/ci-local.sh
 
+  docker-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Hadolint
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
+
+      - name: KICS
+        uses: Checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
+        with:
+          path: Dockerfile,docker-compose.yml
+          fail_on: high,medium
+          enable_comments: false
+          output_path: kics-results/
+
+      - name: ShellCheck
+        run: shellcheck --severity=error scripts/*.sh
+
+      - name: Compose spec
+        run: docker compose -f docker-compose.yml --profile s3 config --quiet
+
+  uv-lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: "3.13"
+
+      - name: uv.lock matches pyproject.toml
+        run: uv lock --check
+
+      - name: requirements.txt matches uv export
+        run: bash scripts/check-uv-export.sh
+
   postgres:
     runs-on: ubuntu-latest
     timeout-minutes: 20
