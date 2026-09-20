@@ -8,12 +8,13 @@ from typing import Any
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import HTMLResponse, StreamingResponse
-from pixeldive_sdk import RestClient, sample_session_payload
+from pixeldive_sdk import sample_session_payload
 
+from demo.clients import DemoClients
 from demo.download import continue_download, open_download
 from demo.ui import PAGE
 
-SdkFactory = Callable[[], Awaitable[RestClient]]
+SdkFactory = Callable[[], Awaitable[DemoClients]]
 
 
 def register_demo_routes(app: FastAPI, sdk: SdkFactory) -> None:
@@ -57,7 +58,7 @@ def register_demo_routes(app: FastAPI, sdk: SdkFactory) -> None:
 
     @app.post("/api/sessions/{session_id}/images")
     async def upload_image(session_id: uuid.UUID, file: UploadFile = File(...)) -> dict[str, Any]:
-        """Upload a browser-selected image through the SDK."""
+        """Upload a browser-selected or camera-captured image through the SDK."""
         remote = await sdk()
         payload = await file.read()
         return await remote.upload_image(

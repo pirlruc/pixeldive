@@ -2,10 +2,12 @@ import Foundation
 import PixeldiveSDK
 import SwiftUI
 
-/// UI state for the capture demo. All service calls go through ``PixeldiveClient``.
+/// UI state for the capture demo. Sessions use REST; image bytes use gRPC.
 @MainActor
 final class DemoModel: ObservableObject {
     @Published var baseURLText = "http://127.0.0.1:8000"
+    @Published var grpcHost = "127.0.0.1"
+    @Published var grpcPort = "50051"
     @Published var token = ""
     @Published var log = "Ready."
     @Published var sessions: [SessionRead] = []
@@ -13,6 +15,12 @@ final class DemoModel: ObservableObject {
     @Published var selectedSession: SessionRead?
     @Published var preview: Data?
     @Published var busy = false
+    @Published var capturing = false
+
+    let camera = CameraFeed()
+    private var uploading = false
+    private var grpcKey: String?
+    private var grpc: PixeldiveGrpcClient?
 
     func createSession() async {
         await run("create session") { client in
@@ -36,16 +44,27 @@ final class DemoModel: ObservableObject {
             log = "Create or select a session first."
             return
         }
-        await run("upload") { client in
-            let image = try await client.uploadImage(
-                sessionID: session.id.uuidString,
-                filename: filename,
-                payload: data,
-                contentType: contentType
-            )
-            self.log = "Uploaded \(image.filename) (\(image.sizeBytes) bytes)"
-            try await self.refresh(client)
+        await sendFrame(session: session, data: data, filename: filename, contentType: contentType)
+    }
+
+    func startCamera() {
+        guard selectedSession != nil else {
+            log = "Create or select a session first."
+            return
         }
+        capturing = true
+        camera.onJPEG = { [weak self] data in
+            Task { await self?.upload(data: data, filename: "frame.jpg", contentType: "image/jpeg") }
+        }
+        camera.requestAndStart()
+        log = "Camera feed → gRPC UploadImage"
+    }
+
+    func stopCamera() {
+        capturing = false
+        camera.onJPEG = nil
+        camera.stop()
+        log = "Camera stopped."
     }
 
     func downloadFirst() async {
@@ -53,13 +72,15 @@ final class DemoModel: ObservableObject {
             log = "No image to download."
             return
         }
-        await run("download") { client in
-            let bytes = try await client.downloadImage(
+        do {
+            let bytes = try await grpcClient().downloadImage(
                 sessionID: session.id.uuidString,
                 imageID: image.id.uuidString
             )
-            self.preview = bytes
-            self.log = "Downloaded \(bytes.count) bytes"
+            preview = bytes
+            log = "Downloaded \(bytes.count) bytes via gRPC"
+        } catch {
+            log = "download failed: \(error.localizedDescription)"
         }
     }
 
@@ -75,6 +96,31 @@ final class DemoModel: ObservableObject {
             self.preview = nil
             try await self.refresh(client)
             self.log = "Deleted session"
+        }
+    }
+
+    private func sendFrame(
+        session: SessionRead,
+        data: Data,
+        filename: String,
+        contentType: String
+    ) async {
+        if uploading {
+            return
+        }
+        uploading = true
+        defer { uploading = false }
+        do {
+            let image = try await grpcClient().uploadImage(
+                sessionID: session.id.uuidString,
+                filename: filename,
+                payload: data,
+                contentType: contentType
+            )
+            log = "Uploaded \(image.filename) (\(image.sizeBytes) bytes) via gRPC"
+            try await refresh(makeClient())
+        } catch {
+            log = "upload failed: \(error.localizedDescription)"
         }
     }
 
@@ -108,6 +154,27 @@ final class DemoModel: ObservableObject {
         }
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
         return PixeldiveClient(baseURL: url, token: trimmed.isEmpty ? nil : trimmed)
+    }
+
+    private func grpcClient() throws -> PixeldiveGrpcClient {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = "\(grpcHost)|\(grpcPort)|\(trimmed)"
+        if let grpc, grpcKey == key {
+            return grpc
+        }
+        #if canImport(GRPC)
+        let port = Int(grpcPort) ?? 50051
+        let created = PixeldiveGrpcClient.insecure(
+            host: grpcHost,
+            port: port,
+            token: trimmed.isEmpty ? nil : trimmed
+        )
+        grpc = created
+        grpcKey = key
+        return created
+        #else
+        throw PixeldiveError.transport("gRPC streaming requires Apple platforms")
+        #endif
     }
 
     private static func stamp() -> String {

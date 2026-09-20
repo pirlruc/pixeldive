@@ -1,7 +1,9 @@
 # pixeldive iOS SDK
 
 First-party Swift client for the pixeldive session service. The public REST surface
-matches Python `pixeldive_sdk.RestClient`. Session JSON keeps the Android wire keys
+matches Python `pixeldive_sdk.RestClient`. `PixeldiveGrpcClient` matches
+`GrpcClient` for client-streaming `UploadImage` / `UploadImagesBatch` and
+server-streaming `DownloadImage`. Session JSON keeps the Android wire keys
 (`phone_info`, `phone_capabilities`, `camera_capabilities`) so iOS and Android
 clients share one backend contract.
 
@@ -42,6 +44,16 @@ let bytes = try await client.downloadImage(
     sessionID: session.id.uuidString,
     imageID: image.id.uuidString
 )
+
+#if canImport(GRPC)
+let grpc = PixeldiveGrpcClient.insecure(host: "127.0.0.1", port: 50051)
+let streamed = try await grpc.uploadImage(
+    sessionID: session.id.uuidString,
+    filename: "frame.jpg",
+    payload: jpegData,
+    contentType: "image/jpeg"
+)
+#endif
 ```
 
 `DeviceSnapshot.sampleiPhone()` is the fixture used in tests. `DeviceSnapshot.current()`
@@ -55,10 +67,12 @@ does not write them to `UserDefaults`.
 1. Run the session service (`python3 main.py` or Compose).
 2. Open `ios/Demo/PixeldiveDemo.xcodeproj` in Xcode (or `project.yml` via XcodeGen).
 3. Run on a simulator or device.
-4. Confirm the base URL, create a session, pick a photo, upload, download.
+4. Confirm the REST URL and gRPC host/port (default `127.0.0.1:50051`), create a
+   session, start the camera feed (or pick a photo). Frames upload over gRPC.
 
 Local HTTP uses `NSAllowsLocalNetworking` only (SWIFT-IOS-003 proposal). Camera and
-photo usage strings are in `Info.plist` (SWIFT-IOS-004 proposal).
+photo usage strings are in `Info.plist` (SWIFT-IOS-004 proposal). `grpc-swift` is an
+Apple-only SPM product so Linux `swift test` still compiles the protobuf codec.
 
 ## Tests
 

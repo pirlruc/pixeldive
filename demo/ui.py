@@ -21,12 +21,13 @@ PAGE = """<!DOCTYPE html>
     .status { font-family: ui-monospace, monospace; font-size: 12px; }
     .error { color: var(--bad); min-height: 1.2em; }
     a { color: var(--accent); }
+    video { width: 100%; max-height: 240px; background: #000; border-radius: 8px; }
   </style>
 </head>
 <body>
 <main>
   <h1>pixeldive capture demo</h1>
-  <p class="muted">Android-shaped session payloads via the Python SDK (<code>pixeldive_sdk.RestClient</code>).</p>
+  <p class="muted">Sessions via <code>RestClient</code>; camera frames via <code>GrpcClient</code> UploadImage streaming.</p>
   <p class="status" id="health">checking service…</p>
   <p class="error" id="error"></p>
   <section>
@@ -37,6 +38,16 @@ PAGE = """<!DOCTYPE html>
       <button id="delete" class="danger">Delete session</button>
     </div>
     <pre id="session">{}</pre>
+  </section>
+  <section>
+    <h2>Camera feed</h2>
+    <video id="cam" autoplay playsinline muted></video>
+    <canvas id="shot" hidden></canvas>
+    <div class="row">
+      <button id="startcam">Start camera</button>
+      <button id="stopcam">Stop camera</button>
+    </div>
+    <p class="muted">getUserMedia frames POST to the demo, which client-streams them over gRPC.</p>
   </section>
   <section>
     <h2>Upload</h2>
@@ -51,6 +62,9 @@ PAGE = """<!DOCTYPE html>
 <script>
 const $ = (id) => document.getElementById(id);
 let sessionId = null;
+let media = null;
+let timer = null;
+let inflight = false;
 function showError(err) {
   $("error").textContent = err ? String(err) : "";
 }
@@ -113,17 +127,49 @@ $("delete").onclick = async () => {
     await refresh();
   } catch (err) { showError(err); }
 };
+async function postFrame(blob, name) {
+  const body = new FormData();
+  body.append("file", blob, name);
+  const res = await fetch("/api/sessions/" + sessionId + "/images", {method: "POST", body});
+  if (!res.ok) throw new Error(await res.text());
+}
 $("upload").onclick = async () => {
   if (!sessionId) { showError("create a session first"); return; }
   const file = $("file").files[0];
   if (!file) { showError("choose an image"); return; }
-  const body = new FormData();
-  body.append("file", file);
   try {
-    const res = await fetch("/api/sessions/" + sessionId + "/images", {method: "POST", body});
-    if (!res.ok) throw new Error(await res.text());
+    await postFrame(file, file.name);
     await refresh();
   } catch (err) { showError(err); }
+};
+async function pushFrame() {
+  if (inflight || !sessionId) return;
+  const video = $("cam");
+  if (!video.videoWidth) return;
+  const canvas = $("shot");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.6));
+  if (!blob) return;
+  inflight = true;
+  try {
+    await postFrame(blob, "frame.jpg");
+  } catch (err) { showError(err); }
+  finally { inflight = false; }
+}
+$("startcam").onclick = async () => {
+  try {
+    media = await navigator.mediaDevices.getUserMedia({video: true, audio: false});
+    $("cam").srcObject = media;
+    timer = setInterval(pushFrame, 450);
+    showError("");
+  } catch (err) { showError(err); }
+};
+$("stopcam").onclick = () => {
+  if (timer) { clearInterval(timer); timer = null; }
+  if (media) { media.getTracks().forEach((track) => track.stop()); media = null; }
+  $("cam").srcObject = null;
 };
 boot();
 </script>

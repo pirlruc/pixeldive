@@ -37,7 +37,8 @@
 #   done  SDK-003 (Android Pixeldive SDK + Compose demo; Kotlin proposals in docs/new-guardrails)
 #   done  PERF-005 (camera ingest: unified persist, hardlink, parallel REST spool)
 #   done  SDK-004 (stream file uploads on iOS/Android/Python SDKs)
-#   open  SDK-005 (iOS in-memory multipart still concatenates a second Data copy)
+#   done  SDK-005 (iOS/Android PixeldiveGrpcClient client-streaming image RPCs)
+#   done  SDK-006 (camera-feed demos upload frames over gRPC)
 #
 #   open  TOOL-002 (GitHub issue objects still unpublished)
 #   done  SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
@@ -1531,43 +1532,88 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: SDK-005
-        status: open
-        title: Stream in-memory camera frames without a second Data copy
+        status: done
+        title: Stream in-memory camera frames over gRPC next to the REST SDKs
         overview:
           problem: >-
-            Camera capture already holds each frame in RAM. iOS MultipartForm.make
-            concatenates preamble plus payload into a second Data before the
-            URLSession body, so a burst peaks at roughly 2× frame size. Android
-            OkHttp parts and Python httpx file tuples stream the existing bytes.
-            Demos still pick gallery files rather than the live capture APIs.
+            Camera capture already holds each frame in RAM. REST multipart on iOS
+            concatenates a second Data copy, and neither mobile SDK could speak
+            the existing client-streaming UploadImage / server-streaming
+            DownloadImage RPCs. Phone bursts belong on gRPC, not gallery multipart.
           goal: >-
-            Send in-memory iOS frames as streamed multipart parts (no second
-            concatenated Data) and keep the file-URL path for on-disk bursts.
-            Live camera wiring in the demos stays a later slice.
+            Add PixeldiveGrpcClient beside PixeldiveClient on iOS and Android
+            (Python already has GrpcClient). Hand-rolled protobuf + gRPC framing
+            so Linux swift test does not need generated stubs; Apple uses
+            grpc-swift NIO h2c, Android uses OkHttp H2_PRIOR_KNOWLEDGE.
         architecture:
           target: >-
             In the context of a phone camera session sending many in-memory
-            frames, facing a second Data copy on iOS only, we decided to stream
-            multipart parts from the existing payload buffer rather than add a
-            new gRPC mobile client, so REST camera bursts match Android/Python
-            peak RAM.
+            frames, facing a second Data copy on iOS REST multipart and no mobile
+            gRPC client, we decided to add client-streaming gRPC SDKs that chunk
+            the existing frame buffer rather than stream a second multipart body.
           modules:
             - ios/Sources/PixeldiveSDK
+            - android/sdk
+            - sdk/pixeldive_sdk
         acceptance_criteria:
-          - uploadImage(payload:) does not build one Data that contains a copy of payload
-          - File-URL uploads still stream from disk
-          - SWIFT-TEST-002 stays at the consumer overlay
+          - iOS and Android expose PixeldiveGrpcClient for UploadImage / UploadImagesBatch / DownloadImage
+          - In-memory frames are split into ImageChunk messages (256 KiB) without a second full payload copy into multipart
+          - Linux swift test compiles the codec without fetching grpc-swift into the test binary
+          - SWIFT-TEST-002 and KT-TEST-002 stay at the consumer overlay
         guardrail_refs:
           - SWIFT-TEST-002
+          - KT-TEST-002
         tasks:
           - id: SDK-005-T1
-            status: open
-            title: Stream iOS in-memory multipart from the existing frame buffer
+            status: done
+            title: Add iOS and Android gRPC streaming image clients
             instructions:
               files:
                 - ios/Sources/PixeldiveSDK
+                - android/sdk
             verification:
               - bash scripts/check-ios-sdk.sh
+              - bash scripts/check-android-sdk.sh
+
+      - id: SDK-006
+        status: done
+        title: Wire camera feeds in the demos to gRPC image streaming
+        overview:
+          problem: >-
+            Demos still picked gallery files over REST. The product path is a
+            live camera feed sending many frames per session on gRPC.
+          goal: >-
+            iOS AVCapture, Android CameraX, and the Python demo getUserMedia
+            capture JPEG frames and upload them through PixeldiveGrpcClient /
+            GrpcClient. Session CRUD stays on REST.
+        architecture:
+          target: >-
+            In the context of demonstrating camera-session ingest, facing
+            gallery-only REST demos, we decided to capture live frames in each
+            demo app and client-stream them on gRPC while keeping session APIs
+            on REST.
+          modules:
+            - ios/Demo
+            - android/demo
+            - demo
+        acceptance_criteria:
+          - iOS demo starts an AVCapture session and uploads JPEGs via PixeldiveGrpcClient
+          - Android demo starts CameraX and uploads JPEGs via PixeldiveGrpcClient
+          - Python demo getUserMedia frames POST through DemoClients which uses GrpcClient
+        guardrail_refs:
+          - SWIFT-IOS-004
+          - KT-AND-002
+        tasks:
+          - id: SDK-006-T1
+            status: done
+            title: Add camera-feed capture to iOS, Android, and Python demos
+            instructions:
+              files:
+                - ios/Demo
+                - android/demo
+                - demo
+            verification:
+              - bash scripts/ci-local.sh
 
   - name: Camera ingest
     epics:

@@ -1,13 +1,20 @@
 package com.pixeldive.demo
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,15 +23,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.camera.view.PreviewView
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     private val model: DemoViewModel by viewModels { DemoViewModel.factory(application) }
@@ -33,19 +46,31 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                DemoScreen(model)
+                DemoScreen(model, this)
             }
         }
     }
 }
 
 @Composable
-private fun DemoScreen(model: DemoViewModel) {
+private fun DemoScreen(
+    model: DemoViewModel,
+    owner: LifecycleOwner,
+) {
     val state by model.state.collectAsStateWithLifecycle()
+    val camera = remember { CameraSession() }
     val picker =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             if (uri != null) {
                 model.upload(uri)
+            }
+        }
+    val permission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                model.setCapturing(true)
+            } else {
+                model.onCameraDenied()
             }
         }
     Column(
@@ -57,21 +82,7 @@ private fun DemoScreen(model: DemoViewModel) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Pixeldive", style = MaterialTheme.typography.headlineSmall)
-        OutlinedTextField(
-            value = state.baseUrl,
-            onValueChange = model::onBaseUrl,
-            label = { Text("Base URL") },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !state.busy,
-        )
-        OutlinedTextField(
-            value = state.token,
-            onValueChange = model::onToken,
-            label = { Text("Bearer token (optional)") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !state.busy,
-        )
+        serviceFields(state, model)
         Button(onClick = { model.refresh() }, enabled = !state.busy) {
             Text("Refresh sessions")
         }
@@ -79,6 +90,7 @@ private fun DemoScreen(model: DemoViewModel) {
             Text("Create Android session")
         }
         Text(state.selectedLabel)
+        cameraBlock(state, model, owner, camera, permission)
         Button(
             onClick = {
                 picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -99,5 +111,99 @@ private fun DemoScreen(model: DemoViewModel) {
             fontFamily = FontFamily.Monospace,
             style = MaterialTheme.typography.bodySmall,
         )
+    }
+}
+
+@Composable
+private fun serviceFields(
+    state: DemoState,
+    model: DemoViewModel,
+) {
+    OutlinedTextField(
+        value = state.baseUrl,
+        onValueChange = model::onBaseUrl,
+        label = { Text("REST URL") },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !state.busy,
+    )
+    OutlinedTextField(
+        value = state.grpcHost,
+        onValueChange = model::onGrpcHost,
+        label = { Text("gRPC host") },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !state.busy,
+    )
+    OutlinedTextField(
+        value = state.grpcPort,
+        onValueChange = model::onGrpcPort,
+        label = { Text("gRPC port") },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !state.busy,
+    )
+    OutlinedTextField(
+        value = state.token,
+        onValueChange = model::onToken,
+        label = { Text("Bearer token (optional)") },
+        visualTransformation = PasswordVisualTransformation(),
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !state.busy,
+    )
+}
+
+@Composable
+private fun cameraBlock(
+    state: DemoState,
+    model: DemoViewModel,
+    owner: LifecycleOwner,
+    camera: CameraSession,
+    permission: ActivityResultLauncher<String>,
+) {
+    val context = LocalContext.current
+    if (state.capturing) {
+        AndroidView(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(220.dp),
+            factory = { viewContext ->
+                PreviewView(viewContext).also { preview -> camera.bind(owner, preview) }
+            },
+        )
+        DisposableEffect(camera) {
+            onDispose { camera.unbind() }
+        }
+        LaunchedEffect(state.capturing) {
+            while (state.capturing) {
+                try {
+                    model.uploadFrame(camera.takeJpeg())
+                } catch (_: Exception) {
+                    // keep the loop alive across a dropped frame
+                }
+                delay(450)
+            }
+        }
+        Button(onClick = { model.setCapturing(false) }) {
+            Text("Stop camera")
+        }
+    } else {
+        Button(
+            onClick = {
+                if (state.selected == null) {
+                    model.needSession()
+                    return@Button
+                }
+                val granted =
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                        PackageManager.PERMISSION_GRANTED
+                if (granted) {
+                    model.setCapturing(true)
+                } else {
+                    permission.launch(Manifest.permission.CAMERA)
+                }
+            },
+            enabled = !state.busy,
+        ) {
+            Text("Start camera feed")
+        }
     }
 }

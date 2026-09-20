@@ -1,9 +1,10 @@
 # pixeldive Android SDK
 
 First-party Kotlin client for the pixeldive session service. The public REST surface
-matches Python `pixeldive_sdk.RestClient` and Swift `PixeldiveSDK`. Session JSON uses
-the Android wire keys (`phone_info`, `phone_capabilities`, `camera_capabilities`) so
-iOS and Android clients share one backend contract.
+matches Python `pixeldive_sdk.RestClient` and Swift `PixeldiveClient`.
+`PixeldiveGrpcClient` matches `GrpcClient` (OkHttp `H2_PRIOR_KNOWLEDGE` h2c). Session
+JSON uses the Android wire keys (`phone_info`, `phone_capabilities`,
+`camera_capabilities`) so iOS and Android clients share one backend contract.
 
 | Piece | Path |
 |-------|------|
@@ -31,6 +32,7 @@ Android Gradle Plugin. The Compose demo implements `DeviceProbe` with `Build`,
 ```kotlin
 import com.pixeldive.sdk.DeviceSnapshot
 import com.pixeldive.sdk.PixeldiveClient
+import com.pixeldive.sdk.PixeldiveGrpcClient
 
 val client = PixeldiveClient(baseUrl = "http://127.0.0.1:8000", token = null)
 val session = client.createSession(DeviceSnapshot.current())
@@ -40,6 +42,14 @@ val image = client.uploadImage(
     payload = pngBytes,
 )
 val bytes = client.downloadImage(session.id.toString(), image.id.toString())
+
+val grpc = PixeldiveGrpcClient.insecure(host = "127.0.0.1", port = 50051)
+val streamed = grpc.uploadImage(
+    sessionId = session.id.toString(),
+    filename = "frame.jpg",
+    payload = jpegBytes,
+    contentType = "image/jpeg",
+)
 ```
 
 `DeviceSnapshot.samplePixel()` is the fixture used in tests. `DeviceSnapshot.current()`
@@ -53,8 +63,9 @@ does not write them to `SharedPreferences`.
 1. Run the session service (`python3 main.py` or Compose).
 2. Open `android/` in Android Studio (creates `local.properties`) or set
    `PIXELDIVE_INCLUDE_ANDROID_DEMO=1`.
-3. Run `:demo` on an emulator or device (emulator host is `http://10.0.2.2:8000`).
-4. Create a session, pick a photo, upload, download.
+3. Run `:demo` on an emulator or device (emulator REST `http://10.0.2.2:8000`,
+   gRPC `10.0.2.2:50051`).
+4. Create a session, start the camera feed (or pick a photo). Frames upload over gRPC.
 
 Local HTTP uses `networkSecurityConfig` domain exceptions only (KT-AND-001
 proposal). Camera and photo permissions/rationale are in the demo manifest

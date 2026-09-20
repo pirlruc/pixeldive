@@ -79,6 +79,8 @@ def test_ios_demo_uses_sdk_only() -> None:
     assert sources
     joined = "\n".join(path.read_text(encoding="utf-8") for path in sources)
     assert "PixeldiveClient" in joined
+    assert "PixeldiveGrpcClient" in joined
+    assert "CameraFeed" in joined
     assert "DeviceSnapshot" in joined
     assert "URLSession.shared.data" not in joined
     assert "UserDefaults" not in joined
