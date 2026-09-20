@@ -104,15 +104,14 @@ Clients should send the same keys they already read on-device:
 - Host Python may lack `ensurepip`; use `pip install --target .venv` or `--prefix .venv` and `scripts/python-env.sh` (Debian dist-packages under `.venv/local`).
 - SQLAlchemy relationships on `Session.images` must not use `from __future__ import annotations` on `app/models.py` (the annotation string is otherwise treated as a class name).
 - PY-CPLX-002 averages **per-file** radon MI; large modules must stay split so min MI ≥ 40 and avg MI ≥ 70.
-- Dependabot grouped PRs can be stale vs `aiobotocore` (they may still list `boto3`) and may jump the Docker image to CPython 3.14. Keep 3.12 until [QUAL-002](issues.yml).
+- Dependabot grouped PRs can be stale vs `aiobotocore` (they may still list `boto3`) and may jump the Docker image to CPython 3.14. Runtime is **3.13** per PY-RUN-003 ([QUAL-002](issues.yml)); 3.14 re-evaluation is 2027-04. boto3 is not a dependency.
 - Compose `depends_on.minio.required: false` needs Compose spec support for profiles; default `docker compose up` must stay local-disk.
 
 ## Suggested next work
 
 - [TOOL-001-T1](issues.yml) pin analog submodules once tokens exist
 - [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
-- [SEC-004](issues.yml) shared quota store across replicas
-- [QUAL-002](issues.yml) CPython minor pin vs Dependabot Docker majors
+- [SEC-004](issues.yml) shared quota store across replicas (recommend Postgres)
 - Close stale per-ecosystem Dependabot PRs after the grouped-compatible bump lands (SC-DEP-002)
 
 ## Recent history
@@ -121,5 +120,6 @@ Clients should send the same keys they already read on-device:
 - `docs(issues): record PR #1 ship on Phase 1 and REV-001` (`a7e8ee2`)
 - Phase 2 (SEC/PERF/DATA/OPS/API), SDK-001, demo, PERF-002 async S3 shipped in [PR #7](https://github.com/pirlruc/pixeldive/pull/7) (`96192bf`)
 - Phase 3 remaining hardening + compatible Dependabot updates on `cursor/phase3-hardening-deps-7b15`
+- QUAL-002: CPython 3.13 per PY-RUN-003 (not Dependabot 3.14); boto3 stays replaced by aiobotocore
 
 *Last updated: 2026-09-20*

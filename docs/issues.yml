@@ -30,7 +30,8 @@
 #   open  TOOL-002
 #   done  SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
 #         (this change; GitHub issue objects still unpublished — TOOL-002)
-#   open  SEC-004 (multi-replica quotas), QUAL-002 (CPython 3.12 vs Dependabot 3.14)
+#   open  SEC-004 (multi-replica quotas)
+#   done  QUAL-002 (CPython 3.13 per PY-RUN-003; boto3 stays out)
 
 milestones:
   - name: Tooling — Analog & methodology
@@ -1080,18 +1081,20 @@ milestones:
             app replicas each keep their own sliding window, so a captured key
             can multiply the configured cap by replica count.
           goal: >-
-            Back TenantQuota with a shared store (Redis or Postgres) so REST
-            and gRPC across replicas share one cap, still skipped when
-            AUTH_REQUIRED is false.
+            Back TenantQuota with PostgreSQL so REST and gRPC across replicas
+            share one cap, still skipped when AUTH_REQUIRED is false. Redis
+            is deferred unless the hot path contends.
         architecture:
           target: >-
             In the context of horizontally scaled ingest, facing in-process
             quota counters, we decided to keep the SessionService quota API
-            and swap the backend for a shared store rather than a proxy-only
-            limiter, to keep dual-transport enforcement.
+            and back it with PostgreSQL (already the session store) rather
+            than adding Redis or a proxy-only limiter, to share one cap
+            without a new failure domain.
           modules:
             - app/quotas.py
             - app/service.py
+            - migrations
         acceptance_criteria:
           - Two processes with the same API_KEYS share one rate/byte budget
           - AUTH_REQUIRED=false remains unlimited
@@ -1101,7 +1104,7 @@ milestones:
         tasks:
           - id: SEC-004-T1
             status: open
-            title: Replace in-process TenantQuota with a shared backend
+            title: Replace in-process TenantQuota with a PostgreSQL backend
             instructions:
               files:
                 - app/quotas.py
@@ -1109,29 +1112,37 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: QUAL-002
-        status: open
-        title: Treat Dependabot Docker Python majors as a runtime decision
+        status: done
+        title: Align the runtime CPython minor with PY-RUN-003
         overview:
           problem: >-
-            Dependabot grouped PRs proposed python:3.14.6-slim-bookworm while
-            CI and pyproject still pin CPython 3.12. Auto-merging that image
-            would desync the product runtime from PY-* gates. The same PRs
-            also reintroduced boto3 after PERF-002 switched to aiobotocore.
+            The service and image were on CPython 3.12. Dependabot grouped PRs
+            proposed python:3.14.6-slim-bookworm and reintroduced boto3.
+            PY-RUN-003 (guardrails python/profile.md) selects the most recent
+            minor that is past bugfix, or whose bugfix window closes within
+            six months — today that is 3.13, not 3.14. boto3 was already
+            replaced by aiobotocore in PERF-002.
           goal: >-
-            Keep Dockerfile, Actions setup-python, and requires-python on the
-            same CPython minor until a dedicated runtime bump. Apply pip and
-            Actions SHA bumps independently of Docker major tags.
+            Pin Dockerfile, Actions setup-python, and requires-python on
+            CPython 3.13. Re-evaluate 3.14 by 2027-04. Keep aiobotocore;
+            do not add boto3.
         architecture:
-          target: Runtime pin owned by QUAL/CI, not Dependabot Docker majors
+          target: >-
+            In the context of Dependabot proposing 3.14 while the service was
+            on 3.12, facing PY-RUN-003, we decided to pin CPython 3.13 (org
+            python/profile.md; bugfix ends 2026-10-06; re-evaluate 3.14 by
+            2027-04) and keep aiobotocore rather than boto3.
           modules:
             - Dockerfile
             - .github/workflows/quality.yml
             - pyproject.toml
         acceptance_criteria:
-          - Dockerfile Python minor matches setup-python and requires-python
-          - Dependabot Docker major Python tags are reviewed, not auto-applied
-          - aiobotocore/botocore pins stay compatible (no boto3 reintroduction)
+          - Dockerfile, setup-python, and requires-python are CPython 3.13
+          - 3.14 Docker tags are not applied until the 2027-04 PY-RUN-003 window
+          - requirements.txt has aiobotocore and no boto3
         guardrail_refs:
+          - PY-RUN-001
+          - PY-RUN-003
           - DOCKER-BUILD-002
           - SC-DEP-003
         tasks:
@@ -1143,5 +1154,16 @@ milestones:
                 - Dockerfile
                 - .github/workflows/quality.yml
             verification:
-              - rg -n "3.12" Dockerfile .github/workflows/quality.yml pyproject.toml
+              - rg -n "3.13" Dockerfile .github/workflows/quality.yml pyproject.toml
+          - id: QUAL-002-T2
+            status: done
+            title: Bump Dockerfile, setup-python, and requires-python to 3.13
+            instructions:
+              files:
+                - Dockerfile
+                - .github/workflows/quality.yml
+                - pyproject.toml
+            verification:
+              - rg -n "3.13" Dockerfile .github/workflows/quality.yml pyproject.toml
+              - rg -n "boto3" requirements.txt && exit 1 || true
 

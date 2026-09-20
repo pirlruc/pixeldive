@@ -12,5 +12,5 @@ which has no entries).
 | Quotas are per-process | [SEC-002](issues.yml) is an in-memory limiter. Multi-replica shared accounting is [SEC-004](issues.yml). |
 | GC age window defaults to 0 | `GC_MIN_AGE_SECONDS=0` skips the delete-time grace used to protect concurrent same-hash uploads. Set a positive value and `ORPHAN_SWEEP_INTERVAL_SECONDS` in production ([DATA-004](issues.yml)). |
 | Host may lack `python3-venv` | Use `pip install --target .venv` or `pip install --prefix .venv` (Debian: `.venv/local/...`). `scripts/python-env.sh` resolves both layouts. Do not install into the system OS. |
-| Image Dockerfile digest | Base image is pinned to the published linux/amd64 digest of `python:3.12.14-slim-bookworm`. Dependabot Docker majors (3.14) stay a runtime decision ([QUAL-002](issues.yml)). Multi-arch deploys need a manifest-list digest. |
+| Image Dockerfile digest | Base image is pinned to the published linux/amd64 digest of `python:3.13.15-slim-bookworm` ([QUAL-002](issues.yml), PY-RUN-003). 3.14 does not qualify until the 2027-04 re-evaluation. Multi-arch deploys need a manifest-list digest. |
 | PR size soft limit | PY-DELIV-001 is a 500-line soft limit. Phase 3 hardening is intentionally larger than that. |

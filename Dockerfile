@@ -1,7 +1,8 @@
-# python:3.12.14-slim-bookworm (linux/amd64 digest; DOCKER-BUILD-002/003).
-# Keep this CPython minor aligned with setup-python and requires-python (QUAL-002).
-# Do not take Dependabot Docker majors (e.g. 3.14) without a dedicated runtime bump.
-FROM python:3.12.14-slim-bookworm@sha256:356b0d18f9385f4bdcc673af60e1e64c9d1504952e4ec36ee32044c722a6bc4e AS builder
+# python:3.13.15-slim-bookworm (linux/amd64 digest; DOCKER-BUILD-002/003).
+# CPython minor follows PY-RUN-003 / guardrails python/profile.md (3.13;
+# 3.14 is still in bugfix until ~2027-10, so it does not qualify until the
+# 2027-04 re-evaluation). Keep lockstep with setup-python and requires-python.
+FROM python:3.13.15-slim-bookworm@sha256:3e2de9c40ca4e3d73240059f9d48baff27908f10293e985a2f382a0378e6df4a AS builder
 
 WORKDIR /build
 RUN python -m venv /opt/venv
@@ -9,7 +10,7 @@ ENV PATH="/opt/venv/bin:${PATH}"
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-FROM python:3.12.14-slim-bookworm@sha256:356b0d18f9385f4bdcc673af60e1e64c9d1504952e4ec36ee32044c722a6bc4e
+FROM python:3.13.15-slim-bookworm@sha256:3e2de9c40ca4e3d73240059f9d48baff27908f10293e985a2f382a0378e6df4a
 
 LABEL org.opencontainers.image.title="pixeldive" \
       org.opencontainers.image.description="Image-processing session management (REST + gRPC)" \
