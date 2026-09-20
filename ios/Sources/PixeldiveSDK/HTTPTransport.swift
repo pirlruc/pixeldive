@@ -9,12 +9,6 @@ struct HTTPTransport: @unchecked Sendable {
     let token: String?
     let performer: HTTPPerforming
 
-    init(baseURL: URL, token: String?, performer: HTTPPerforming) {
-        self.baseURL = baseURL
-        self.token = token
-        self.performer = performer
-    }
-
     func json<Body: Encodable, Result: Decodable>(
         _ method: String,
         path: String,
