@@ -15,7 +15,7 @@ public struct PixeldiveClient: Sendable {
         session: URLSession? = nil,
         timeout: TimeInterval = 60
     ) {
-        let resolved = session ?? makeEphemeralSession(timeout: timeout)
+        let resolved = redirectSafeSession(existing: session, timeout: timeout)
         self.init(baseURL: baseURL, token: token, performer: URLSessionPerformer(session: resolved))
     }
 
@@ -124,6 +124,9 @@ public struct PixeldiveClient: Sendable {
         contentType: String = "image/png",
         metadata: String? = nil
     ) async throws -> SessionImage {
+        guard fileURL.isFileURL else {
+            throw PixeldiveError.transport("upload requires a file URL")
+        }
         let data = try Data(contentsOf: fileURL)
         return try await uploadImage(
             sessionID: sessionID,

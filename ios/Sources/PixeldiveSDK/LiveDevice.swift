@@ -69,7 +69,7 @@ private func liveCameras() -> [CameraInfo] {
     let mapped = session.devices.enumerated().map { offset, device in
         cameraInfo(device, fallbackID: String(offset))
     }
-    return mapped.isEmpty ? DeviceSnapshot.sampleiPhone().cameraCapabilities.cameras : mapped
+    return mapped
 }
 
 private func cameraInfo(_ device: AVCaptureDevice, fallbackID: String) -> CameraInfo {
@@ -140,6 +140,7 @@ private func processSnapshot(sessionName: String) -> SessionCreate {
     payload.metadata["system_name"] = .string(info.operatingSystemVersionString)
     payload.metadata["ios_version"] = .string(version)
     payload.metadata["live_source"] = .string("processinfo")
+    payload.cameraCapabilities = CameraCapabilities(cameras: [])
     return payload
 }
 

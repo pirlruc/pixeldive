@@ -29,16 +29,41 @@ func completeLoad(data: Data?, response: URLResponse?, error: Error?) throws -> 
 }
 
 func loadURL(_ session: URLSession, _ request: URLRequest) async throws -> (Data, URLResponse) {
-    try await withCheckedThrowingContinuation { continuation in
-        let task = session.dataTask(with: request) { data, response, error in
-            do {
-                continuation.resume(returning: try completeLoad(data: data, response: response, error: error))
-            } catch {
-                continuation.resume(throwing: error)
+    let box = TaskBox()
+    return try await withTaskCancellationHandler {
+        try await withCheckedThrowingContinuation { continuation in
+            let task = session.dataTask(with: request) { data, response, error in
+                do {
+                    continuation.resume(returning: try completeLoad(data: data, response: response, error: error))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
+            box.task = task
+            task.resume()
         }
-        task.resume()
+    } onCancel: {
+        box.task?.cancel()
     }
+}
+
+func redirectSafeSession(existing: URLSession?, timeout: TimeInterval) -> URLSession {
+    guard let existing else {
+        return makeEphemeralSession(timeout: timeout)
+    }
+    #if canImport(ObjectiveC)
+    return URLSession(
+        configuration: existing.configuration,
+        delegate: RedirectBlockingDelegate.shared,
+        delegateQueue: nil
+    )
+    #else
+    return existing
+    #endif
+}
+
+private final class TaskBox: @unchecked Sendable {
+    var task: URLSessionDataTask?
 }
 
 func makeEphemeralSession(timeout: TimeInterval) -> URLSession {

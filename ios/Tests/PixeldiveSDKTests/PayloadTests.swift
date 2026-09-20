@@ -49,6 +49,9 @@ final class PayloadTests: XCTestCase {
         XCTAssertEqual(live.cameraCapabilities.cameraCount, live.cameraCapabilities.cameras.count)
         XCTAssertEqual(live.metadata["platform"], .string("ios"))
         XCTAssertFalse(live.phoneInfo.androidVersion.isEmpty)
+        #if !os(iOS)
+        XCTAssertEqual(live.cameraCapabilities.cameras.count, 0)
+        #endif
     }
 
     func testJSONValueRoundTrip() throws {
@@ -114,7 +117,9 @@ final class PayloadTests: XCTestCase {
         XCTAssertEqual(MultipartSanitizer.token("file;name", fallback: "file"), "filename")
         XCTAssertEqual(MultipartSanitizer.token("@@@", fallback: "file"), "file")
         XCTAssertEqual(MultipartSanitizer.mediaType("image/png\r\nX: 1"), "image/png")
+        XCTAssertEqual(MultipartSanitizer.mediaType("image/png; charset=utf-8"), "image/png")
         XCTAssertEqual(MultipartSanitizer.mediaType("nope"), "application/octet-stream")
+        XCTAssertEqual(MultipartSanitizer.filename("a\0.png"), "a_.png")
         XCTAssertEqual(MultipartSanitizer.mediaType(""), "application/octet-stream")
     }
 

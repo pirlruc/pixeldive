@@ -102,7 +102,8 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Compose secrets have no in-file defaults; `cp .env.example .env` before `docker compose up`.
 - `ENVIRONMENT=production` requires `AUTH_REQUIRED=true` and `GRPC_INSECURE=false`.
 - Host-native HTTP/gRPC defaults are `127.0.0.1`; image/Compose set `0.0.0.0` in-container.
-- Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001) and skips Gradle unless Java is on PATH (KT-ENV-001). When those tools are present, coverage is fail-closed (llvm-cov / Kover), not a log-only echo. `check-swift-coverage.py` finds `llvm-cov` next to `swift` when it is not on PATH. The `ios-sdk` job on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1` (SwiftLint + `xcodebuild` + Trivy `fs`). The `android-sdk` job sets `PIXELDIVE_REQUIRE_JAVA=1` (ktlint + detekt + Kover + Trivy `fs`). Ubuntu `quality` has Swift and Java and runs both package tests. Linux URLSession ignores `URLProtocol`; iOS client tests use an `HTTPPerforming` stub and a loopback POSIX server for the real URLSession path. FoundationNetworking has no `URLResponse()` — use `URLResponse(url:mimeType:expectedContentLength:textEncodingName:)`. Android client tests use OkHttp MockWebServer. Do not include the Compose demo from `ANDROID_HOME` — GitHub Ubuntu sets that; use `local.properties` or `PIXELDIVE_INCLUDE_ANDROID_DEMO=1`. Default URLSession/OkHttp clients do not follow redirects (Authorization leak). Apple Swift treats CRLF as one `Character`; multipart sanitizers must walk `unicodeScalars` so CR and LF are each stripped. PNG multipart bodies are not UTF-8 — assert on `Data`, not `String(encoding:)`. Proposed analog changes: Foundation-only SPM and JVM `:sdk` tests on Linux ([docs/new-guardrails](new-guardrails/)).
+- Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001) and skips Gradle unless Java is on PATH (KT-ENV-001). When those tools are present, coverage is fail-closed (llvm-cov / Kover). `check-swift-coverage.py` finds `llvm-cov` next to `swift`. `ios-sdk` on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1`; `android-sdk` sets `PIXELDIVE_REQUIRE_JAVA=1`. Linux URLSession ignores `URLProtocol`; tests use `HTTPPerforming` plus a loopback server. FoundationNetworking has no `URLResponse()`. Do not include the Compose demo from `ANDROID_HOME`. Apple Swift treats CRLF as one `Character`; sanitizers walk `unicodeScalars`. PNG multipart bodies are not UTF-8.
+- Android `HttpUrl.resolve` dropped a base path prefix — concatenate like iOS/httpx. Multipart `Content-Type` parameters (`charset=`) must be stripped, not glued onto the subtype. iOS must trim bearer tokens, reject non-file upload URLs, refuse off-origin followed redirects, and must not fabricate sample cameras when discovery is empty.
 
 ## Suggested next work
 
@@ -121,5 +122,6 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - SDK-002: Swift `PixeldiveSDK` + SwiftUI demo + Swift guardrail proposals
 - SDK-003: Kotlin `PixeldiveClient` + Compose demo + Kotlin/Android guardrail proposals
 - Review pass: 3xx/redirect + multipart filename hardening; llvm-cov/Kover/ktlint/detekt fail-closed in CI
+- Follow-up pass: Android base-path join, media-type parameters, cancellable OkHttp; iOS token trim, file URL, off-origin redirect refuse, empty camera discovery
 
 *Last updated: 2026-09-20*

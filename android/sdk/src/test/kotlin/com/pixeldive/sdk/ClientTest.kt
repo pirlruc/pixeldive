@@ -243,6 +243,15 @@ class ClientTest {
     }
 
     @Test
+    fun keepsBasePathPrefix() =
+        runBlocking {
+            server.enqueue(json(mapOf("status" to "ok")))
+            val client = PixeldiveClient(baseUrl = server.url("/pixeldive/").toString())
+            assertEquals("ok", client.health().status)
+            assertEquals("/pixeldive/health", server.takeRequest().path)
+        }
+
+    @Test
     fun rejectsNonUuidSession() {
         val client = client()
         assertThrows<PixeldiveException.InvalidResourceId> {

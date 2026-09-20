@@ -89,7 +89,8 @@ enum MultipartSanitizer {
         let base = raw.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) ?? raw
         var cleaned = ""
         for scalar in base.unicodeScalars {
-            if scalar == "\n" || scalar == "\r" || scalar == "\"" || scalar == "\\" || scalar == ";" || scalar == ":" {
+            if scalar == "\n" || scalar == "\r" || scalar == "\"" || scalar == "\\" || scalar == ";"
+                || scalar == ":" || scalar == "\0" {
                 cleaned.append("_")
             } else {
                 cleaned.append(Character(scalar))
@@ -106,7 +107,7 @@ enum MultipartSanitizer {
     static func mediaType(_ raw: String) -> String {
         var first = ""
         for scalar in raw.unicodeScalars {
-            if scalar == "\n" || scalar == "\r" {
+            if scalar == "\n" || scalar == "\r" || scalar == ";" {
                 break
             }
             first.append(Character(scalar))
