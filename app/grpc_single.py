@@ -28,8 +28,8 @@ async def assemble_single(
     await writer.start()
     try:
         return await collect_single(chunks, context, writer)
-    except (ImageTooLargeError, EmptyImageError) as exc:
-        await abort_rpc(context, exc)
-    except Exception:
+    except Exception as exc:
         await writer.abort()
+        if isinstance(exc, ImageTooLargeError | EmptyImageError):
+            await abort_rpc(context, exc)
         raise

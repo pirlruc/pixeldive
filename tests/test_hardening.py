@@ -13,12 +13,13 @@ from app.auth import Principal, lookup_owner
 from app.config import Settings
 from app.database import create_engine, init_db, session_factory
 from app.error_map import ERROR_STATUS
-from app.exceptions import SessionServiceError
+from app.exceptions import ImageNotFoundError, SessionServiceError
+from app.magic import header_bytes, matches_declared_type
 from app.models import ImageUpload
 from app.runtime import validate_auth_settings
 from app.service import SessionService
 from app.storage import LocalFilesystemStorage
-from tests.conftest import PNG_1X1, sample_create
+from tests.conftest import JPEG_MIN, PNG_1X1, sample_create
 
 
 def test_error_map_covers_every_domain_error() -> None:
@@ -32,6 +33,37 @@ def test_lookup_owner_is_constant_time_membership() -> None:
     keys = {"alpha": "tenant-a", "beta": "tenant-b"}
     assert lookup_owner("alpha", keys) == "tenant-a"
     assert lookup_owner("missing", keys) is None
+    assert lookup_owner("toolong", keys) is None
+
+
+def test_default_bind_is_loopback() -> None:
+    """Host-native defaults listen on localhost; containers override to 0.0.0.0."""
+    assert Settings.model_fields["http_host"].default == "127.0.0.1"
+    assert Settings.model_fields["grpc_host"].default == "127.0.0.1"
+
+
+def test_magic_bytes_match_declared_types(tmp_path: Path) -> None:
+    """Sniff PNG/JPEG/WEBP/HEIF/BMP/TIFF; reject forged Content-Type."""
+    webp = b"RIFF\x00\x00\x00\x00WEBP"
+    heif = b"\x00\x00\x00\x18ftypmif1"
+    spool = tmp_path / "frame.png"
+    spool.write_bytes(PNG_1X1)
+    assert matches_declared_type("image/png", PNG_1X1)
+    assert matches_declared_type("image/jpeg", JPEG_MIN)
+    assert matches_declared_type("image/jpg", JPEG_MIN)
+    assert matches_declared_type("image/webp", webp)
+    assert matches_declared_type("image/heic", heif)
+    assert matches_declared_type("image/heif", b"\x00\x00\x00\x18ftypheic")
+    assert matches_declared_type("image/bmp", b"BM....")
+    assert matches_declared_type("image/tiff", b"II*\x00")
+    assert matches_declared_type("image/tif", b"MM\x00*")
+    assert not matches_declared_type("image/png", b"not-a-png")
+    assert not matches_declared_type("image/webp", b"RIFF\x00\x00\x00\x00XXXX")
+    assert not matches_declared_type("application/octet-stream", PNG_1X1)
+    assert header_bytes(
+        ImageUpload(filename="f.png", content_type="image/png", spool_path=str(spool)),
+    ).startswith(b"\x89PNG")
+    assert header_bytes(ImageUpload(filename="f.png", content_type="image/png")) == b""
 
 
 def test_production_requires_auth_and_tls() -> None:
@@ -103,6 +135,20 @@ async def test_stream_image_skips_reload_when_row_passed(service: SessionService
     again = b"".join([chunk async for chunk in service.stream_image(session.id, image.id)])
     assert again == PNG_1X1
     assert calls["n"] == 1
+
+
+@pytest.mark.asyncio
+async def test_stream_image_rejects_mismatched_row(service: SessionService) -> None:
+    """Passing another session's row must not stream that blob."""
+    first = await service.create_session(sample_create())
+    second = await service.create_session(sample_create())
+    image = await service.add_image(
+        second.id,
+        ImageUpload(filename="frame.png", content_type="image/png", payload=PNG_1X1),
+    )
+    with pytest.raises(ImageNotFoundError):
+        async for _chunk in service.stream_image(first.id, image.id, image=image):
+            pass
 
 
 @pytest.mark.asyncio

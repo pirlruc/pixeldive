@@ -75,6 +75,9 @@ Production-shaped auth: set `ENVIRONMENT=production` (refuses to start without
 `RATE_LIMIT_PER_MINUTE`, `TENANT_MAX_UPLOAD_BYTES`, `SESSION_MAX_UPLOAD_BYTES`
 (0 = unlimited). Set `GC_MIN_AGE_SECONDS` and `ORPHAN_SWEEP_INTERVAL_SECONDS` to
 positive values in production so concurrent same-hash uploads are not collected early.
+Process defaults bind HTTP/gRPC to `127.0.0.1`; the Docker image and Compose set
+`HTTP_HOST`/`GRPC_HOST` to `0.0.0.0` so the published loopback ports reach the
+container.
 
 Compose host ports bind to `127.0.0.1`. Named volumes `pgdata`, `images`, and
 `minio` hold state — back them up with `docker compose run --rm` / volume snapshots

@@ -8,6 +8,7 @@ from pathlib import Path
 import aiofiles
 import aiofiles.os
 
+from app.fs_async import unlink_missing
 from app.local_listing import file_age_seconds, list_local_blobs
 from app.local_write import save_payload, save_spool_file
 
@@ -46,9 +47,10 @@ class LocalFilesystemStorage:
     async def delete(self, storage_path: str) -> None:
         """Unlink the file; ignore if already gone."""
         try:
-            await aiofiles.os.remove(self._contained(storage_path))
+            path = self._contained(storage_path)
         except FileNotFoundError:
             return
+        await unlink_missing(path)
 
     async def exists(self, storage_path: str) -> bool:
         """Return True when the local file is present."""

@@ -86,6 +86,8 @@ class SessionOpsMixin(SessionHost):
         not consume a second quota hit or extra DB round-trip.
         """
         row = image or await self.get_image(session_id, image_id, principal)
+        if row.session_id != session_id or row.id != image_id:
+            raise ImageNotFoundError(f"image {image_id} not found")
         try:
             async for chunk in self._storage.stream(
                 row.storage_path,

@@ -83,13 +83,26 @@ determinism. Treat uv, poetry, pip-tools, and a committed `requirements.txt` of
 pinned hashes/versions as equivalent lockfiles. Prefer uv for new Python repos;
 do not force a second lockfile onto an existing pip consumer.
 
-### PY-SEC-002 — CodeQL `security-extended` as accepted SAST
+### PY-SEC-004 — Audit the lockfile without a throwaway venv
+
+`pip-audit -r requirements.txt` creates a temporary venv. Hosts without
+`ensurepip` (Debian `python3-venv` missing) cannot run that. When the file is
+already a fully pinned lock (every line `==`), `--no-deps --disable-pip` audits
+the pin list directly. Document that as an accepted evaluator for pip-tools /
+committed `requirements.txt` consumers; keep the temp-venv path for uv/poetry
+projects that still need resolution.
+
+### PY-SEC-002 — CodeQL `security-extended` as accepted SAST; no bind-all nosec
 
 The profile lists `semgrep` and `bandit`. GitHub-hosted Python repos already run
 CodeQL `security-extended` and fail on High/Critical ([CI-005](https://github.com/pirlruc/guardrails/blob/1.6.0/ci/guardrails.md)).
 Document CodeQL as an accepted SAST evaluator *in addition to* bandit, so
 consumers are not required to run three overlapping SAST tools. Bandit remains
 useful for Python-idiom checks CodeQL misses (`assert`, `exec`, bind-all).
+
+Bandit B104 flags `0.0.0.0` literals in settings. Host-native defaults should
+be loopback. Images and Compose set `HTTP_HOST`/`GRPC_HOST=0.0.0.0` inside the
+container network. Do not `# nosec B104` a process-wide default.
 
 ### PY-CPLX-001 max CC 10 → 8 (already shipped in 1.6.0)
 

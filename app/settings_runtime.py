@@ -8,9 +8,9 @@ from app.io_sizes import GRPC_UPLOAD_CHUNK_BYTES, IO_CHUNK_BYTES
 class RuntimeSettingsMixin:
     """Process bind addresses, upload ceilings, and credentials."""
 
-    http_host: str = "0.0.0.0"
+    http_host: str = "127.0.0.1"
     http_port: int = 8000
-    grpc_host: str = "0.0.0.0"
+    grpc_host: str = "127.0.0.1"
     grpc_port: int = 50051
     max_image_bytes: int = 32 * 1024 * 1024
     max_batch_images: int = 100

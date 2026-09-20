@@ -24,7 +24,7 @@ requirements (no published image, no uv migration) are open work in
 | PY-DOC-002 | ruff pydocstyle Google. `pydoclint` is not in CI yet ([QUAL-003](../issues.yml)). |
 | PY-SEC-002 | bandit in `ci-local.sh` and `security.yml`; CodeQL `security-extended` remains. |
 | PY-SEC-003 | gitleaks 8.30.1 (aligned with pre-commit). |
-| PY-SEC-004 | pip-audit in `ci-local.sh` and `security.yml`. |
+| PY-SEC-004 | pip-audit in `ci-local.sh` and `security.yml` with `--no-deps --disable-pip` (pinned `requirements.txt`; no throwaway venv). |
 
 ## Docker / Compose
 
@@ -60,4 +60,6 @@ product findings. No finding-level `nosec` / CodeQL suppressions were added.
 In-code hardenings in this bump: HMAC API-key compare, in-process quota lock,
 magic-byte upload sniff, production `ENVIRONMENT` fail-closed, download no longer
 double-hits quotas, S3 “missing” no longer treats any `ClientError` whose message
-contains `404` as not-found.
+contains `404` as not-found. Host-native HTTP/gRPC defaults are `127.0.0.1` so
+bandit B104 is not suppressed; the image and Compose still set `0.0.0.0` inside
+the container network.

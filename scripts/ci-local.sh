@@ -21,7 +21,7 @@ DOC="$("$PYTHON" scripts/read_python_threshold.py doc_coverage)"
 "$PYTHON" scripts/check-complexity.py
 "$PYTHON" -m interrogate -c pyproject.toml app main.py sdk demo
 "$PYTHON" -m bandit -q -r app main.py sdk demo -x app/pb
-"$PYTHON" -m pip_audit -r requirements.txt
+"$PYTHON" -m pip_audit -r requirements.txt --no-deps --disable-pip --progress-spinner off
 "$PYTHON" -m pytest \
   --cov=app --cov=main --cov=sdk --cov=demo --cov-branch \
   --cov-fail-under="${STMT}" \
