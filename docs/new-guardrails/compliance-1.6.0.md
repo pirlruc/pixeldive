@@ -43,7 +43,7 @@ registry or GitHub Release publish.
 | DOCKER-LINT-001 | hadolint failure-threshold `warning` in CI and `scripts/run-hadolint.sh`. |
 | DOCKER-LINT-002 | KICS fail-on `high,medium` in CI and `scripts/run-kics.sh`. |
 | DOCKER-LINT-003 | `docker compose --profile s3 config --quiet` in CI. |
-| DOCKER-SEC-001 | Trivy HIGH/CRITICAL on the CI-built `pixeldive:ci` image (`security.yml` `image` job). |
+| DOCKER-SEC-001 | Trivy HIGH/CRITICAL on the CI-built `pixeldive:ci` image (`security.yml` `image` job). `ignore-unfixed` for Debian `will_not_fix`/`fix_deferred`; pip/setuptools stripped from the runtime image. |
 | SC-SBOM-001/002 | CycloneDX JSON retained as a CI artifact from that image. |
 | SC-SIGN-001 / SC-PROV-001 / DOCKER-TEST-001 | Apply to published artifacts. No registry publish path yet. |
 

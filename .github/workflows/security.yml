@@ -165,6 +165,7 @@ jobs:
           image-ref: pixeldive:ci
           format: table
           severity: HIGH,CRITICAL
+          ignore-unfixed: true
           exit-code: "1"
 
       - name: SBOM
