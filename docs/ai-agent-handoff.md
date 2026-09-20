@@ -19,7 +19,7 @@ Analog submodule pins ([TOOL-001-T1](issues.yml)) still need a token that can cl
 | --- | --- | --- |
 | models | `app/models.py`, `app/schemas.py` | SQLModel tables + Android-aligned JSON payloads; `storage_path` is internal |
 | service | `app/service.py` | Single business layer for REST and gRPC (mixins for list/ingest/batch) |
-| quotas | `app/quotas.py` | In-process per-tenant rate/byte caps (SEC-002); shared store is SEC-004 |
+| quotas | `app/quotas.py` | In-process per-tenant caps (SEC-002); shared Postgres is SEC-004; Redis hot path is SEC-005 |
 | REST | `app/api.py`, `app/api_images.py` | FastAPI `/api/v1` + `/health` `/ready` `/metrics` |
 | gRPC | `app/grpc_server.py`, `proto/session_service.proto` | aio servicer; generated stubs in `app/pb/` |
 | storage | `app/local_storage.py`, `app/s3_storage.py`, `app/s3_multipart.py` | SHA-256 local FS + async S3 multipart PUT |
@@ -111,7 +111,8 @@ Clients should send the same keys they already read on-device:
 
 - [TOOL-001-T1](issues.yml) pin analog submodules once tokens exist
 - [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
-- [SEC-004](issues.yml) shared quota store across replicas (recommend Postgres)
+- [SEC-004](issues.yml) shared quota store on PostgreSQL (first multi-replica tests)
+- [SEC-005](issues.yml) optional Redis quota hot path if Postgres contends
 - Close stale per-ecosystem Dependabot PRs after the grouped-compatible bump lands (SC-DEP-002)
 
 ## Recent history
@@ -121,5 +122,6 @@ Clients should send the same keys they already read on-device:
 - Phase 2 (SEC/PERF/DATA/OPS/API), SDK-001, demo, PERF-002 async S3 shipped in [PR #7](https://github.com/pirlruc/pixeldive/pull/7) (`96192bf`)
 - Phase 3 remaining hardening + compatible Dependabot updates on `cursor/phase3-hardening-deps-7b15`
 - QUAL-002: CPython 3.13 per PY-RUN-003 (not Dependabot 3.14); boto3 stays replaced by aiobotocore
+- SEC-005 recorded as Redis follow-up; SEC-004 stays PostgreSQL for first shared-quota tests
 
 *Last updated: 2026-09-20*

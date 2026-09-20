@@ -30,7 +30,7 @@
 #   open  TOOL-002
 #   done  SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
 #         (this change; GitHub issue objects still unpublished — TOOL-002)
-#   open  SEC-004 (multi-replica quotas)
+#   open  SEC-004 (Postgres shared quotas), SEC-005 (Redis quota hot path later)
 #   done  QUAL-002 (CPython 3.13 per PY-RUN-003; boto3 stays out)
 
 milestones:
@@ -1077,13 +1077,15 @@ milestones:
         title: Share quota accounting across replicas
         overview:
           problem: >-
-            SEC-002 enforces rate and byte caps inside one process. Multiple
-            app replicas each keep their own sliding window, so a captured key
-            can multiply the configured cap by replica count.
+            SEC-002 enforces rate and byte caps inside one process. That is
+            enough for many phones against a single app replica. Multiple
+            app replicas each keep their own sliding window, so a captured
+            key can multiply the configured cap by replica count.
           goal: >-
             Back TenantQuota with PostgreSQL so REST and gRPC across replicas
             share one cap, still skipped when AUTH_REQUIRED is false. Redis
-            is deferred unless the hot path contends.
+            is a later follow-up ([SEC-005](issues.yml)) if quota writes
+            contend under replica count and ingest QPS.
         architecture:
           target: >-
             In the context of horizontally scaled ingest, facing in-process
@@ -1166,4 +1168,48 @@ milestones:
             verification:
               - rg -n "3.13" Dockerfile .github/workflows/quality.yml pyproject.toml
               - rg -n "boto3" requirements.txt && exit 1 || true
+
+      - id: SEC-005
+        status: open
+        title: Move the quota hot path to Redis when Postgres contends
+        overview:
+          problem: >-
+            SEC-004 shares TenantQuota through PostgreSQL so two app replicas
+            honour one cap. That is enough for first multi-replica tests.
+            Many Camera2 clients against many replicas can turn every
+            rate-limit hit into a Postgres write; INCR/TTL in Redis is the
+            usual hot-path tool. Phone count against a single replica does
+            not by itself require Redis (SEC-002 already caps that process).
+          goal: >-
+            Keep the SessionService quota API. After SEC-004, offer a Redis
+            backend for request-rate hits (and optionally byte reservations)
+            when ingest QPS or replica count contends on Postgres. AUTH_REQUIRED
+            false stays unlimited; store failure stays fail-closed.
+        architecture:
+          target: >-
+            In the context of scaled Camera2 ingest, facing Postgres quota
+            writes on the request path, we decided to keep PostgreSQL as the
+            first shared store (SEC-004) and add Redis only when that hot
+            path contends, rather than introducing Redis for the first test
+            of shared quotas.
+          modules:
+            - app/quotas.py
+            - docker-compose.yml
+        acceptance_criteria:
+          - Redis is optional; default shared backend remains PostgreSQL (SEC-004)
+          - Two processes sharing Redis honour one rate budget
+          - AUTH_REQUIRED=false remains unlimited
+          - Redis down fails closed when quotas are configured
+        guardrail_refs:
+          - PY-TEST-002
+        tasks:
+          - id: SEC-005-T1
+            status: open
+            title: Add an optional Redis TenantQuota backend behind the existing API
+            instructions:
+              files:
+                - app/quotas.py
+                - docker-compose.yml
+            verification:
+              - bash scripts/ci-local.sh
 

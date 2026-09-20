@@ -11,6 +11,7 @@ device/camera identity, then upload frames over REST (multipart) or gRPC (client
 | Blobs | SHA-256 local filesystem, or async S3-compatible adapter (aiobotocore) |
 | SDK | `sdk/pixeldive_sdk` (`RestClient`, `GrpcClient`) |
 | Demo | `python -m demo` (FastAPI UI that talks to the service only through the SDK) |
+| Runtime | CPython **3.13** ([QUAL-002](docs/issues.yml), PY-RUN-003) |
 
 Both transports call the same `SessionService` ([ARCH-001](docs/issues.yml)).
 
@@ -29,6 +30,7 @@ the Python service, not an Android app — do not copy Heimdall's `app → kit �
 ## Quick start
 
 ```bash
+# CPython 3.13 (PY-RUN-003). Docker image and CI use 3.13; do not develop on 3.12.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 bash scripts/generate_proto.sh
