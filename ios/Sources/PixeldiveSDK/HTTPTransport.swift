@@ -7,14 +7,14 @@ import FoundationNetworking
 struct HTTPTransport: @unchecked Sendable {
     let baseURL: URL
     let token: String?
-    let session: URLSession
+    let performer: HTTPPerforming
     let encoder: JSONEncoder
     let decoder: JSONDecoder
 
-    init(baseURL: URL, token: String?, session: URLSession) {
+    init(baseURL: URL, token: String?, performer: HTTPPerforming) {
         self.baseURL = baseURL
         self.token = token
-        self.session = session
+        self.performer = performer
         self.encoder = JSONCodec.makeEncoder()
         self.decoder = JSONCodec.makeDecoder()
     }
@@ -90,7 +90,7 @@ struct HTTPTransport: @unchecked Sendable {
     private func send(_ request: URLRequest) async throws -> Data {
         let pair: (Data, URLResponse)
         do {
-            pair = try await loadURL(session, request)
+            pair = try await performer.data(for: request)
         } catch {
             throw PixeldiveError.transport(error.localizedDescription)
         }

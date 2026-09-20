@@ -101,7 +101,7 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Compose secrets have no in-file defaults; `cp .env.example .env` before `docker compose up`.
 - `ENVIRONMENT=production` requires `AUTH_REQUIRED=true` and `GRPC_INSECURE=false`.
 - Host-native HTTP/gRPC defaults are `127.0.0.1`; image/Compose set `0.0.0.0` in-container.
-- Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001). The `ios-sdk` job on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1`. Proposed analog change: Foundation-only SPM may use Linux `swift test` ([docs/new-guardrails/swift.md](new-guardrails/swift.md)).
+- Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001). The `ios-sdk` job on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1`. Ubuntu `quality` has Swift and runs the package tests. Linux URLSession ignores `URLProtocol`; client tests use an `HTTPPerforming` stub. Proposed analog change: Foundation-only SPM may use Linux `swift test` ([docs/new-guardrails/swift.md](new-guardrails/swift.md)).
 
 ## Suggested next work
 

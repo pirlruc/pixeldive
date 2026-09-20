@@ -102,7 +102,9 @@ library may use `swift test` on Linux (host Swift or a digest-pinned `swift:` im
 Coverage still uses llvm-cov line coverage (SWIFT-TEST-002 already rejects branch %).
 
 **Why here:** pixeldive CI is Ubuntu for PY-*; the iOS SDK package has no UIKit in
-the library target. Demo/`xcodebuild` stays on the `ios-sdk` macOS job.
+the library target. Demo/`xcodebuild` stays on the `ios-sdk` macOS job. Linux
+`URLSession` is libcurl-backed and does not honor `URLProtocol`, so package tests
+inject an `HTTPPerforming` stub instead of relying on protocol classes.
 
 ### SWIFT-TEST-002 — Library modules may be stricter than 90
 

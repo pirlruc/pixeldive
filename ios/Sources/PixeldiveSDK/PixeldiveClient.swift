@@ -15,13 +15,12 @@ public struct PixeldiveClient: Sendable {
         session: URLSession? = nil,
         timeout: TimeInterval = 60
     ) {
-        let resolved: URLSession
-        if let session {
-            resolved = session
-        } else {
-            resolved = makeEphemeralSession(timeout: timeout)
-        }
-        self.http = HTTPTransport(baseURL: baseURL, token: token, session: resolved)
+        let resolved = session ?? makeEphemeralSession(timeout: timeout)
+        self.init(baseURL: baseURL, token: token, performer: URLSessionPerformer(session: resolved))
+    }
+
+    init(baseURL: URL, token: String?, performer: HTTPPerforming) {
+        self.http = HTTPTransport(baseURL: baseURL, token: token, performer: performer)
     }
 
     /// GET `/health`.
