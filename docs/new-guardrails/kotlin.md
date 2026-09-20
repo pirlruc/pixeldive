@@ -53,8 +53,9 @@ emulator remain host/macOS/Android CI. Coverage still uses Kover line+branch
 (KT-TEST-002).
 
 **Why here:** pixeldive CI is Ubuntu for PY-*; the Android SDK library has no
-`com.android.library` dependency. The demo is included only when `ANDROID_HOME` is
-set.
+`com.android.library` dependency. The demo is included only when
+`local.properties` exists (Android Studio) or `PIXELDIVE_INCLUDE_ANDROID_DEMO=1`.
+Do not key off `ANDROID_HOME`: GitHub-hosted Ubuntu sets that variable.
 
 ## Changes to existing IDs
 

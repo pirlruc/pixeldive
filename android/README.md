@@ -20,7 +20,10 @@ Android Gradle Plugin. The Compose demo implements `DeviceProbe` with `Build`,
 
 - JDK 21 (KT-BUILD-001)
 - Gradle wrapper in `android/`
-- Android SDK only for the Compose demo (KT-ENV-001 proposal)
+- Android SDK only for the Compose demo (KT-ENV-001 proposal). GitHub-hosted
+  Ubuntu sets `ANDROID_HOME`; the demo module is **not** included from that.
+  Open `android/` in Android Studio (writes `local.properties`) or set
+  `PIXELDIVE_INCLUDE_ANDROID_DEMO=1`.
 - JVM unit tests run with `./gradlew :sdk:test` on Linux
 
 ## SDK usage
@@ -48,7 +51,8 @@ does not write them to `SharedPreferences`.
 ## Demo app
 
 1. Run the session service (`python3 main.py` or Compose).
-2. Set `ANDROID_HOME` and open `android/` in Android Studio.
+2. Open `android/` in Android Studio (creates `local.properties`) or set
+   `PIXELDIVE_INCLUDE_ANDROID_DEMO=1`.
 3. Run `:demo` on an emulator or device (emulator host is `http://10.0.2.2:8000`).
 4. Create a session, pick a photo, upload, download.
 
@@ -67,5 +71,6 @@ bash scripts/ci-local.sh
 ```
 
 Coverage floor: `config/kotlin.profile.thresholds.yml` (KT-TEST-002). CI job
-`android-sdk` runs on Ubuntu with JDK 21. Compose assemble is skipped without
-`ANDROID_HOME`.
+`android-sdk` runs on Ubuntu with JDK 21. Compose assemble is skipped unless
+`local.properties` exists or `PIXELDIVE_INCLUDE_ANDROID_DEMO=1` (do not use
+`ANDROID_HOME` — GitHub runners set it).
