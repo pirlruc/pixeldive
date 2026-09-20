@@ -14,32 +14,8 @@ public enum JSONValue: Sendable, Equatable {
 extension JSONValue: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        if container.decodeNil() {
-            self = .null
-            return
-        }
-        if let value = try container.decodeIfPresent(Bool.self) {
-            self = .bool(value)
-            return
-        }
-        if let value = try container.decodeIfPresent(Int.self) {
-            self = .int(value)
-            return
-        }
-        if let value = try container.decodeIfPresent(Double.self) {
-            self = .double(value)
-            return
-        }
-        if let value = try container.decodeIfPresent(String.self) {
-            self = .string(value)
-            return
-        }
-        if let value = try container.decodeIfPresent([String: JSONValue].self) {
-            self = .object(value)
-            return
-        }
-        if let value = try container.decodeIfPresent([JSONValue].self) {
-            self = .array(value)
+        if let value = decodeJSON(container) {
+            self = value
             return
         }
         throw DecodingError.dataCorruptedError(in: container, debugDescription: "unsupported JSON")
@@ -71,4 +47,29 @@ extension JSONValue {
     public static func strings(_ values: [String: String]) -> [String: JSONValue] {
         values.mapValues(JSONValue.string)
     }
+}
+
+private func decodeJSON(_ container: SingleValueDecodingContainer) -> JSONValue? {
+    if container.decodeNil() {
+        return .null
+    }
+    if let value = try? container.decode(Bool.self) {
+        return .bool(value)
+    }
+    if let value = try? container.decode(Int.self) {
+        return .int(value)
+    }
+    if let value = try? container.decode(Double.self) {
+        return .double(value)
+    }
+    if let value = try? container.decode(String.self) {
+        return .string(value)
+    }
+    if let value = try? container.decode([String: JSONValue].self) {
+        return .object(value)
+    }
+    if let value = try? container.decode([JSONValue].self) {
+        return .array(value)
+    }
+    return nil
 }
