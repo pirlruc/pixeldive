@@ -11,7 +11,7 @@ clients share one backend contract.
 | Demo app | `ios/Demo/PixeldiveDemo.xcodeproj` |
 | Fixture | `ios/Sources/PixeldiveSDK/Fixtures/sample_ios_session.json` |
 
-There is no first-party Android Kotlin SDK in this repo. Payload shape follows
+There is a first-party Android Kotlin SDK in `android/`. Payload shape follows
 Android `Build` / Camera2 keys documented on `app/device_models.py`. iOS maps
 `UIDevice`, `ProcessInfo`, and `AVCaptureDevice` into those keys; native iOS
 fields live under `metadata.platform=ios`.

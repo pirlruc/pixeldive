@@ -80,3 +80,11 @@ Kotlin already has (SWIFT-CPLX-001/002, SWIFT-CONC-001/002, SWIFT-IOS-003/004,
 SWIFT-SEC-005, SWIFT-ENV-001 Linux SPM overlay) are in
 [swift.md](swift.md), not in `docs/guardrail-deviations.yml`.
 
+## Kotlin pack (SDK-003)
+
+The analog `kotlin/` pack applies to `android/sdk`. Consumer overlay:
+`config/kotlin.profile.thresholds.yml` (95/95 line+branch, max CC 10).
+`scripts/check-android-sdk.sh` plus quality job `android-sdk` (Ubuntu, JDK 21).
+Proposed Android-specific IDs (KT-AND-001/002, KT-SEC-005, KT-ENV-001) are in
+[kotlin.md](kotlin.md), not in `docs/guardrail-deviations.yml`.
+

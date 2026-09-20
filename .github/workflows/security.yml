@@ -140,6 +140,9 @@ jobs:
           semgrep scan --error --severity ERROR --config p/swift \
             --exclude ios/.build --exclude ios/Demo/PixeldiveDemo.xcodeproj \
             ios
+          semgrep scan --error --severity ERROR --config p/kotlin \
+            --exclude android/.gradle --exclude android/**/build \
+            android
 
   image:
     runs-on: ubuntu-latest

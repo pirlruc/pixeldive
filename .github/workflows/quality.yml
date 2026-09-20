@@ -153,3 +153,28 @@ jobs:
         env:
           PIXELDIVE_REQUIRE_SWIFT: "1"
         run: bash scripts/check-ios-sdk.sh
+
+  android-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Init guardrails analog
+        env:
+          GUARDRAILS_READ_TOKEN: ${{ secrets.GUARDRAILS_READ_TOKEN }}
+        run: bash scripts/ci-init-guardrails.sh
+
+      - name: Set up Java
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: KT-* gates
+        env:
+          PIXELDIVE_REQUIRE_JAVA: "1"
+        run: bash scripts/check-android-sdk.sh

@@ -32,4 +32,5 @@ bash "$ROOT/scripts/run-shellcheck.sh"
   --cov-fail-under="${STMT}" \
   -q
 bash "$ROOT/scripts/check-ios-sdk.sh"
+bash "$ROOT/scripts/check-android-sdk.sh"
 echo "ci-local ok (statement_coverage=${STMT} branch_coverage=${BRANCH} doc_coverage=${DOC})"

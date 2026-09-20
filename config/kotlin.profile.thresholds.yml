@@ -1,0 +1,8 @@
+# Consumer copy of docs/guardrails/kotlin/profile.thresholds.yml (pin 1.6.0).
+# Overlay rules match scripts/read_python_threshold.py: analog keys required;
+# stricter values allowed; looser values fail closed (CI-022).
+
+statement_coverage: 95          # KT-TEST-002
+branch_coverage: 95             # KT-TEST-002
+max_cyclomatic_complexity: 10   # KT-CPLX-001
+pr_size_soft_limit_lines: 500   # KT-DELIV-001

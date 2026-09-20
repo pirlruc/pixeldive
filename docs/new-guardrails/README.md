@@ -138,3 +138,10 @@ The analog already ships a `swift/` pack. After adding `ios/PixeldiveSDK`, sever
 Kotlin/Android rules still have no Swift twin (complexity, structured concurrency,
 ATS, token storage). Those proposals, plus a SWIFT-ENV-001 overlay for
 Foundation-only `swift test` on Linux, live in [swift.md](swift.md).
+
+## Kotlin / Android
+
+The analog already ships a `kotlin/` pack. After adding `android/` (JVM OkHttp SDK +
+Compose demo), Android-specific twins of SWIFT-IOS-003/004 and SWIFT-SEC-005 were
+still missing, as was a Linux JVM test overlay. Those proposals live in
+[kotlin.md](kotlin.md).

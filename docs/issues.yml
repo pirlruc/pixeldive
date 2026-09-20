@@ -35,6 +35,7 @@
 #   done  SEC-006 (production fail-closed, magic-byte uploads, HMAC keys)
 #   done  QUAL-003 (hadolint, KICS, Trivy/SBOM on CI image, uv.lock, MinIO digest)
 #   done  SDK-002 (iOS PixeldiveSDK + SwiftUI demo; Swift proposals in docs/new-guardrails)
+#   done  SDK-003 (Android Pixeldive SDK + Compose demo; Kotlin proposals in docs/new-guardrails)
 
 milestones:
   - name: Tooling — Analog & methodology
@@ -1405,5 +1406,75 @@ milestones:
             verification:
               - test -f docs/new-guardrails/swift.md
               - python3 scripts/read_swift_threshold.py statement_coverage
+
+      - id: SDK-003
+        status: done
+        title: Android SDK and Compose capture demo
+        overview:
+          problem: >-
+            Capture clients on Android have no first-party SDK in this repo. The
+            Python RestClient and Android-shaped session JSON exist, and iOS maps
+            into those keys, but there is no Kotlin client that reads Build/Camera2
+            or a demo app that exercises create/upload/download on device.
+          goal: >-
+            Ship a Kotlin JVM OkHttp library that mirrors RestClient over REST,
+            plus a Compose demo that uses only that library and maps Build,
+            ActivityManager, and Camera2 into the existing wire keys, while proposing
+            Android-specific Kotlin guardrails that Swift already has (ATS analog,
+            capture permissions, token storage, Linux JVM tests).
+        architecture:
+          target: >-
+            In the context of Android capture clients uploading processing sessions,
+            facing an Android-shaped JSON contract already used by the Python service
+            and iOS SDK, we decided on a Kotlin JVM OkHttp library that encodes those
+            keys plus metadata.platform=android, plus a Compose demo that maps
+            Build/Camera2 through DeviceProbe, rather than a gRPC client or a new
+            schema, so one SessionService keeps validating both phones.
+          modules:
+            - android
+            - android/demo
+            - tests/test_android_sdk.py
+            - docs/new-guardrails/kotlin.md
+        acceptance_criteria:
+          - PixeldiveClient covers health, ready, session CRUD, image upload/list/download
+          - DeviceSnapshot.samplePixel() matches the bundled fixture and SessionCreate
+          - Compose demo creates a session, uploads a photo, and downloads it via the SDK
+          - Public image JSON from the SDK does not include storage_path
+          - Proposed KT-AND/SEC/ENV IDs live under docs/new-guardrails/kotlin.md
+        guardrail_refs:
+          - KT-TEST-002
+          - KT-API-001
+          - KT-CONC-001
+          - KT-BUILD-001
+          - KT-CPLX-001
+        tasks:
+          - id: SDK-003-T1
+            status: done
+            title: Implement Pixeldive Kotlin JVM SDK
+            instructions:
+              files:
+                - android
+            verification:
+              - bash scripts/check-android-sdk.sh
+              - bash scripts/ci-local.sh
+          - id: SDK-003-T2
+            status: done
+            title: Implement Compose demo app that uses the SDK
+            instructions:
+              files:
+                - android/demo
+            verification:
+              - test -f android/demo/src/main/AndroidManifest.xml
+          - id: SDK-003-T3
+            status: done
+            title: Propose Android Kotlin guardrails from the Swift iOS twins
+            instructions:
+              files:
+                - docs/new-guardrails/kotlin.md
+                - config/kotlin.profile.thresholds.yml
+            verification:
+              - test -f docs/new-guardrails/kotlin.md
+              - python3 scripts/read_kotlin_threshold.py statement_coverage
+
 
 

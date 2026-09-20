@@ -36,3 +36,7 @@ updates:
     directory: /ios
     patterns: ["*"]
     multi-ecosystem-group: all-dependencies
+  - package-ecosystem: gradle
+    directory: /android
+    patterns: ["*"]
+    multi-ecosystem-group: all-dependencies

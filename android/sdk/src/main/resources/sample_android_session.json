@@ -1,0 +1,53 @@
+{
+  "session_name": "android-demo-capture",
+  "phone_info": {
+    "manufacturer": "Google",
+    "model": "Pixel 9 Pro",
+    "brand": "google",
+    "device": "caiman",
+    "board": "caiman",
+    "android_version": "15",
+    "sdk_int": 35
+  },
+  "phone_capabilities": {
+    "total_ram_mb": 16384,
+    "available_ram_mb": 8192,
+    "cpu_abi": "arm64-v8a",
+    "cpu_cores": 8,
+    "screen_width_px": 1280,
+    "screen_height_px": 2856,
+    "screen_density_dpi": 480,
+    "is_low_ram_device": false
+  },
+  "camera_capabilities": {
+    "camera_count": 2,
+    "cameras": [
+      {
+        "camera_id": "0",
+        "lens_facing": "BACK",
+        "hardware_level": "LEVEL_3",
+        "sensor_orientation": 90,
+        "max_resolution": "4080x3072",
+        "has_flash": true,
+        "has_optical_stabilization": true,
+        "supported_capabilities": ["BACKWARD_COMPATIBLE", "RAW"]
+      },
+      {
+        "camera_id": "1",
+        "lens_facing": "FRONT",
+        "hardware_level": "LIMITED",
+        "sensor_orientation": 270,
+        "max_resolution": "4080x3072",
+        "has_flash": false,
+        "has_optical_stabilization": false,
+        "supported_capabilities": ["BACKWARD_COMPATIBLE"]
+      }
+    ]
+  },
+  "metadata": {
+    "source": "pixeldive-android-sdk",
+    "platform": "android",
+    "system_name": "Android",
+    "android_version": "15"
+  }
+}
