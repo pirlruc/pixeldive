@@ -25,9 +25,7 @@ from tests.conftest import JPEG_MIN, PNG_1X1, sample_create
 def test_error_map_covers_every_domain_error() -> None:
     """REST and gRPC share one table that lists every SessionServiceError."""
     production = {
-        cls
-        for cls in SessionServiceError.__subclasses__()
-        if cls.__module__ == "app.exceptions"
+        cls for cls in SessionServiceError.__subclasses__() if cls.__module__ == "app.exceptions"
     }
     assert set(ERROR_STATUS) == production
 
