@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.api import create_app
@@ -99,7 +101,18 @@ def sample_create(**overrides: object) -> SessionCreate:
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
-    """Test settings using a temp SQLite file and local storage."""
+    """Test settings using SQLite by default, or Postgres when CI sets the URL."""
+    database_url = os.environ.get("PIXELDIVE_TEST_DATABASE_URL")
+    if database_url:
+        return Settings(
+            database_url=database_url,
+            storage_backend="local",
+            storage_root=tmp_path / "images",
+            max_image_bytes=1024 * 1024,
+            download_chunk_bytes=16,
+            auto_create_tables=False,
+            log_json=False,
+        )
     return Settings(
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
         storage_backend="local",
@@ -109,14 +122,26 @@ def settings(tmp_path: Path) -> Settings:
     )
 
 
+async def _reset_postgres(engine: AsyncEngine) -> None:
+    """Delete session rows so Postgres tests stay isolated (DATA-003)."""
+    async with engine.begin() as connection:
+        await connection.execute(text("DELETE FROM session_images"))
+        await connection.execute(text("DELETE FROM sessions"))
+
+
 @pytest_asyncio.fixture
 async def engine(settings: Settings) -> AsyncIterator[AsyncEngine]:
-    """Create tables and dispose the engine after the test."""
+    """Create tables (SQLite) or truncate (Postgres) and dispose afterward."""
     engine = create_engine(settings)
-    await init_db(engine)
+    if settings.database_url.startswith("sqlite"):
+        await init_db(engine)
+    else:
+        await _reset_postgres(engine)
     try:
         yield engine
     finally:
+        if not settings.database_url.startswith("sqlite"):
+            await _reset_postgres(engine)
         await engine.dispose()
 
 

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -22,6 +24,10 @@ class FakeS3:
         self.content_types: dict[str, str] = {}
         self.mtimes: dict[str, datetime] = {}
         self.last_body: _BytesReader | None = None
+        self.uploads: dict[str, dict[str, object]] = {}
+        self.parts: dict[str, dict[int, bytes]] = {}
+        self.aborted: list[str] = []
+        self.part_sizes: list[int] = []
 
     async def put_object(self, **kwargs: object) -> None:
         """Store Body under Key."""
@@ -66,6 +72,45 @@ class FakeS3:
         if truncated:
             result["NextContinuationToken"] = str(start + size)
         return result
+
+    async def create_multipart_upload(self, **kwargs: object) -> dict[str, object]:
+        """Start an in-memory multipart upload."""
+        upload_id = str(uuid.uuid4())
+        self.uploads[upload_id] = {
+            "Key": str(kwargs["Key"]),
+            "ContentType": str(kwargs.get("ContentType", "")),
+        }
+        self.parts[upload_id] = {}
+        return {"UploadId": upload_id, "Key": kwargs["Key"]}
+
+    async def upload_part(self, **kwargs: object) -> dict[str, object]:
+        """Store one part body."""
+        upload_id = str(kwargs["UploadId"])
+        number = int(str(kwargs["PartNumber"]))
+        body = bytes(kwargs["Body"])
+        self.parts[upload_id][number] = body
+        self.part_sizes.append(len(body))
+        return {"ETag": hashlib.md5(body, usedforsecurity=False).hexdigest(), "PartNumber": number}
+
+    async def complete_multipart_upload(self, **kwargs: object) -> None:
+        """Concatenate parts and store the object."""
+        upload_id = str(kwargs["UploadId"])
+        meta = self.uploads[upload_id]
+        payload = b"".join(self.parts[upload_id][n] for n in sorted(self.parts[upload_id]))
+        await self.put_object(
+            Key=meta["Key"],
+            Body=payload,
+            ContentType=meta["ContentType"],
+        )
+        self.uploads.pop(upload_id, None)
+        self.parts.pop(upload_id, None)
+
+    async def abort_multipart_upload(self, **kwargs: object) -> None:
+        """Drop an in-flight multipart upload."""
+        upload_id = str(kwargs["UploadId"])
+        self.aborted.append(upload_id)
+        self.uploads.pop(upload_id, None)
+        self.parts.pop(upload_id, None)
 
 
 class _BytesReader:
@@ -236,6 +281,7 @@ async def test_s3_save_file_and_list_blobs(tmp_path: Path) -> None:
     assert blobs[0][0] == key
     assert await backend.age_seconds(key) >= 0
     assert await backend.age_seconds("missing") == 0.0
+    await backend.aclose()
 
 
 @pytest.mark.asyncio
@@ -300,6 +346,21 @@ async def test_aio_s3_adapter_lazy_client(monkeypatch: pytest.MonkeyPatch) -> No
         async def list_objects_v2(self, **kwargs: object) -> dict[str, object]:
             return {"Contents": [], "args": kwargs}
 
+        async def create_multipart_upload(self, **kwargs: object) -> dict[str, object]:
+            captured["mp"] = kwargs
+            return {"UploadId": "u1"}
+
+        async def upload_part(self, **kwargs: object) -> dict[str, object]:
+            return {"ETag": "e", "PartNumber": 1}
+
+        async def complete_multipart_upload(self, **kwargs: object) -> str:
+            captured["complete"] = kwargs
+            return "ok"
+
+        async def abort_multipart_upload(self, **kwargs: object) -> str:
+            captured["abort"] = kwargs
+            return "aborted"
+
     class FakeCM:
         async def __aenter__(self) -> FakeClient:
             captured["entered"] = True
@@ -334,6 +395,12 @@ async def test_aio_s3_adapter_lazy_client(monkeypatch: pytest.MonkeyPatch) -> No
     await adapter.head_object(Bucket="b", Key="k")
     await adapter.list_objects_v2(Bucket="b")
     await adapter.delete_object(Bucket="b", Key="k")
+    await adapter.create_multipart_upload(Bucket="b", Key="k", ContentType="image/png")
+    await adapter.upload_part(Bucket="b", Key="k", UploadId="u1", PartNumber=1, Body=b"x")
+    await adapter.complete_multipart_upload(
+        Bucket="b", Key="k", UploadId="u1", MultipartUpload={"Parts": []}
+    )
+    await adapter.abort_multipart_upload(Bucket="b", Key="k", UploadId="u1")
     assert calls["put"] == 2
     assert captured["service"] == "s3"
     assert captured["endpoint_url"] == "http://127.0.0.1:9000"

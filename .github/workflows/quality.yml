@@ -30,7 +30,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.12"
+          # PY-RUN-003 / QUAL-002: CPython 3.13 (org profile). Not 3.14 until 2027-04.
+          python-version: "3.13"
 
       - name: Install
         run: |
@@ -42,3 +43,45 @@ jobs:
 
       - name: PY-* gates
         run: bash scripts/ci-local.sh
+
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pixeldive
+          POSTGRES_PASSWORD: pixeldive
+          POSTGRES_DB: pixeldive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pixeldive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          # PY-RUN-003 / QUAL-002: CPython 3.13 (org profile). Not 3.14 until 2027-04.
+          python-version: "3.13"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Generate protobuf stubs
+        run: bash scripts/generate_proto.sh
+
+      - name: Alembic + SessionService tests on PostgreSQL
+        env:
+          PIXELDIVE_TEST_DATABASE_URL: postgresql+asyncpg://pixeldive:pixeldive@localhost:5432/pixeldive
+        run: bash scripts/ci-postgres.sh

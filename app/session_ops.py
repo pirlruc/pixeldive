@@ -24,8 +24,24 @@ class SessionOpsMixin(SessionHost):
         """Validate, store, and attach a single image."""
         try:
             validate_upload(upload, self._settings)
+            self._quota.hit(principal)
             async with self._factory() as db:
                 await self._require_session(db, session_id, principal)
+            nbytes = upload_size(upload)
+            self._quota.reserve_bytes(principal, session_id, nbytes)
+            return await self._commit_image(session_id, upload, principal, nbytes)
+        finally:
+            await discard_spool(upload)
+
+    async def _commit_image(
+        self,
+        session_id: uuid.UUID,
+        upload: ImageUpload,
+        principal: Principal | None,
+        nbytes: int,
+    ) -> SessionImage:
+        """Persist one blob and row; release reserved bytes if either step fails."""
+        try:
             storage_path = await persist_upload(self._storage, upload, self._write_sema)
             async with self._factory() as db:
                 session = await self._require_session(db, session_id, principal)
@@ -35,10 +51,11 @@ class SessionOpsMixin(SessionHost):
                 db.add(session)
                 await db.commit()
                 await db.refresh(image)
-            self._metrics.observe_upload(upload_size(upload))
+            self._metrics.observe_upload(nbytes)
             return image
-        finally:
-            await discard_spool(upload)
+        except Exception:
+            self._quota.release_bytes(principal, session_id, nbytes)
+            raise
 
     async def get_image(
         self,
@@ -47,6 +64,7 @@ class SessionOpsMixin(SessionHost):
         principal: Principal | None = None,
     ) -> SessionImage:
         """Load one image row scoped to a session."""
+        self._quota.hit(principal)
         async with self._factory() as db:
             await self._require_session(db, session_id, principal)
             image = await db.get(SessionImage, image_id)

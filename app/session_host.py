@@ -11,6 +11,7 @@ from app.auth import Principal
 from app.config import Settings
 from app.metrics import Metrics
 from app.models import Session
+from app.quotas import TenantQuota
 from app.storage import StorageBackend
 
 
@@ -22,6 +23,7 @@ class SessionHost:
     _settings: Settings
     _metrics: Metrics
     _write_sema: asyncio.Semaphore
+    _quota: TenantQuota
 
     async def _require_session(
         self,

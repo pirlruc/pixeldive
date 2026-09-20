@@ -67,3 +67,7 @@ class LocalFilesystemStorage:
             return await file_age_seconds(self._contained(storage_path))
         except FileNotFoundError:
             return 0.0
+
+    async def aclose(self) -> None:
+        """Local disk has no client to close."""
+        return None

@@ -11,6 +11,7 @@ device/camera identity, then upload frames over REST (multipart) or gRPC (client
 | Blobs | SHA-256 local filesystem, or async S3-compatible adapter (aiobotocore) |
 | SDK | `sdk/pixeldive_sdk` (`RestClient`, `GrpcClient`) |
 | Demo | `python -m demo` (FastAPI UI that talks to the service only through the SDK) |
+| Runtime | CPython **3.13** ([QUAL-002](docs/issues.yml), PY-RUN-003) |
 
 Both transports call the same `SessionService` ([ARCH-001](docs/issues.yml)).
 
@@ -29,6 +30,7 @@ the Python service, not an Android app — do not copy Heimdall's `app → kit �
 ## Quick start
 
 ```bash
+# CPython 3.13 (PY-RUN-003). Docker image and CI use 3.13; do not develop on 3.12.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 bash scripts/generate_proto.sh
@@ -44,17 +46,33 @@ python3 -m pip install --target .venv -r requirements.txt -r requirements-dev.tx
 PYTHONPATH=.venv python3 main.py
 ```
 
-Compose (Postgres + app):
+Compose (Postgres + app, local disk):
 
 ```bash
 docker compose up --build
+```
+
+S3-compatible path (MinIO profile, OPS-003):
+
+```bash
+STORAGE_BACKEND=s3 bash scripts/compose-s3.sh
+# or: STORAGE_BACKEND=s3 docker compose --profile s3 up --build
+```
+
+Upload one image against that stack:
+
+```bash
+curl -F 'file=@frame.png;type=image/png' http://127.0.0.1:8000/api/v1/sessions/<id>/images
 ```
 
 - REST: `http://127.0.0.1:8000/health`, `/ready`, `/metrics`, `/api/v1/sessions`
 - gRPC: `127.0.0.1:50051`
 
 Production-shaped auth: set `AUTH_REQUIRED=true` and `API_KEYS=token:owner-id` (see `.env.example`).
-gRPC TLS is off until `GRPC_INSECURE=false` plus cert/key paths.
+Optional per-tenant quotas: `RATE_LIMIT_PER_MINUTE`, `TENANT_MAX_UPLOAD_BYTES`,
+`SESSION_MAX_UPLOAD_BYTES` (0 = unlimited). gRPC TLS is off until `GRPC_INSECURE=false`
+plus cert/key paths. Set `GC_MIN_AGE_SECONDS` and `ORPHAN_SWEEP_INTERVAL_SECONDS` to
+positive values in production so concurrent same-hash uploads are not collected early.
 
 ## Demo (SDK on an app)
 
@@ -71,6 +89,13 @@ downloads them through `pixeldive_sdk.RestClient`.
 
 ```bash
 bash scripts/ci-local.sh
+```
+
+PostgreSQL integration (CI job `postgres` / DATA-003), not the local default:
+
+```bash
+PIXELDIVE_TEST_DATABASE_URL=postgresql+asyncpg://pixeldive:pixeldive@127.0.0.1:5432/pixeldive \
+  bash scripts/ci-postgres.sh
 ```
 
 Floors live in `config/python.profile.thresholds.yml` (PY-TEST-002 95/95, PY-DOC-001, PY-CPLX-*).

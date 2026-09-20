@@ -29,3 +29,15 @@ class S3ObjectClient(Protocol):
 
     async def list_objects_v2(self, **kwargs: object) -> dict[str, object]:
         """List object keys in the bucket."""
+
+    async def create_multipart_upload(self, **kwargs: object) -> dict[str, object]:
+        """Start a multipart upload."""
+
+    async def upload_part(self, **kwargs: object) -> dict[str, object]:
+        """Upload one part."""
+
+    async def complete_multipart_upload(self, **kwargs: object) -> object:
+        """Finish a multipart upload."""
+
+    async def abort_multipart_upload(self, **kwargs: object) -> object:
+        """Abort a multipart upload."""

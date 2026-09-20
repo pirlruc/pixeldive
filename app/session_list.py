@@ -24,6 +24,7 @@ class SessionListMixin(SessionHost):
         principal: Principal | None = None,
     ) -> Page[Session]:
         """Return a page of sessions newest-first, scoped to the caller."""
+        self._quota.hit(principal)
         page_size = clamp_limit(
             limit,
             self._settings.list_default_limit,
@@ -61,6 +62,7 @@ class SessionListMixin(SessionHost):
         principal: Principal | None = None,
     ) -> Page[SessionImage]:
         """Return a page of image metadata for a session."""
+        self._quota.hit(principal)
         page_size = clamp_limit(
             limit,
             self._settings.list_default_limit,

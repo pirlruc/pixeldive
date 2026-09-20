@@ -15,6 +15,7 @@ from app.exceptions import (
     InvalidIdError,
     InvalidMetadataError,
     InvalidStatusError,
+    QuotaExceededError,
     SessionNotFoundError,
     SessionServiceError,
     UnauthenticatedError,
@@ -33,6 +34,7 @@ GRPC_STATUS: dict[type[SessionServiceError], grpc.StatusCode] = {
     ImageTooLargeError: grpc.StatusCode.RESOURCE_EXHAUSTED,
     UnauthenticatedError: grpc.StatusCode.UNAUTHENTICATED,
     ForbiddenError: grpc.StatusCode.PERMISSION_DENIED,
+    QuotaExceededError: grpc.StatusCode.RESOURCE_EXHAUSTED,
 }
 
 

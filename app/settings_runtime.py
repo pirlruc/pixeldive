@@ -23,3 +23,9 @@ class RuntimeSettingsMixin:
     grpc_tls_key_file: Path | None = None
     grpc_tls_client_ca_file: Path | None = None
     log_json: bool = True
+    rate_limit_per_minute: int = 0
+    rate_limit_window_seconds: float = 60.0
+    tenant_max_upload_bytes: int = 0
+    session_max_upload_bytes: int = 0
+    orphan_sweep_interval_seconds: float = 0.0
+    grpc_upload_chunk_bytes: int = 256 * 1024

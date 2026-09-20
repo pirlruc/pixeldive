@@ -3,13 +3,8 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-PYTHON="${PYTHON:-python3}"
-if [[ -x "$ROOT/.venv/bin/python" ]]; then
-  PYTHON="$ROOT/.venv/bin/python"
-elif [[ -d "$ROOT/.venv" ]]; then
-  export PYTHONPATH="$ROOT/.venv${PYTHONPATH:+:$PYTHONPATH}"
-  export PATH="$ROOT/.venv/bin:${PATH}"
-fi
+# shellcheck source=python-env.sh
+source "$ROOT/scripts/python-env.sh"
 
 "$PYTHON" scripts/read_python_threshold.py statement_coverage >/dev/null
 "$PYTHON" scripts/read_python_threshold.py branch_coverage >/dev/null
@@ -19,12 +14,6 @@ fi
 STMT="$("$PYTHON" scripts/read_python_threshold.py statement_coverage)"
 BRANCH="$("$PYTHON" scripts/read_python_threshold.py branch_coverage)"
 DOC="$("$PYTHON" scripts/read_python_threshold.py doc_coverage)"
-
-if [[ -x "$ROOT/.venv/bin/ruff" ]]; then
-  RUFF=("$ROOT/.venv/bin/ruff")
-else
-  RUFF=("$PYTHON" -m ruff)
-fi
 
 "${RUFF[@]}" check app main.py tests scripts sdk demo
 "${RUFF[@]}" format --check app main.py tests scripts sdk demo

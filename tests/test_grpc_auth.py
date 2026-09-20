@@ -19,7 +19,7 @@ from tests.test_grpc import _create_request
 
 @pytest.mark.asyncio
 async def test_grpc_unauthenticated_and_forbidden(tmp_path: Path) -> None:
-    """Missing metadata is UNAUTHENTICATED; the other tenant is PERMISSION_DENIED."""
+    """Missing metadata is UNAUTHENTICATED; the other tenant is NOT_FOUND."""
     settings = Settings(
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'grpc-auth.db'}",
         storage_backend="local",
@@ -54,7 +54,7 @@ async def test_grpc_unauthenticated_and_forbidden(tmp_path: Path) -> None:
                 pb.GetSessionRequest(session_id=session_id),
                 metadata=(("authorization", "Bearer beta"),),
             )
-        assert denied.value.code() == grpc.StatusCode.PERMISSION_DENIED
+        assert denied.value.code() == grpc.StatusCode.NOT_FOUND
     finally:
         await channel.close()
         await server.stop(grace=0)
