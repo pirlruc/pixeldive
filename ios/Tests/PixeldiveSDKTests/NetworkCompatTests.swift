@@ -108,7 +108,12 @@ final class LoopbackHTTP: @unchecked Sendable {
     }
 
     private func openLoopback() throws -> Int32 {
-        let socketFd = socket(AF_INET, SOCK_STREAM, 0)
+        #if canImport(Glibc)
+        let stream = Int32(SOCK_STREAM.rawValue)
+        #else
+        let stream = SOCK_STREAM
+        #endif
+        let socketFd = socket(AF_INET, stream, 0)
         guard socketFd >= 0 else {
             throw URLError(.cannotDecodeContentData)
         }
