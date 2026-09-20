@@ -198,10 +198,12 @@ final class ClientTests: XCTestCase {
             payload: TestPNG.bytes,
             contentType: "image/png\r\nX-Injected: yes"
         )
-        let body = String(data: stub.bodies[0], encoding: .utf8) ?? ""
-        XCTAssertFalse(body.contains("\r\nX-Injected"))
-        XCTAssertFalse(body.contains("filename=\"evil"))
-        XCTAssertTrue(body.contains("Content-Type: image/png"))
+        // PNG payload is not valid UTF-8; assert on bytes so Apple and Linux agree.
+        let body = stub.bodies[0]
+        XCTAssertFalse(body.contains(Data("\r\nX-Injected".utf8)))
+        XCTAssertFalse(body.contains(Data("filename=\"evil\r".utf8)))
+        XCTAssertTrue(body.contains(Data("filename=\"evil_X-Injected_ 1__.png\"".utf8)))
+        XCTAssertTrue(body.contains(Data("Content-Type: image/png".utf8)))
     }
 
     func testTransportErrorAndEmptyToken() async {

@@ -109,6 +109,7 @@ final class PayloadTests: XCTestCase {
 
     func testMultipartSanitizer() {
         XCTAssertEqual(MultipartSanitizer.filename("dir/evil\r\n\".png"), "evil___.png")
+        XCTAssertEqual(MultipartSanitizer.filename("a\rb\nc"), "a_b_c")
         XCTAssertEqual(MultipartSanitizer.filename(""), "upload.bin")
         XCTAssertEqual(MultipartSanitizer.token("file;name", fallback: "file"), "filename")
         XCTAssertEqual(MultipartSanitizer.mediaType("image/png\r\nX: 1"), "image/png")

@@ -86,12 +86,16 @@ private func appendAscii(_ body: inout Data, _ text: String) {
 enum MultipartSanitizer {
     static func filename(_ raw: String) -> String {
         let base = raw.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) ?? raw
-        let cleaned = String(base.map { char in
-            if char.isNewline || char == "\"" || char == "\\" || char == ";" || char == ":" {
-                return Character("_")
+        var cleaned = ""
+        for scalar in base.unicodeScalars {
+            if scalar == "\n" || scalar == "\r" || scalar == "\"" || scalar == "\\" || scalar == ";"
+                || scalar == ":"
+            {
+                cleaned.append("_")
+            } else {
+                cleaned.append(Character(scalar))
             }
-            return char
-        })
+        }
         return cleaned.isEmpty ? "upload.bin" : cleaned
     }
 
@@ -101,7 +105,13 @@ enum MultipartSanitizer {
     }
 
     static func mediaType(_ raw: String) -> String {
-        let first = raw.split(whereSeparator: \.isNewline).first.map(String.init) ?? raw
+        var first = ""
+        for scalar in raw.unicodeScalars {
+            if scalar == "\n" || scalar == "\r" {
+                break
+            }
+            first.append(Character(scalar))
+        }
         let cleaned = first.filter { $0.isLetter || $0.isNumber || $0 == "/" || $0 == "+" || $0 == "-" || $0 == "." }
         return cleaned.contains("/") ? cleaned : "application/octet-stream"
     }
