@@ -54,19 +54,23 @@ private func appendFile(
     payload: Data,
     type: String
 ) {
+    let safeField = MultipartSanitizer.token(field, fallback: "file")
+    let safeName = MultipartSanitizer.filename(filename)
+    let safeType = MultipartSanitizer.mediaType(type)
     appendAscii(&body, "--\(boundary)\r\n")
     appendAscii(
         &body,
-        "Content-Disposition: form-data; name=\"\(field)\"; filename=\"\(filename)\"\r\n"
+        "Content-Disposition: form-data; name=\"\(safeField)\"; filename=\"\(safeName)\"\r\n"
     )
-    appendAscii(&body, "Content-Type: \(type)\r\n\r\n")
+    appendAscii(&body, "Content-Type: \(safeType)\r\n\r\n")
     body.append(payload)
     appendAscii(&body, "\r\n")
 }
 
 private func appendField(_ body: inout Data, boundary: String, name: String, value: String) {
+    let safeName = MultipartSanitizer.token(name, fallback: "field")
     appendAscii(&body, "--\(boundary)\r\n")
-    appendAscii(&body, "Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n")
+    appendAscii(&body, "Content-Disposition: form-data; name=\"\(safeName)\"\r\n\r\n")
     appendAscii(&body, value)
     appendAscii(&body, "\r\n")
 }
@@ -77,4 +81,28 @@ private func appendCloser(_ body: inout Data, boundary: String) {
 
 private func appendAscii(_ body: inout Data, _ text: String) {
     body.append(Data(text.utf8))
+}
+
+enum MultipartSanitizer {
+    static func filename(_ raw: String) -> String {
+        let base = raw.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) ?? raw
+        let cleaned = String(base.map { char in
+            if char.isNewline || char == "\"" || char == "\\" || char == ";" || char == ":" {
+                return Character("_")
+            }
+            return char
+        })
+        return cleaned.isEmpty ? "upload.bin" : cleaned
+    }
+
+    static func token(_ raw: String, fallback: String) -> String {
+        let cleaned = raw.filter { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" }
+        return cleaned.isEmpty ? fallback : cleaned
+    }
+
+    static func mediaType(_ raw: String) -> String {
+        let first = raw.split(whereSeparator: \.isNewline).first.map(String.init) ?? raw
+        let cleaned = first.filter { $0.isLetter || $0.isNumber || $0 == "/" || $0 == "+" || $0 == "-" || $0 == "." }
+        return cleaned.contains("/") ? cleaned : "application/octet-stream"
+    }
 }

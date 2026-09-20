@@ -63,7 +63,10 @@ class PayloadTest {
         assertEquals("EXTERNAL", Camera2Labels.hardwareLevel(Camera2Labels.HARDWARE_LEVEL_EXTERNAL))
         assertEquals("RAW", Camera2Labels.capability(Camera2Labels.CAPABILITY_RAW))
         assertEquals("MANUAL_SENSOR", Camera2Labels.capability(Camera2Labels.CAPABILITY_MANUAL_SENSOR))
-        assertEquals("MANUAL_POST_PROCESSING", Camera2Labels.capability(Camera2Labels.CAPABILITY_MANUAL_POST_PROCESSING))
+        assertEquals(
+            "MANUAL_POST_PROCESSING",
+            Camera2Labels.capability(Camera2Labels.CAPABILITY_MANUAL_POST_PROCESSING),
+        )
         assertEquals("CAPABILITY_9", Camera2Labels.capability(9))
         assertEquals(listOf("BACKWARD_COMPATIBLE"), Camera2Labels.capabilities(null))
         assertEquals("12x8", Camera2Labels.maxResolution(12, 8))
@@ -82,5 +85,39 @@ class PayloadTest {
         assertThrows<IllegalArgumentException> {
             CameraCapabilities(cameraCount = 1, cameras = emptyList())
         }
+    }
+
+    @Test
+    fun cameraCountMustMatchOnDecode() {
+        val text = """{"camera_count":1,"cameras":[]}"""
+        assertThrows<Exception> {
+            JsonCodec.json.decodeFromString(CameraCapabilities.serializer(), text)
+        }
+    }
+
+    @Test
+    fun jsonValueNullArrayFloat() {
+        val original =
+            mapOf(
+                "empty" to JsonValue.Null,
+                "nums" to JsonValue.Arr(listOf(JsonValue.FloatNumber(1.5), JsonValue.IntNumber(2))),
+            )
+        val wrapper = SessionUpdate(metadata = original)
+        val text = JsonCodec.json.encodeToString(SessionUpdate.serializer(), wrapper)
+        val decoded = JsonCodec.json.decodeFromString(SessionUpdate.serializer(), text)
+        assertEquals(original, decoded.metadata)
+    }
+
+    @Test
+    fun sanitizerAndPageQuery() {
+        assertEquals("c___.png", sanitizeMultipartFilename("a/b\\c\r\n\".png"))
+        assertEquals("upload.bin", sanitizeMultipartFilename(""))
+        assertEquals("image/png", sanitizeMultipartType("image/png\r\nX: 1"))
+        assertEquals("application/octet-stream", sanitizeMultipartType("nope"))
+        val query = pageQuery(3, "next")
+        assertEquals("3", query["limit"])
+        assertEquals("next", query["cursor"])
+        assertEquals("BACKWARD_COMPATIBLE", Camera2Labels.capability(Camera2Labels.CAPABILITY_BACKWARD_COMPATIBLE))
+        assertEquals("EXTERNAL", Camera2Labels.lensFacing(Camera2Labels.LENS_FACING_EXTERNAL))
     }
 }

@@ -97,7 +97,9 @@ struct HTTPTransport: @unchecked Sendable {
         guard let http = pair.1 as? HTTPURLResponse else {
             throw PixeldiveError.transport("non-HTTP response")
         }
-        if http.statusCode >= 400 {
+        // Refuse 3xx as well as 4xx/5xx so a redirect cannot look like success
+        // when the session still followed it (SWIFT-SEC / Authorization leak).
+        if http.statusCode < 200 || http.statusCode >= 300 {
             let body = String(data: pair.0, encoding: .utf8) ?? ""
             throw PixeldiveError.httpStatus(http.statusCode, body: body)
         }

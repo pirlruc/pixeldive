@@ -50,8 +50,8 @@ data class CameraCapabilities(
     val cameras: List<CameraInfo>,
 ) {
     init {
-        require(cameraCount == cameras.size) { "camera_count must equal cameras.size" }
         require(cameraCount >= 0) { "camera_count must be >= 0" }
+        require(cameraCount == cameras.size) { "camera_count must equal cameras.size" }
     }
 
     constructor(cameras: List<CameraInfo>) : this(cameras.size, cameras)

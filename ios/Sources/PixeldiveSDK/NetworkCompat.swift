@@ -39,5 +39,31 @@ func makeEphemeralSession(timeout: TimeInterval) -> URLSession {
     let config = URLSessionConfiguration.ephemeral
     config.timeoutIntervalForRequest = timeout
     config.timeoutIntervalForResource = timeout
+    #if canImport(ObjectiveC)
+    return URLSession(
+        configuration: config,
+        delegate: RedirectBlockingDelegate.shared,
+        delegateQueue: nil
+    )
+    #else
     return URLSession(configuration: config)
+    #endif
 }
+
+#if canImport(ObjectiveC)
+/// Default sessions must not follow redirects: the Authorization header would
+/// otherwise be replayed onto the Location host.
+final class RedirectBlockingDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    static let shared = RedirectBlockingDelegate()
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
+    }
+}
+#endif

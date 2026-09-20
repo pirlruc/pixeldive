@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Local / CI parity for the Kotlin JVM Android SDK (CI-008, KT-TEST-001).
-# Compose demo stays on ANDROID_HOME (KT-ENV-001 proposal).
+# Compose demo stays host-only (KT-ENV-001). Coverage and lint fail closed.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -23,5 +23,9 @@ fi
 
 echo "kotlin gates: statement_coverage=${STMT} branch_coverage=${BRANCH} max_cc=${MAX_CC}"
 java -version
-bash "$ROOT/android/gradlew" -p "$ROOT/android" --no-daemon :sdk:test
+bash "$ROOT/android/gradlew" -p "$ROOT/android" --no-daemon \
+  -Ppixeldive.statementCoverage="$STMT" \
+  -Ppixeldive.branchCoverage="$BRANCH" \
+  -Ppixeldive.maxCc="$MAX_CC" \
+  :sdk:ktlintCheck :sdk:detekt :sdk:koverVerify
 echo "android-sdk ok"

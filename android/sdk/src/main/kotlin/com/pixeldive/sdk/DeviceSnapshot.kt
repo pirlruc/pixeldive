@@ -80,7 +80,7 @@ object DeviceSnapshot {
         return try {
             JsonCodec.json.decodeFromString(SessionCreate.serializer(), text)
         } catch (exc: Exception) {
-            throw PixeldiveException.Decoding(exc.message ?: exc.toString())
+            throw PixeldiveException.Decoding(exc.message ?: exc.toString(), exc)
         }
     }
 

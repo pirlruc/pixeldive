@@ -116,7 +116,7 @@ public struct PixeldiveClient: Sendable {
         return try await http.download("/api/v1/sessions/\(parsedSession)/images/\(parsedImage)")
     }
 
-    /// POST multipart from a file URL without requiring the caller to buffer first.
+    /// POST multipart from a file URL. The file is read into memory first.
     public func uploadImage(
         sessionID: String,
         fileURL: URL,

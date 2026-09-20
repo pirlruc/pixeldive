@@ -66,4 +66,52 @@ final class PayloadTests: XCTestCase {
         XCTAssertEqual(majorVersion("18.6.1"), 18)
         XCTAssertEqual(majorVersion("bad"), 0)
     }
+
+    func testCameraCountMustMatchOnDecode() throws {
+        let json = Data(#"{"camera_count":1,"cameras":[]}"#.utf8)
+        XCTAssertThrowsError(try JSONCodec.makeDecoder().decode(CameraCapabilities.self, from: json))
+    }
+
+    func testJSONValueNullArrayDouble() throws {
+        let original: [String: JSONValue] = [
+            "empty": .null,
+            "nums": .array([.double(1.5), .int(2)]),
+        ]
+        let data = try JSONCodec.makeEncoder().encode(original)
+        let decoded = try JSONCodec.makeDecoder().decode([String: JSONValue].self, from: data)
+        XCTAssertEqual(decoded, original)
+    }
+
+    func testISO8601Dates() {
+        XCTAssertNotNil(JSONCodec.parseISO8601("2026-09-20T12:00:00Z"))
+        XCTAssertNotNil(JSONCodec.parseISO8601("2026-09-20T12:00:00.000000Z"))
+        XCTAssertNil(JSONCodec.parseISO8601("not-a-date"))
+    }
+
+    func testHardwareMachineAndErrors() {
+        XCTAssertFalse(hardwareMachine().isEmpty)
+        XCTAssertEqual(
+            PixeldiveError.invalidResourceID("x").localizedDescription,
+            "Invalid resource id: x"
+        )
+        XCTAssertEqual(
+            PixeldiveError.httpStatus(302, body: "go").localizedDescription,
+            "HTTP 302: go"
+        )
+        XCTAssertTrue(PixeldiveError.decoding("bad").localizedDescription.contains("Decoding"))
+        XCTAssertTrue(PixeldiveError.transport("down").localizedDescription.contains("Transport"))
+    }
+
+    func testResourceIDFromUUID() {
+        let value = UUID(uuidString: "123e4567-e89b-12d3-a456-426614174000")!
+        XCTAssertEqual(ResourceID.parse(value), "123e4567-e89b-12d3-a456-426614174000")
+    }
+
+    func testMultipartSanitizer() {
+        XCTAssertEqual(MultipartSanitizer.filename("dir/evil\r\n\".png"), "evil___.png")
+        XCTAssertEqual(MultipartSanitizer.filename(""), "upload.bin")
+        XCTAssertEqual(MultipartSanitizer.token("file;name", fallback: "file"), "filename")
+        XCTAssertEqual(MultipartSanitizer.mediaType("image/png\r\nX: 1"), "image/png")
+        XCTAssertEqual(MultipartSanitizer.mediaType("nope"), "application/octet-stream")
+    }
 }

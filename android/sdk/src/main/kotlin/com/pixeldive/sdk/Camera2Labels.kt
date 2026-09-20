@@ -48,8 +48,10 @@ object Camera2Labels {
             else -> "CAPABILITY_$value"
         }
 
-    fun capabilities(values: IntArray?): List<String> =
-        values?.map(::capability) ?: listOf("BACKWARD_COMPATIBLE")
+    fun capabilities(values: IntArray?): List<String> = values?.map(::capability) ?: listOf("BACKWARD_COMPATIBLE")
 
-    fun maxResolution(width: Int, height: Int): String = "${width}x$height"
+    fun maxResolution(
+        width: Int,
+        height: Int,
+    ): String = "${width}x$height"
 }

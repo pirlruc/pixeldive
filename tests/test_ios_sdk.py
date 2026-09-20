@@ -95,3 +95,43 @@ def test_swift_threshold_reader() -> None:
         cwd=root,
     )
     assert int(result.stdout.strip()) >= 90
+
+
+def test_swift_doc_coverage_script() -> None:
+    """SWIFT-DOC-001 scanner meets the overlay floor on the SDK sources."""
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(root / "scripts" / "check-swift-docs.py"),
+            "--threshold",
+            "90",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=root,
+    )
+    assert "swift doc coverage=" in result.stdout
+
+
+def test_swift_coverage_parser() -> None:
+    """llvm-cov TOTAL line cover is the last percent (SWIFT-TEST-002)."""
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    path = root / "scripts" / "check-swift-coverage.py"
+    spec = importlib.util.spec_from_file_location("check_swift_coverage", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    report = (
+        "Filename                      Regions    Missed Regions     Cover   "
+        "Functions  Missed Functions  Executed  Lines  Missed Lines  Cover\n"
+        "TOTAL                             100                 2    98.00%         "
+        "20                 0   100.00%    400            8   98.00%\n"
+    )
+    assert module.parse_line_cover(report) == 98.0
+    script = (root / "scripts" / "check-ios-sdk.sh").read_text(encoding="utf-8")
+    assert "--enable-code-coverage" in script
+    assert "check-swift-coverage.py" in script

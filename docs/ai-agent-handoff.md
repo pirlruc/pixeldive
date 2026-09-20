@@ -27,7 +27,7 @@ GitHub Epic/Task issues are not published ([TOOL-002](issues.yml)); statuses liv
 | lifecycle | `app/lifecycle.py`, `main.py` | Coordinated HTTP/gRPC stop, storage `aclose`, optional orphan sweep |
 | SDK | `sdk/pixeldive_sdk/` | `RestClient` (`_json` helper) + `GrpcClient` (`GrpcHostMixin`) |
 | iOS SDK | `ios/` | Swift 6 SPM `PixeldiveSDK` (`PixeldiveClient`) + SwiftUI demo |
-| Android SDK | `android/` | Kotlin JVM `PixeldiveClient` + Compose demo (`:demo` when `ANDROID_HOME` is set) |
+| Android SDK | `android/` | Kotlin JVM `PixeldiveClient` + Compose demo (`:demo` when `local.properties` or `PIXELDIVE_INCLUDE_ANDROID_DEMO=1`) |
 | demo | `demo/` | FastAPI UI that uses only the SDK |
 | runner | `main.py` | Uvicorn + grpc.aio on one asyncio loop |
 
@@ -49,7 +49,7 @@ python3 -m pip install --target .venv -r requirements.txt -r requirements-dev.tx
 PYTHONPATH=.venv bash scripts/ci-local.sh
 ```
 
-CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`, `uv-lock`, `ios-sdk` on macOS, `android-sdk` on Ubuntu JDK 21), `security.yml` (gitleaks, CodeQL, bandit, pip-audit, semgrep `p/python` + `p/swift` + `p/kotlin`, dependency-review, Trivy, SBOM). Actions are SHA-pinned. Numeric gates read analog `docs/guardrails/python/profile.thresholds.yml` after `scripts/ci-init-guardrails.sh` (`GUARDRAILS_READ_TOKEN`); otherwise the consumer copy `config/python.profile.thresholds.yml`. Swift overlays live in `config/swift.profile.thresholds.yml`. Kotlin overlays live in `config/kotlin.profile.thresholds.yml`. The overlay reader allows stricter consumer values and fails on looser ones. Do not clone `.github/scaffold` in CI.
+CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`, `uv-lock`, `ios-sdk` on macOS, `android-sdk` on Ubuntu JDK 21), `security.yml` (gitleaks, CodeQL, bandit, pip-audit, semgrep `p/python` + `p/swift` + `p/kotlin`, dependency-review, Trivy, SBOM). Actions are SHA-pinned. Numeric gates read analog `docs/guardrails/python/profile.thresholds.yml` after `scripts/ci-init-guardrails.sh` (`GUARDRAILS_READ_TOKEN`); otherwise the consumer copy `config/python.profile.thresholds.yml`. Swift overlays live in `config/swift.profile.thresholds.yml` and are enforced by llvm-cov + `scripts/check-swift-docs.py`. Kotlin overlays live in `config/kotlin.profile.thresholds.yml` and are enforced by Kover/ktlint/detekt. The overlay reader allows stricter consumer values and fails on looser ones. Do not clone `.github/scaffold` in CI.
 
 ## Analog pins (TOOL-001)
 
@@ -102,7 +102,7 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Compose secrets have no in-file defaults; `cp .env.example .env` before `docker compose up`.
 - `ENVIRONMENT=production` requires `AUTH_REQUIRED=true` and `GRPC_INSECURE=false`.
 - Host-native HTTP/gRPC defaults are `127.0.0.1`; image/Compose set `0.0.0.0` in-container.
-- Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001) and skips Gradle unless Java is on PATH (KT-ENV-001). The `ios-sdk` job on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1`. The `android-sdk` job sets `PIXELDIVE_REQUIRE_JAVA=1`. Ubuntu `quality` has Swift and Java and runs both package tests. Linux URLSession ignores `URLProtocol`; iOS client tests use an `HTTPPerforming` stub. Android client tests use OkHttp MockWebServer. Do not include the Compose demo from `ANDROID_HOME` — GitHub Ubuntu sets that; use `local.properties` or `PIXELDIVE_INCLUDE_ANDROID_DEMO=1`. Proposed analog changes: Foundation-only SPM and JVM `:sdk` tests on Linux ([docs/new-guardrails](new-guardrails/)).
+- Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001) and skips Gradle unless Java is on PATH (KT-ENV-001). When those tools are present, coverage is fail-closed (llvm-cov / Kover), not a log-only echo. The `ios-sdk` job on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1` (SwiftLint + `xcodebuild` + Trivy `fs`). The `android-sdk` job sets `PIXELDIVE_REQUIRE_JAVA=1` (ktlint + detekt + Kover + Trivy `fs`). Ubuntu `quality` has Swift and Java and runs both package tests. Linux URLSession ignores `URLProtocol`; iOS client tests use an `HTTPPerforming` stub. Android client tests use OkHttp MockWebServer. Do not include the Compose demo from `ANDROID_HOME` — GitHub Ubuntu sets that; use `local.properties` or `PIXELDIVE_INCLUDE_ANDROID_DEMO=1`. Default URLSession/OkHttp clients do not follow redirects (Authorization leak). Proposed analog changes: Foundation-only SPM and JVM `:sdk` tests on Linux ([docs/new-guardrails](new-guardrails/)).
 
 ## Suggested next work
 
@@ -119,6 +119,7 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Phase 3 remaining hardening in [PR #9](https://github.com/pirlruc/pixeldive/pull/9)
 - Analog pins 1.6.0 / 1.5.0, DRY, QUAL-003 1.6.0 gates ([PR #10](https://github.com/pirlruc/pixeldive/pull/10))
 - SDK-002: Swift `PixeldiveSDK` + SwiftUI demo + Swift guardrail proposals
-- SDK-003: Kotlin `PixeldiveClient` + Compose demo + Kotlin/Android guardrail proposals (this branch)
+- SDK-003: Kotlin `PixeldiveClient` + Compose demo + Kotlin/Android guardrail proposals
+- Review pass: 3xx/redirect + multipart filename hardening; llvm-cov/Kover/ktlint/detekt fail-closed in CI
 
 *Last updated: 2026-09-20*

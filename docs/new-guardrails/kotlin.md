@@ -64,6 +64,13 @@ Do not key off `ANDROID_HOME`: GitHub-hosted Ubuntu sets that variable.
 The profile already names `semgrep`. Document `p/kotlin` as the org config for
 Android/JVM sources, alongside `p/python` / `p/swift` for mixed repos.
 
+### KT-SEC-004 — Trivy filesystem scan is an accepted dependency scanner
+
+The analog names OWASP Dependency-Check or `grype`. Trivy `fs` on the Gradle
+tree (HIGH/CRITICAL, fail closed) is the same class of gate and is already
+SHA-pinned in this repo's Python image job. Document it as an accepted
+evaluator so mixed repos do not grow a third scanner.
+
 ### KT-BUILD-001 — JDK 21 is an accepted LTS pin
 
 The rule asks consumers to define a Kotlin/JDK target. Document **JDK 21** as an
@@ -76,3 +83,11 @@ forced onto JDK 17 by folklore.
   documentation-coverage ratio.
 - A Kotlin maintainability-index number. KT-CPLX-002 already rejects it.
 - A requirement to assemble the Compose demo in Linux CI without `ANDROID_HOME`.
+
+### KT-TEST-002 — generated serialization members may be excluded from Kover
+
+kotlinx.serialization `$$serializer` classes and `@Serializable` data-class
+copy/equals default-parameter branches inflate Kover branch counts without
+reflecting request/response logic. Allow excluding those generated members (and
+JVM `System.getProperty` Elvis fallbacks on a DeviceProbe) when the remaining
+production module still meets 95/95.

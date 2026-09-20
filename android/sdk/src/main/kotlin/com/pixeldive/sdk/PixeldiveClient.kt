@@ -9,7 +9,12 @@ class PixeldiveClient(
     token: String? = null,
     http: OkHttpClient = defaultHttp(),
 ) {
-    private val transport = HttpTransport(baseUrl, token, http)
+    private val transport =
+        HttpTransport(
+            baseUrl,
+            token,
+            http.newBuilder().followRedirects(false).followSslRedirects(false).build(),
+        )
 
     /** GET `/health`. */
     suspend fun health(): HealthStatus = transport.json(HealthStatus.serializer(), "GET", "/health")
@@ -119,19 +124,20 @@ class PixeldiveClient(
         return transport.download("/api/v1/sessions/$parsedSession/images/$parsedImage")
     }
 
-    /** POST multipart from a file without requiring the caller to buffer first. */
+    /** POST multipart from a file. The file is read into memory (`File.readBytes()`). */
     suspend fun uploadImage(
         sessionId: String,
         file: File,
         filename: String? = null,
         contentType: String = "image/png",
         metadata: String? = null,
-    ): SessionImage =
-        uploadImage(
+    ): SessionImage {
+        return uploadImage(
             sessionId = sessionId,
             filename = filename ?: file.name,
             payload = file.readBytes(),
             contentType = contentType,
             metadata = metadata,
         )
+    }
 }

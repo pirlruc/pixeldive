@@ -114,15 +114,36 @@ the org floor so UIKit apps are not forced onto an unmeasurable bar.
 
 pixeldive `config/swift.profile.thresholds.yml` uses **95** (stricter; no deviation).
 
+Document `swift test --enable-code-coverage` plus `llvm-cov report` as an accepted
+evaluator for Foundation-only SPM libraries. The profile names Xcode coverage +
+`xcresultparser`; that remains the UIKit/`xcodebuild test` path. llvm-cov is the
+same metric SWIFT-TEST-002 already describes.
+
+### SWIFT-DOC-001 — public `///` ratio until sourcekitten is org tooling
+
+The analog requires `doc_coverage` but does not name a tool. Until the org pins
+SourceKitten/Jazzy, a fail-closed scan of public types/functions for a preceding
+`///` is an accepted evaluator (pixeldive: `scripts/check-swift-docs.py`).
+
 ### SWIFT-LINT-001 — SwiftLint complexity rules are part of the lint gate
 
 Name `cyclomatic_complexity` (and the SWIFT-CPLX-002 size rules) in `swift/profile.md`
 next to SwiftFormat, so consumers do not treat complexity as optional extra config.
 
+Checksum-pinned portable SwiftLint (not a system `brew install`) is an accepted
+CI installer for mixed Python+Swift repos.
+
 ### SWIFT-SEC-003 — `p/swift` is an accepted semgrep config
 
 The profile already names `semgrep`. Document `p/swift` as the org config for iOS
 sources, alongside `p/python` for mixed repos.
+
+### SWIFT-SEC-004 — Trivy filesystem scan is an accepted dependency scanner
+
+The analog names `osv-scanner` or `grype`. Trivy `fs` on the Swift package (HIGH/
+CRITICAL, fail closed) is the same class of gate and is already SHA-pinned in
+this repo's Python image job. Document it as an accepted evaluator so mixed repos
+do not grow a third scanner.
 
 ## Do not add
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Local / CI parity for the Foundation iOS SDK package (CI-008, SWIFT-TEST-001).
-# SwiftUI demo stays on macOS + Xcode (SWIFT-ENV-001).
+# SwiftUI demo stays on macOS + Xcode (SWIFT-ENV-001). Coverage and docs fail closed.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -23,5 +23,27 @@ fi
 
 echo "swift gates: statement_coverage=${STMT} doc_coverage=${DOC} max_cc=${MAX_CC}"
 swift --version
-swift test --package-path "$ROOT/ios"
+"$PYTHON" "$ROOT/scripts/check-swift-docs.py" --threshold "$DOC"
+swift test --package-path "$ROOT/ios" --enable-code-coverage
+"$PYTHON" "$ROOT/scripts/check-swift-coverage.py" --package "$ROOT/ios" --threshold "$STMT"
+
+SWIFTLINT=""
+if command -v swiftlint >/dev/null 2>&1; then
+  SWIFTLINT="$(command -v swiftlint)"
+elif [[ "${PIXELDIVE_REQUIRE_SWIFT:-}" == "1" ]]; then
+  SWIFTLINT="$(bash "$ROOT/scripts/install-swiftlint.sh")"
+fi
+if [[ -n "$SWIFTLINT" ]]; then
+  echo "SwiftLint (SWIFT-LINT-001)"
+  (cd "$ROOT/ios" && "$SWIFTLINT" lint --strict --config "$ROOT/ios/.swiftlint.yml")
+fi
+
+if command -v xcodebuild >/dev/null 2>&1; then
+  echo "xcodebuild (SWIFT-LANG-002)"
+  (
+    cd "$ROOT/ios"
+    xcodebuild -scheme PixeldiveSDK -destination 'platform=macOS' \
+      CODE_SIGNING_ALLOWED=NO -quiet build
+  )
+fi
 echo "ios-sdk ok"

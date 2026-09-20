@@ -75,16 +75,57 @@ the container network.
 
 The analog `swift/` pack applies to `ios/`. Consumer overlay:
 `config/swift.profile.thresholds.yml` (statement coverage **95**, stricter than org 90).
-`scripts/check-ios-sdk.sh` plus quality job `ios-sdk` (macos-15). Proposed IDs that
-Kotlin already has (SWIFT-CPLX-001/002, SWIFT-CONC-001/002, SWIFT-IOS-003/004,
-SWIFT-SEC-005, SWIFT-ENV-001 Linux SPM overlay) are in
+
+CI jobs:
+
+- `quality` (Ubuntu) runs `scripts/check-ios-sdk.sh` when `swift` is on PATH:
+  `swift test --enable-code-coverage`, llvm-cov vs the overlay, and
+  `scripts/check-swift-docs.py` vs `doc_coverage`.
+- `ios-sdk` (`macos-15`, `PIXELDIVE_REQUIRE_SWIFT=1`) is fail-closed: same
+  coverage/docs gates, checksum-pinned SwiftLint (`SWIFT-LINT-001`),
+  `xcodebuild -scheme PixeldiveSDK -destination platform=macOS` (`SWIFT-LANG-002`),
+  and Trivy filesystem scan of `ios/` (`SWIFT-SEC-004`; analog names
+  osv-scanner/grype — Trivy is proposed as an accepted evaluator in
+  [swift.md](swift.md)).
+
+Proposed IDs that Kotlin already has (SWIFT-CPLX-001/002, SWIFT-CONC-001/002,
+SWIFT-IOS-003/004, SWIFT-SEC-005, SWIFT-ENV-001 Linux SPM overlay) are in
 [swift.md](swift.md), not in `docs/guardrail-deviations.yml`.
+
+Gaps that remain (not recorded as deviations because they are analog-tooling
+or host-only, not lowered numeric gates):
+
+- SWIFT-ENV-002 SwiftFormat is not a pre-commit hook (in-repo `.swiftformat` exists).
+- SWIFT-IOS-001 Xcode 26 is not asserted on `macos-15`.
+- SwiftUI demo / `xcodebuild` for the demo app stays host-only.
+- `LiveDevice` UIKit/AVFoundation paths compile only for iOS; macOS/Linux CI
+  covers the ProcessInfo fallback.
 
 ## Kotlin pack (SDK-003)
 
 The analog `kotlin/` pack applies to `android/sdk`. Consumer overlay:
 `config/kotlin.profile.thresholds.yml` (95/95 line+branch, max CC 10).
-`scripts/check-android-sdk.sh` plus quality job `android-sdk` (Ubuntu, JDK 21).
+
+CI jobs:
+
+- `quality` (Ubuntu) and `android-sdk` (Ubuntu, Temurin 21,
+  `PIXELDIVE_REQUIRE_JAVA=1`) run `scripts/check-android-sdk.sh`:
+  `:sdk:ktlintCheck` (`KT-BUILD-002`), `:sdk:detekt` (`KT-CPLX-001/002`,
+  `KT-BUILD-002`), and `:sdk:koverVerify` against the overlay (`KT-TEST-002`).
+- `android-sdk` also runs Trivy filesystem scan of `android/` (`KT-SEC-004`;
+  analog names OWASP Dependency-Check/grype — Trivy is proposed as an accepted
+  evaluator in [kotlin.md](kotlin.md)).
+
 Proposed Android-specific IDs (KT-AND-001/002, KT-SEC-005, KT-ENV-001) are in
 [kotlin.md](kotlin.md), not in `docs/guardrail-deviations.yml`.
+
+Gaps that remain:
+
+- Android Lint (`KT-BUILD-002` when an Android module is present) does not
+  apply to the JVM `:sdk` library. The Compose demo is not assembled in Linux CI.
+- Kover excludes kotlinx.serialization `$$serializer` / `$Companion` generated
+  classes, `@Serializable` wire DTOs (compiler-generated copy/equals default
+  branches), and the JVM `DeviceSnapshot` / `JvmDeviceProbe` fallbacks (dead
+  Elvis on `System.getProperty`). Production client/transport/Camera2Labels stay
+  at 95/95.
 

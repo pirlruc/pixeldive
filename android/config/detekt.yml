@@ -1,0 +1,43 @@
+build:
+  maxIssues: 0
+
+complexity:
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 10
+  CognitiveComplexMethod:
+    active: true
+    threshold: 15
+  LongMethod:
+    active: true
+    threshold: 80
+  LongParameterList:
+    active: true
+    constructorThreshold: 12
+    functionThreshold: 8
+  TooManyFunctions:
+    active: true
+    thresholdInFiles: 20
+    thresholdInClasses: 20
+    thresholdInInterfaces: 20
+    thresholdInObjects: 20
+    ignoreDeprecated: true
+    ignorePrivate: true
+    ignoreOverridden: true
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true
+    allowedExceptionNameRegex: "exc"
+
+style:
+  MagicNumber:
+    active: false
+  ReturnCount:
+    active: true
+    max: 6
+  ThrowsCount:
+    active: true
+    max: 4
+  WildcardImport:
+    active: true

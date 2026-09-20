@@ -38,8 +38,7 @@ sealed class JsonValue {
 
     companion object {
         /** String map used by sample payloads and demo metadata. */
-        fun strings(values: Map<String, String>): Map<String, JsonValue> =
-            values.mapValues { Str(it.value) }
+        fun strings(values: Map<String, String>): Map<String, JsonValue> = values.mapValues { Str(it.value) }
     }
 }
 

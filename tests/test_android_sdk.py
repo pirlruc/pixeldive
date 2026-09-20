@@ -110,3 +110,12 @@ def test_kotlin_threshold_reader() -> None:
         cwd=root,
     )
     assert int(result.stdout.strip()) >= 95
+
+
+def test_android_check_script_enforces_kover() -> None:
+    """KT-TEST-002 is wired through Gradle koverVerify, not a log-only echo."""
+    root = Path(__file__).resolve().parents[1]
+    script = (root / "scripts" / "check-android-sdk.sh").read_text(encoding="utf-8")
+    assert ":sdk:koverVerify" in script
+    assert ":sdk:ktlintCheck" in script
+    assert ":sdk:detekt" in script

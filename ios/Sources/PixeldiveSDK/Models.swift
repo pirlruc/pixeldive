@@ -97,12 +97,32 @@ public struct CameraInfo: Codable, Sendable, Equatable {
 
 /// Camera enumeration. `cameraCount` must equal `cameras.count`.
 public struct CameraCapabilities: Codable, Sendable, Equatable {
-    public var cameraCount: Int
-    public var cameras: [CameraInfo]
+    public let cameraCount: Int
+    public let cameras: [CameraInfo]
 
     public init(cameras: [CameraInfo]) {
         self.cameraCount = cameras.count
         self.cameras = cameras
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let cameras = try container.decode([CameraInfo].self, forKey: .cameras)
+        let cameraCount = try container.decode(Int.self, forKey: .cameraCount)
+        guard cameraCount >= 0, cameraCount == cameras.count else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .cameraCount,
+                in: container,
+                debugDescription: "camera_count must equal cameras.count"
+            )
+        }
+        self.cameraCount = cameraCount
+        self.cameras = cameras
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case cameraCount
+        case cameras
     }
 }
 

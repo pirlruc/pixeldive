@@ -44,7 +44,7 @@ class ClientTest {
             assertEquals("ok", client.ready().status)
             val created = client.createSession(DeviceSnapshot.samplePixel())
             assertEquals(sessionId, created.id)
-            val listed = client.listSessions(limit = 10)
+            val listed = client.listSessions()
             assertEquals(sessionId, listed.items.first().id)
             client.getSession(sessionId.toString())
             client.updateSession(
@@ -102,7 +102,7 @@ class ClientTest {
         }
 
     @Test
-    fun uploadBatchAndFile() =
+    fun uploadBatchAndFile() {
         runBlocking {
             server.enqueue(json(listOf(imageJson())))
             server.enqueue(json(imageJson()))
@@ -111,16 +111,36 @@ class ClientTest {
                 client.uploadImagesBatch(
                     sessionId.toString(),
                     listOf(Triple("a.png", TestPng.BYTES, "image/png")),
+                    metadata = "{\"iso\":64}",
                 )
             assertEquals(1, batch.size)
             val temp = kotlin.io.path.createTempFile(suffix = ".png").toFile()
             temp.writeBytes(TestPng.BYTES)
             try {
-                client.uploadImage(sessionId.toString(), temp)
+                client.uploadImage(sessionId.toString(), temp, filename = null, contentType = "image/png", metadata = null)
+                server.enqueue(json(imageJson()))
+                client.uploadImage(
+                    sessionId.toString(),
+                    temp,
+                    filename = "explicit.png",
+                    contentType = "image/png",
+                    metadata = "{}",
+                )
             } finally {
                 temp.delete()
             }
+            server.enqueue(json(listOf(imageJson())))
+            val withoutMeta =
+                client.uploadImagesBatch(
+                    sessionId.toString(),
+                    listOf(Triple("b.png", TestPng.BYTES, "image/png")),
+                    metadata = null,
+                )
+            assertEquals(1, withoutMeta.size)
+            server.enqueue(json(mapOf("items" to listOf(imageJson()), "next_cursor" to null)))
+            assertEquals(1, client.listImages(sessionId.toString()).items.size)
         }
+    }
 
     @Test
     fun httpErrorAndAuthHeader() {
@@ -136,6 +156,93 @@ class ClientTest {
     }
 
     @Test
+    fun redirectStatusIsAnErrorAndDoesNotFollow() {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(302)
+                .setHeader("Location", server.url("/evil").toString())
+                .setBody("moved"),
+        )
+        server.enqueue(json(mapOf("status" to "ok")))
+        val leaky =
+            okhttp3.OkHttpClient.Builder()
+                .followRedirects(true)
+                .followSslRedirects(true)
+                .build()
+        val client = PixeldiveClient(baseUrl = server.url("/").toString(), token = "secret-token", http = leaky)
+        val error =
+            assertThrows<PixeldiveException.HttpStatus> {
+                runBlocking { client.health() }
+            }
+        assertEquals(302, error.code)
+        assertEquals(1, server.requestCount)
+        assertEquals("Bearer secret-token", server.takeRequest().getHeader("Authorization"))
+    }
+
+    @Test
+    fun sanitizesMultipartFilename() {
+        server.enqueue(json(imageJson()))
+        runBlocking {
+            client().uploadImage(
+                sessionId.toString(),
+                "evil\r\nX-Injected: 1\";.png",
+                TestPng.BYTES,
+                contentType = "image/png\r\nX-Injected: yes",
+            )
+        }
+        val body = server.takeRequest().body.readUtf8()
+        assertFalse(body.contains("\r\nX-Injected"))
+        assertTrue(body.contains("image/png"))
+    }
+
+    @Test
+    fun transportErrorOnClosedPort() {
+        val error =
+            assertThrows<PixeldiveException.Transport> {
+                runBlocking {
+                    PixeldiveClient(baseUrl = "http://127.0.0.1:1").health()
+                }
+            }
+        assertTrue(error.message!!.contains("Transport"))
+    }
+
+    @Test
+    fun listSessionsSendsCursor() {
+        server.enqueue(json(mapOf("items" to listOf(sessionJson()), "next_cursor" to null)))
+        runBlocking { client().listSessions(limit = 5, cursor = "abc") }
+        val request = server.takeRequest()
+        assertEquals("abc", request.requestUrl?.queryParameter("cursor"))
+        assertEquals("5", request.requestUrl?.queryParameter("limit"))
+    }
+
+    @Test
+    fun transportBranches() {
+        server.enqueue(json(mapOf("status" to "ok")))
+        server.enqueue(MockResponse().setBody("not-json"))
+        val transport = HttpTransport(server.url("/").toString().trimEnd('/'), "  ", defaultHttp())
+        val health = runBlocking { transport.json(HealthStatus.serializer(), "GET", "health") }
+        assertEquals("ok", health.status)
+        assertThrows<PixeldiveException.Decoding> {
+            runBlocking { transport.json(HealthStatus.serializer(), "GET", "/ready") }
+        }
+        server.enqueue(MockResponse().setResponseCode(204))
+        runBlocking { transport.empty("PUT", "/noop") }
+        val quoted = JsonCodec.json.decodeFromString(SessionUpdate.serializer(), """{"metadata":{"t":"true"}}""")
+        assertEquals(JsonValue.Str("true"), quoted.metadata!!["t"])
+        Camera2Labels.hardwareLevel(Camera2Labels.HARDWARE_LEVEL_LIMITED)
+        Camera2Labels.hardwareLevel(Camera2Labels.HARDWARE_LEVEL_LIMITED)
+        runBlocking {
+            assertThrows<PixeldiveException.Transport> {
+                runBlocking {
+                    transport.json(HealthStatus.serializer(), "GET", "://")
+                }
+            }
+        }
+        Camera2Labels.lensFacing(99)
+        Camera2Labels.hardwareLevel(99)
+    }
+
+    @Test
     fun rejectsNonUuidSession() {
         val client = client()
         assertThrows<PixeldiveException.InvalidResourceId> {
@@ -143,8 +250,7 @@ class ClientTest {
         }
     }
 
-    private fun client(token: String? = null): PixeldiveClient =
-        PixeldiveClient(baseUrl = server.url("/").toString(), token = token)
+    private fun client(token: String? = null): PixeldiveClient = PixeldiveClient(baseUrl = server.url("/").toString(), token = token)
 
     private fun json(body: Any): MockResponse {
         val text = JsonCodec.json.encodeToString(kotlinx.serialization.json.JsonElement.serializer(), toElement(body))

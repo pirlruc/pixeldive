@@ -33,6 +33,18 @@ final class StubPerformer: HTTPPerforming, @unchecked Sendable {
     }
 }
 
+final class ThrowingPerformer: HTTPPerforming, @unchecked Sendable {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        throw URLError(.cannotConnectToHost)
+    }
+}
+
+final class NonHTTPPerformer: HTTPPerforming, @unchecked Sendable {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        (Data(), URLResponse())
+    }
+}
+
 final class ClientTests: XCTestCase {
     private let sessionID = UUID(uuidString: "123e4567-e89b-12d3-a456-426614174000")!
     private let imageID = UUID(uuidString: "123e4567-e89b-12d3-a456-426614174001")!
@@ -149,6 +161,91 @@ final class ClientTests: XCTestCase {
             stub.requests.first?.value(forHTTPHeaderField: "Authorization"),
             "Bearer secret-token"
         )
+    }
+
+    func testRedirectStatusIsAnError() async {
+        let stub = StubPerformer()
+        stub.steps = [
+            StubPerformer.Step(
+                status: 302,
+                headers: ["Location": "https://evil.test/"],
+                body: Data()
+            ),
+        ]
+        let client = makeClient(stub: stub, token: "secret-token")
+        do {
+            _ = try await client.health()
+            XCTFail("expected error")
+        } catch PixeldiveError.httpStatus(let code, _) {
+            XCTAssertEqual(code, 302)
+        } catch {
+            XCTFail("unexpected \(error)")
+        }
+        XCTAssertEqual(stub.requests.count, 1)
+        XCTAssertEqual(
+            stub.requests.first?.value(forHTTPHeaderField: "Authorization"),
+            "Bearer secret-token"
+        )
+    }
+
+    func testSanitizesMultipartFilename() async throws {
+        let stub = StubPerformer()
+        stub.steps = [jsonStep(imageJSON())]
+        let client = makeClient(stub: stub)
+        _ = try await client.uploadImage(
+            sessionID: sessionID.uuidString,
+            filename: "evil\r\nX-Injected: 1\";.png",
+            payload: TestPNG.bytes,
+            contentType: "image/png\r\nX-Injected: yes"
+        )
+        let body = String(data: stub.bodies[0], encoding: .utf8) ?? ""
+        XCTAssertFalse(body.contains("\r\nX-Injected"))
+        XCTAssertFalse(body.contains("filename=\"evil"))
+        XCTAssertTrue(body.contains("Content-Type: image/png"))
+    }
+
+    func testTransportErrorAndEmptyToken() async {
+        let stub = ThrowingPerformer()
+        let client = PixeldiveClient(
+            baseURL: URL(string: "http://test")!,
+            token: "   ",
+            performer: stub
+        )
+        do {
+            _ = try await client.health()
+            XCTFail("expected error")
+        } catch PixeldiveError.transport {
+            return
+        } catch {
+            XCTFail("unexpected \(error)")
+        }
+    }
+
+    func testNonHTTPResponse() async {
+        let stub = NonHTTPPerformer()
+        let client = PixeldiveClient(
+            baseURL: URL(string: "http://test")!,
+            token: nil,
+            performer: stub
+        )
+        do {
+            _ = try await client.health()
+            XCTFail("expected error")
+        } catch PixeldiveError.transport(let detail) {
+            XCTAssertTrue(detail.contains("non-HTTP"))
+        } catch {
+            XCTFail("unexpected \(error)")
+        }
+    }
+
+    func testListSessionsSendsCursor() async throws {
+        let stub = StubPerformer()
+        stub.steps = [jsonStep(["items": [sessionJSON()], "next_cursor": NSNull()])]
+        let client = makeClient(stub: stub)
+        _ = try await client.listSessions(limit: 5, cursor: "abc")
+        let url = try XCTUnwrap(stub.requests.first?.url?.absoluteString)
+        XCTAssertTrue(url.contains("limit=5"))
+        XCTAssertTrue(url.contains("cursor=abc"))
     }
 
     func testRejectsNonUUIDSession() async {

@@ -84,8 +84,9 @@ internal class HttpTransport(
     private fun execute(request: Request): ByteArray {
         try {
             http.newCall(request).execute().use { response ->
-                val bytes = response.body?.bytes() ?: ByteArray(0)
-                if (response.code >= 400) {
+                val bytes = checkNotNull(response.body).bytes()
+                // Refuse 3xx as well as 4xx/5xx so a redirect cannot look like success.
+                if (response.code !in 200..299) {
                     throw PixeldiveException.HttpStatus(response.code, bytes.toString(Charsets.UTF_8))
                 }
                 return bytes
@@ -93,7 +94,7 @@ internal class HttpTransport(
         } catch (exc: PixeldiveException) {
             throw exc
         } catch (exc: Exception) {
-            throw PixeldiveException.Transport(exc.message ?: exc.toString())
+            throw PixeldiveException.Transport(exc.toString(), exc)
         }
     }
 
@@ -103,10 +104,8 @@ internal class HttpTransport(
     ): T =
         try {
             JsonCodec.json.decodeFromString(deserializer, bytes.toString(Charsets.UTF_8))
-        } catch (exc: PixeldiveException) {
-            throw exc
         } catch (exc: Exception) {
-            throw PixeldiveException.Decoding(exc.message ?: exc.toString())
+            throw PixeldiveException.Decoding(exc.toString(), exc)
         }
 }
 
@@ -131,7 +130,26 @@ internal fun defaultHttp(timeoutSeconds: Long = 60): OkHttpClient =
         .connectTimeout(timeoutSeconds, TimeUnit.SECONDS)
         .readTimeout(timeoutSeconds, TimeUnit.SECONDS)
         .writeTimeout(timeoutSeconds, TimeUnit.SECONDS)
+        .followRedirects(false)
+        .followSslRedirects(false)
         .build()
+
+private val FILENAME_BREAKERS = setOf('"', '\\', ';', ':', '\r', '\n')
+private val MEDIA_TYPE_EXTRA = setOf('/', '+', '-', '.')
+
+/** Strip path separators and header-breaking characters from multipart filenames. */
+internal fun sanitizeMultipartFilename(filename: String): String {
+    val base = filename.substringAfterLast('/').substringAfterLast('\\')
+    val cleaned = base.map { char -> if (char in FILENAME_BREAKERS) '_' else char }.joinToString("")
+    return cleaned.ifBlank { "upload.bin" }
+}
+
+/** Allow only RFC 6838 type/subtype tokens in multipart Content-Type. */
+internal fun sanitizeMultipartType(type: String): String {
+    val firstLine = type.substringBefore('\r').substringBefore('\n')
+    val cleaned = firstLine.filter { it.isLetterOrDigit() || it in MEDIA_TYPE_EXTRA }
+    return if (cleaned.contains('/')) cleaned else "application/octet-stream"
+}
 
 internal fun multipart(
     fileField: String,
@@ -143,8 +161,8 @@ internal fun multipart(
     val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
     builder.addFormDataPart(
         fileField,
-        filename,
-        payload.toRequestBody(contentType.toMediaType()),
+        sanitizeMultipartFilename(filename),
+        payload.toRequestBody(sanitizeMultipartType(contentType).toMediaType()),
     )
     fields.toSortedMap().forEach { (name, value) -> builder.addFormDataPart(name, value) }
     return builder.build()
@@ -158,8 +176,8 @@ internal fun multipartBatch(
     items.forEach { (filename, payload, contentType) ->
         builder.addFormDataPart(
             "files",
-            filename,
-            payload.toRequestBody(contentType.toMediaType()),
+            sanitizeMultipartFilename(filename),
+            payload.toRequestBody(sanitizeMultipartType(contentType).toMediaType()),
         )
     }
     fields.toSortedMap().forEach { (name, value) -> builder.addFormDataPart(name, value) }
