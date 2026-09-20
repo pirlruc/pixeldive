@@ -14,10 +14,12 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
 
     nonisolated(unsafe) static var steps: [Step] = []
     nonisolated(unsafe) static var requests: [URLRequest] = []
+    nonisolated(unsafe) static var bodies: [Data] = []
 
     static func reset() {
         steps = []
         requests = []
+        bodies = []
     }
 
     override class func canInit(with request: URLRequest) -> Bool { true }
@@ -26,6 +28,7 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
 
     override func startLoading() {
         Self.requests.append(request)
+        Self.bodies.append(readBody(request))
         guard !Self.steps.isEmpty else {
             client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
             return
@@ -43,6 +46,28 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     }
 
     override func stopLoading() {}
+}
+
+func readBody(_ request: URLRequest) -> Data {
+    if let body = request.httpBody {
+        return body
+    }
+    guard let stream = request.httpBodyStream else {
+        return Data()
+    }
+    stream.open()
+    defer { stream.close() }
+    var data = Data()
+    let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: 4096)
+    defer { buffer.deallocate() }
+    while stream.hasBytesAvailable {
+        let count = stream.read(buffer, maxLength: 4096)
+        if count <= 0 {
+            break
+        }
+        data.append(buffer, count: count)
+    }
+    return data
 }
 
 final class ClientTests: XCTestCase {
@@ -82,7 +107,8 @@ final class ClientTests: XCTestCase {
         XCTAssertEqual(StubURLProtocol.requests.map(\.httpMethod), [
             "GET", "GET", "POST", "GET", "GET", "PUT", "DELETE",
         ])
-        let createBody = try XCTUnwrap(StubURLProtocol.requests[2].httpBody)
+        let createBody = StubURLProtocol.bodies[2]
+        XCTAssertFalse(createBody.isEmpty)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: createBody) as? [String: Any])
         XCTAssertEqual((object["phone_info"] as? [String: Any])?["sdk_int"] as? Int, 18)
     }
@@ -118,9 +144,12 @@ final class ClientTests: XCTestCase {
         XCTAssertEqual(upload.httpMethod, "POST")
         let contentType = try XCTUnwrap(upload.value(forHTTPHeaderField: "Content-Type"))
         XCTAssertTrue(contentType.hasPrefix("multipart/form-data"))
-        let body = try XCTUnwrap(upload.httpBody)
-        XCTAssertTrue(String(data: body, encoding: .utf8)?.contains("filename=\"frame.png\"") == true
-            || body.contains(png))
+        let body = StubURLProtocol.bodies[0]
+        XCTAssertFalse(body.isEmpty)
+        XCTAssertTrue(
+            String(data: body, encoding: .utf8)?.contains("filename=\"frame.png\"") == true
+                || body.contains(png)
+        )
     }
 
     func testUploadBatchAndFile() async throws {

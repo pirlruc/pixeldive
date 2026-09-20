@@ -1,5 +1,9 @@
 import Foundation
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 /// Thin URLSession client for pixeldive `/api/v1` (REST; mirrors Python `RestClient`).
 public struct PixeldiveClient: Sendable {
     let http: HTTPTransport

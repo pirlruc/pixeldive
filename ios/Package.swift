@@ -13,7 +13,7 @@ let package = Package(
     targets: [
         .target(
             name: "PixeldiveSDK",
-            resources: [.copy("Fixtures")]
+            resources: [.copy("Fixtures/sample_ios_session.json")]
         ),
         .testTarget(
             name: "PixeldiveSDKTests",

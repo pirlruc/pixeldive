@@ -63,7 +63,14 @@ public enum DeviceSnapshot {
 
     /// Decode the bundled fixture (same object as ``sampleiPhone()``).
     public static func bundledSample() throws -> SessionCreate {
-        guard let url = Bundle.module.url(forResource: "sample_ios_session", withExtension: "json") else {
+        guard
+            let url = Bundle.module.url(forResource: "sample_ios_session", withExtension: "json")
+            ?? Bundle.module.url(
+                forResource: "sample_ios_session",
+                withExtension: "json",
+                subdirectory: "Fixtures"
+            )
+        else {
             throw PixeldiveError.decoding("missing sample_ios_session.json")
         }
         let data = try Data(contentsOf: url)

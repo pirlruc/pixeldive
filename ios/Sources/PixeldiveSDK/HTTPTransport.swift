@@ -1,5 +1,9 @@
 import Foundation
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 struct HTTPTransport: @unchecked Sendable {
     let baseURL: URL
     let token: String?
