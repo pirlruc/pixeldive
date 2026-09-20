@@ -135,7 +135,8 @@ final class ClientTests: XCTestCase {
         let client = makeClient(stub: stub)
         let batch = try await client.uploadImagesBatch(
             sessionID: sessionID.uuidString,
-            items: [("a.png", TestPNG.bytes, "image/png")]
+            items: [("a.png", TestPNG.bytes, "image/png")],
+            metadata: "{\"batch\":true}"
         )
         XCTAssertEqual(batch.count, 1)
         let temp = FileManager.default.temporaryDirectory.appendingPathComponent("frame.png")
@@ -148,6 +149,7 @@ final class ClientTests: XCTestCase {
         let stub = StubPerformer()
         stub.steps = [
             StubPerformer.Step(status: 404, headers: [:], body: Data("{\"detail\":\"gone\"}".utf8)),
+            StubPerformer.Step(status: 500, headers: [:], body: Data([0xFF, 0xFE])),
         ]
         let client = makeClient(stub: stub, token: "secret-token")
         do {
@@ -156,6 +158,15 @@ final class ClientTests: XCTestCase {
         } catch PixeldiveError.httpStatus(let code, let body) {
             XCTAssertEqual(code, 404)
             XCTAssertTrue(body.contains("gone"))
+        } catch {
+            XCTFail("unexpected \(error)")
+        }
+        do {
+            _ = try await client.health()
+            XCTFail("expected error")
+        } catch PixeldiveError.httpStatus(let code, let body) {
+            XCTAssertEqual(code, 500)
+            XCTAssertEqual(body, "")
         } catch {
             XCTFail("unexpected \(error)")
         }
@@ -247,12 +258,19 @@ final class ClientTests: XCTestCase {
 
     func testListSessionsSendsCursor() async throws {
         let stub = StubPerformer()
-        stub.steps = [jsonStep(["items": [sessionJSON()], "next_cursor": NSNull()])]
+        stub.steps = [
+            jsonStep(["items": [sessionJSON()], "next_cursor": NSNull()]),
+            jsonStep(["items": [sessionJSON()], "next_cursor": NSNull()]),
+        ]
         let client = makeClient(stub: stub)
         _ = try await client.listSessions(limit: 5, cursor: "abc")
-        let url = try XCTUnwrap(stub.requests.first?.url?.absoluteString)
-        XCTAssertTrue(url.contains("limit=5"))
-        XCTAssertTrue(url.contains("cursor=abc"))
+        _ = try await client.listSessions(limit: 5, cursor: "")
+        let withCursor = try XCTUnwrap(stub.requests[0].url?.absoluteString)
+        XCTAssertTrue(withCursor.contains("limit=5"))
+        XCTAssertTrue(withCursor.contains("cursor=abc"))
+        let emptyCursor = try XCTUnwrap(stub.requests[1].url?.absoluteString)
+        XCTAssertTrue(emptyCursor.contains("limit=5"))
+        XCTAssertFalse(emptyCursor.contains("cursor="))
     }
 
     func testRejectsNonUUIDSession() async {

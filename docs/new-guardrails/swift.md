@@ -117,7 +117,9 @@ pixeldive `config/swift.profile.thresholds.yml` uses **95** (stricter; no deviat
 Document `swift test --enable-code-coverage` plus `llvm-cov report` as an accepted
 evaluator for Foundation-only SPM libraries. The profile names Xcode coverage +
 `xcresultparser`; that remains the UIKit/`xcodebuild test` path. llvm-cov is the
-same metric SWIFT-TEST-002 already describes.
+same metric SWIFT-TEST-002 already describes. On Linux, `llvm-cov` lives next to
+`swift` in the toolchain `usr/bin` (not necessarily on `PATH`); CI must resolve
+it from the `swift` binary rather than assume `xcrun`.
 
 ### SWIFT-DOC-001 — public `///` ratio until sourcekitten is org tooling
 

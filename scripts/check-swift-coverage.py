@@ -34,10 +34,20 @@ def llvm_cov_cmd() -> list[str]:
     if direct:
         return [direct]
     swift = shutil.which("swift")
-    if swift:
-        toolchain = Path(swift).resolve().parent.parent / "usr" / "bin" / "llvm-cov"
-        if toolchain.is_file():
-            return [str(toolchain)]
+    if not swift:
+        raise SystemExit("llvm-cov not found (SWIFT-TEST-002)")
+    swift_path = Path(swift).resolve()
+    candidates: list[Path] = [swift_path.parent / "llvm-cov"]
+    for parent in swift_path.parents:
+        candidates.append(parent / "bin" / "llvm-cov")
+        candidates.append(parent / "usr" / "bin" / "llvm-cov")
+    seen: set[Path] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        if candidate.is_file():
+            return [str(candidate)]
     raise SystemExit("llvm-cov not found (SWIFT-TEST-002)")
 
 

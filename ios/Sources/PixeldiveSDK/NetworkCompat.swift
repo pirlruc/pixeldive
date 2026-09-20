@@ -18,18 +18,24 @@ struct URLSessionPerformer: HTTPPerforming, @unchecked Sendable {
     }
 }
 
+func completeLoad(data: Data?, response: URLResponse?, error: Error?) throws -> (Data, URLResponse) {
+    if let error {
+        throw error
+    }
+    guard let data, let response else {
+        throw URLError(.badServerResponse)
+    }
+    return (data, response)
+}
+
 func loadURL(_ session: URLSession, _ request: URLRequest) async throws -> (Data, URLResponse) {
     try await withCheckedThrowingContinuation { continuation in
         let task = session.dataTask(with: request) { data, response, error in
-            if let error {
+            do {
+                continuation.resume(returning: try completeLoad(data: data, response: response, error: error))
+            } catch {
                 continuation.resume(throwing: error)
-                return
             }
-            guard let data, let response else {
-                continuation.resume(throwing: URLError(.badServerResponse))
-                return
-            }
-            continuation.resume(returning: (data, response))
         }
         task.resume()
     }

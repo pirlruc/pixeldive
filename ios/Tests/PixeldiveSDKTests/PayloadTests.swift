@@ -112,7 +112,16 @@ final class PayloadTests: XCTestCase {
         XCTAssertEqual(MultipartSanitizer.filename("a\rb\nc"), "a_b_c")
         XCTAssertEqual(MultipartSanitizer.filename(""), "upload.bin")
         XCTAssertEqual(MultipartSanitizer.token("file;name", fallback: "file"), "filename")
+        XCTAssertEqual(MultipartSanitizer.token("@@@", fallback: "file"), "file")
         XCTAssertEqual(MultipartSanitizer.mediaType("image/png\r\nX: 1"), "image/png")
         XCTAssertEqual(MultipartSanitizer.mediaType("nope"), "application/octet-stream")
+        XCTAssertEqual(MultipartSanitizer.mediaType(""), "application/octet-stream")
+    }
+
+    func testDecodeDateRejectsGarbage() {
+        struct Dated: Decodable { var createdAt: Date }
+        XCTAssertThrowsError(
+            try JSONCodec.makeDecoder().decode(Dated.self, from: Data(#"{"created_at":"nope"}"#.utf8))
+        )
     }
 }
