@@ -1,4 +1,4 @@
-"""Image ingest operations mixed into SessionService."""
+"""Image lookup and download operations mixed into SessionService."""
 
 from __future__ import annotations
 
@@ -9,53 +9,11 @@ from app.auth import Principal
 from app.exceptions import ImageNotFoundError
 from app.models import ImageUpload, Session, SessionImage, SessionStatus, utcnow
 from app.session_host import SessionHost
-from app.uploads import discard_spool, new_image, persist_upload, upload_size, validate_upload
+from app.uploads import validate_upload
 
 
 class SessionOpsMixin(SessionHost):
-    """Single-image ingest helpers used by SessionService."""
-
-    async def add_image(
-        self,
-        session_id: uuid.UUID,
-        upload: ImageUpload,
-        principal: Principal | None = None,
-    ) -> SessionImage:
-        """Validate, store, and attach a single image."""
-        try:
-            validate_upload(upload, self._settings)
-            self._quota.hit(principal)
-            async with self._factory() as db:
-                await self._require_session(db, session_id, principal)
-            nbytes = upload_size(upload)
-            self._quota.reserve_bytes(principal, session_id, nbytes)
-            return await self._commit_image(session_id, upload, principal, nbytes)
-        finally:
-            await discard_spool(upload)
-
-    async def _commit_image(
-        self,
-        session_id: uuid.UUID,
-        upload: ImageUpload,
-        principal: Principal | None,
-        nbytes: int,
-    ) -> SessionImage:
-        """Persist one blob and row; release reserved bytes if either step fails."""
-        try:
-            storage_path = await persist_upload(self._storage, upload, self._write_sema)
-            async with self._factory() as db:
-                session = await self._require_session(db, session_id, principal)
-                image = new_image(session, upload, storage_path)
-                touch_in_progress(session)
-                db.add(image)
-                db.add(session)
-                await db.commit()
-                await db.refresh(image)
-            self._metrics.observe_upload(nbytes)
-            return image
-        except Exception:
-            self._quota.release_bytes(principal, session_id, nbytes)
-            raise
+    """Single-image lookup helpers used by SessionService."""
 
     async def get_image(
         self,
@@ -102,8 +60,10 @@ class SessionOpsMixin(SessionHost):
         validate_upload(upload, self._settings)
 
 
-def touch_in_progress(session: Session) -> None:
-    """Move CREATED sessions to IN_PROGRESS on first successful upload."""
-    if session.status == SessionStatus.CREATED.value:
-        session.status = SessionStatus.IN_PROGRESS.value
+def apply_first_upload(session: Session) -> bool:
+    """Move CREATED sessions to IN_PROGRESS. Skip later per-frame session writes."""
+    if session.status != SessionStatus.CREATED.value:
+        return False
+    session.status = SessionStatus.IN_PROGRESS.value
     session.updated_at = utcnow()
+    return True

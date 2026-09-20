@@ -151,6 +151,13 @@ async def test_upload_byte_quotas_and_auth_off(tmp_path: Path) -> None:
             ImageUpload(filename="frame.png", content_type="image/png", payload=PNG_1X1),
             principal,
         )
+    await tenant_service.delete_session(one.id, principal)
+    recovered = await tenant_service.add_image(
+        two.id,
+        ImageUpload(filename="frame.png", content_type="image/png", payload=PNG_1X1),
+        principal,
+    )
+    assert recovered.size_bytes == len(PNG_1X1)
     await engine.dispose()
     await open_engine.dispose()
     await tenant_engine.dispose()
@@ -261,6 +268,12 @@ async def test_grpc_sdk_parity_and_path_upload(service: SessionService, tmp_path
             chunk_size=8,
         )
         assert len(batch) == 1
+        from_paths = await client.upload_images_batch_from_paths(
+            session.id,
+            [(frame, "c.png", "image/png")],
+            chunk_size=8,
+        )
+        assert len(from_paths) == 1
         await client.delete_session(session.id)
     await server.stop(grace=0)
 
@@ -271,6 +284,12 @@ async def test_grpc_sdk_parity_and_path_upload(service: SessionService, tmp_path
         created = await rest.create_session(sample_session_payload("rest-path"))
         uploaded = await rest.upload_image_from_path(created["id"], frame, metadata='{"iso": 64}')
         assert "storage_path" not in uploaded
+        batched = await rest.upload_images_batch_from_paths(
+            created["id"],
+            [(frame, "batch.png", "image/png")],
+            metadata='{"iso": 64}',
+        )
+        assert len(batched) == 1
 
 
 def test_chunking_and_update_mapping() -> None:

@@ -121,8 +121,10 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
         async with self._factory() as db:
             record = await self._require_session(db, session_id, principal, with_images=True)
             paths = [image.storage_path for image in record.images]
+            nbytes = sum(image.size_bytes for image in record.images)
             await db.delete(record)
             await db.commit()
+        self._quota.release_bytes(principal, session_id, nbytes)
         await gc_unreferenced(
             self._factory,
             self._storage,

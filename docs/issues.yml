@@ -35,6 +35,8 @@
 # (merged 2026-09-20; includes the iOS work opened as #11):
 #   done  SDK-002 (iOS PixeldiveSDK + SwiftUI demo; Swift proposals in docs/new-guardrails)
 #   done  SDK-003 (Android Pixeldive SDK + Compose demo; Kotlin proposals in docs/new-guardrails)
+#   done  PERF-005 (camera ingest: unified persist, hardlink, parallel REST spool)
+#   done  SDK-004 (stream file uploads on iOS/Android/Python SDKs)
 #
 #   open  TOOL-002 (GitHub issue objects still unpublished)
 #   done  SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
@@ -1483,6 +1485,106 @@ milestones:
             verification:
               - test -f docs/new-guardrails/kotlin.md
               - python3 scripts/read_kotlin_threshold.py statement_coverage
+
+      - id: SDK-004
+        status: done
+        title: Stream camera-session file uploads from mobile and Python SDKs
+        overview:
+          problem: >-
+            Phone camera sessions send many frames. The iOS file-URL upload read
+            the whole file into Data, Android used File.readBytes(), and the
+            Python gRPC batch helper only accepted in-memory tuples. That doubles
+            peak RAM on a burst and is the wrong shape for a capture session.
+          goal: >-
+            Stream file-backed uploads: iOS writes a temp multipart from the file
+            handle, Android uses OkHttp asRequestBody, and Python REST/gRPC batch
+            from paths without buffering whole payloads.
+        architecture:
+          target: >-
+            In the context of camera capture sessions uploading many images,
+            facing in-memory file reads on every SDK, we decided to stream
+            file-backed multipart and gRPC chunks from disk while keeping the
+            in-memory frame APIs for CMSampleBuffer/Camera2 byte arrays.
+          modules:
+            - ios/Sources/PixeldiveSDK
+            - android/sdk
+            - sdk/pixeldive_sdk
+        acceptance_criteria:
+          - iOS uploadImage(fileURL:) does not call Data(contentsOf:) on the image
+          - Android uploadImage(File) uses RequestBody.asRequestBody
+          - Python RestClient and GrpcClient can batch-upload from filesystem paths
+        guardrail_refs:
+          - PY-TEST-002
+          - SWIFT-TEST-002
+          - KT-TEST-002
+        tasks:
+          - id: SDK-004-T1
+            status: done
+            title: Stream file-backed uploads in iOS, Android, and Python SDKs
+            instructions:
+              files:
+                - ios/Sources/PixeldiveSDK
+                - android/sdk
+                - sdk/pixeldive_sdk
+            verification:
+              - bash scripts/ci-local.sh
+
+  - name: Camera ingest
+    epics:
+      - id: PERF-005
+        status: done
+        title: Deduplicate ingest and cut per-frame work for camera sessions
+        overview:
+          problem: >-
+            add_image and add_images_batch duplicated validate/quota/persist.
+            Local storage copied every spool onto the content-addressed path.
+            REST batch spooled files one after another and leaked completed
+            spools if a later file failed. Every frame wrote the session row.
+            Deleted sessions never released tenant byte quota. Magic sniff
+            re-opened the spool with blocking I/O.
+          goal: >-
+            One ingest path, hardlink local spools, parallel REST spooling with
+            cleanup, session row write only on CREATED→IN_PROGRESS, captured
+            magic headers, and quota release on session delete so a phone can
+            send many frames per session without extra copies or leaked caps.
+        architecture:
+          target: >-
+            In the context of a mobile camera feed sending many images per
+            session, facing duplicated ingest and a full copy per frame, we
+            decided to unify SessionService ingest, hardlink local spools, and
+            skip per-frame session updates rather than add a new transport.
+          modules:
+            - app/session_batch.py
+            - app/session_ops.py
+            - app/local_write.py
+            - app/api_images.py
+            - app/magic.py
+            - app/quotas.py
+            - app/auth.py
+        acceptance_criteria:
+          - add_image shares persist/quota with add_images_batch
+          - Local save_file hardlinks when the filesystem allows it
+          - REST batch spools concurrently and deletes finished spools on failure
+          - Session.updated_at is not written on every subsequent frame
+          - Session delete returns reserved tenant/session upload bytes
+        guardrail_refs:
+          - PY-CPLX-001
+          - PY-TEST-002
+          - PY-SEC-002
+        tasks:
+          - id: PERF-005-T1
+            status: done
+            title: Unify ingest, hardlink spools, and release quota on delete
+            instructions:
+              files:
+                - app/session_batch.py
+                - app/local_write.py
+                - app/api_images.py
+                - app/service.py
+                - app/auth.py
+            verification:
+              - bash scripts/ci-local.sh
+
 
 
 

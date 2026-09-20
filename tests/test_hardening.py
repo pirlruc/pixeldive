@@ -66,6 +66,13 @@ def test_magic_bytes_match_declared_types(tmp_path: Path) -> None:
         ImageUpload(filename="f.png", content_type="image/png", spool_path=str(spool)),
     ).startswith(b"\x89PNG")
     assert header_bytes(ImageUpload(filename="f.png", content_type="image/png")) == b""
+    assert header_bytes(
+        ImageUpload(
+            filename="f.png",
+            content_type="image/png",
+            header_prefix=PNG_1X1[:8],
+        ),
+    ).startswith(b"\x89PNG")
 
 
 def test_production_requires_auth_and_tls() -> None:

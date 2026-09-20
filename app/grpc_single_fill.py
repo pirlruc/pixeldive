@@ -10,7 +10,7 @@ import grpc
 from grpc.aio import ServicerContext
 
 from app.grpc_codec import as_uuid
-from app.metadata import parse_metadata_json
+from app.grpc_headers import chunk_headers
 from app.models import ImageUpload
 from app.pb import session_service_pb2 as pb
 from app.spool import SpoolWriter
@@ -66,9 +66,14 @@ async def single_header(
     if not chunk.session_id:
         await writer.abort()
         await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "session_id is required")
+    name, media_type, metadata = chunk_headers(
+        chunk.filename,
+        chunk.content_type,
+        chunk.metadata_json,
+    )
     return (
         as_uuid(chunk.session_id, context),
-        chunk.filename or filename,
-        chunk.content_type or content_type,
-        parse_metadata_json(chunk.metadata_json or None),
+        name or filename,
+        media_type or content_type,
+        metadata,
     )

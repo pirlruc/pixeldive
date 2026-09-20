@@ -70,16 +70,12 @@ public struct PixeldiveClient: Sendable {
         metadata: String? = nil
     ) async throws -> SessionImage {
         let parsed = try ResourceID.parse(sessionID)
-        var fields: [String: String] = [:]
-        if let metadata {
-            fields["metadata"] = metadata
-        }
         let form = MultipartForm.make(
             fileField: "file",
             filename: filename,
             payload: payload,
             contentType: contentType,
-            fields: fields
+            fields: metadataFields(metadata)
         )
         return try await http.upload("/api/v1/sessions/\(parsed)/images", form: form)
     }
@@ -91,11 +87,7 @@ public struct PixeldiveClient: Sendable {
         metadata: String? = nil
     ) async throws -> [SessionImage] {
         let parsed = try ResourceID.parse(sessionID)
-        var fields: [String: String] = [:]
-        if let metadata {
-            fields["metadata"] = metadata
-        }
-        let form = MultipartForm.makeBatch(items: items, fields: fields)
+        let form = MultipartForm.makeBatch(items: items, fields: metadataFields(metadata))
         return try await http.upload("/api/v1/sessions/\(parsed)/images/batch", form: form)
     }
 
@@ -116,7 +108,7 @@ public struct PixeldiveClient: Sendable {
         return try await http.download("/api/v1/sessions/\(parsedSession)/images/\(parsedImage)")
     }
 
-    /// POST multipart from a file URL. The file is read into memory first.
+    /// POST multipart from a file URL. The file is streamed into a temp multipart body.
     public func uploadImage(
         sessionID: String,
         fileURL: URL,
@@ -127,13 +119,25 @@ public struct PixeldiveClient: Sendable {
         guard fileURL.isFileURL else {
             throw PixeldiveError.transport("upload requires a file URL")
         }
-        let data = try Data(contentsOf: fileURL)
-        return try await uploadImage(
-            sessionID: sessionID,
+        let parsed = try ResourceID.parse(sessionID)
+        let dest = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pixeldive-\(UUID().uuidString).mime")
+        defer { try? FileManager.default.removeItem(at: dest) }
+        let form = try MultipartForm.write(
+            to: dest,
+            fileField: "file",
             filename: filename ?? fileURL.lastPathComponent,
-            payload: data,
+            source: fileURL,
             contentType: contentType,
-            metadata: metadata
+            fields: metadataFields(metadata)
         )
+        return try await http.upload("/api/v1/sessions/\(parsed)/images", form: form)
     }
+}
+
+func metadataFields(_ metadata: String?) -> [String: String] {
+    guard let metadata else {
+        return [:]
+    }
+    return ["metadata": metadata]
 }

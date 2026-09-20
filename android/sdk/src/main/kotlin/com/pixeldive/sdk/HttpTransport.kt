@@ -183,22 +183,41 @@ internal fun clippedUtf8(bytes: ByteArray): String {
     return slice.toString(Charsets.UTF_8)
 }
 
+internal fun metadataFields(metadata: String?): Map<String, String> =
+    if (metadata != null) mapOf("metadata" to metadata) else emptyMap()
+
+internal fun appendFields(
+    builder: MultipartBody.Builder,
+    fields: Map<String, String>,
+) {
+    fields.toSortedMap().forEach { (name, value) -> builder.addFormDataPart(name, value) }
+}
+
+internal fun multipart(
+    fileField: String,
+    filename: String,
+    body: RequestBody,
+    fields: Map<String, String>,
+): MultipartBody {
+    val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
+    builder.addFormDataPart(fileField, sanitizeMultipartFilename(filename), body)
+    appendFields(builder, fields)
+    return builder.build()
+}
+
 internal fun multipart(
     fileField: String,
     filename: String,
     payload: ByteArray,
     contentType: String,
     fields: Map<String, String>,
-): MultipartBody {
-    val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
-    builder.addFormDataPart(
+): MultipartBody =
+    multipart(
         fileField,
-        sanitizeMultipartFilename(filename),
+        filename,
         payload.toRequestBody(sanitizeMultipartType(contentType).toMediaType()),
+        fields,
     )
-    fields.toSortedMap().forEach { (name, value) -> builder.addFormDataPart(name, value) }
-    return builder.build()
-}
 
 internal fun multipartBatch(
     items: List<Triple<String, ByteArray, String>>,
@@ -212,6 +231,6 @@ internal fun multipartBatch(
             payload.toRequestBody(sanitizeMultipartType(contentType).toMediaType()),
         )
     }
-    fields.toSortedMap().forEach { (name, value) -> builder.addFormDataPart(name, value) }
+    appendFields(builder, fields)
     return builder.build()
 }

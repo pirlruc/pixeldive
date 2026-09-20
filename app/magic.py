@@ -4,6 +4,8 @@ from pathlib import Path
 
 from app.models import ImageUpload
 
+HEADER_SIZE = 16
+
 _PREFIXES: dict[str, tuple[bytes, ...]] = {
     "image/png": (b"\x89PNG\r\n\x1a\n",),
     "image/jpeg": (b"\xff\xd8\xff",),
@@ -15,10 +17,12 @@ _PREFIXES: dict[str, tuple[bytes, ...]] = {
 _HEIF = {b"heic", b"heix", b"hevc", b"hevx", b"mif1", b"msf1", b"heim", b"heis"}
 
 
-def header_bytes(upload: ImageUpload, size: int = 16) -> bytes:
-    """Return the first ``size`` bytes from memory or a spool file."""
+def header_bytes(upload: ImageUpload, size: int = HEADER_SIZE) -> bytes:
+    """Return the first ``size`` bytes from memory, a captured prefix, or a spool."""
     if upload.payload:
         return upload.payload[:size]
+    if upload.header_prefix:
+        return upload.header_prefix[:size]
     if upload.spool_path:
         with Path(upload.spool_path).open("rb") as handle:
             return handle.read(size)

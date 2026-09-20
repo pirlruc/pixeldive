@@ -1,6 +1,8 @@
 package com.pixeldive.sdk
 
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 
 /** Thin OkHttp client for pixeldive `/api/v1` (REST; mirrors Python `RestClient`). */
@@ -78,8 +80,7 @@ class PixeldiveClient(
         metadata: String? = null,
     ): SessionImage {
         val parsed = ResourceId.parse(sessionId)
-        val fields = if (metadata != null) mapOf("metadata" to metadata) else emptyMap()
-        val form = multipart("file", filename, payload, contentType, fields)
+        val form = multipart("file", filename, payload, contentType, metadataFields(metadata))
         return transport.upload(SessionImage.serializer(), "/api/v1/sessions/$parsed/images", form)
     }
 
@@ -90,8 +91,7 @@ class PixeldiveClient(
         metadata: String? = null,
     ): List<SessionImage> {
         val parsed = ResourceId.parse(sessionId)
-        val fields = if (metadata != null) mapOf("metadata" to metadata) else emptyMap()
-        val form = multipartBatch(items, fields)
+        val form = multipartBatch(items, metadataFields(metadata))
         return transport.upload(
             kotlinx.serialization.builtins.ListSerializer(SessionImage.serializer()),
             "/api/v1/sessions/$parsed/images/batch",
@@ -124,7 +124,7 @@ class PixeldiveClient(
         return transport.download("/api/v1/sessions/$parsedSession/images/$parsedImage")
     }
 
-    /** POST multipart from a file. The file is read into memory (`File.readBytes()`). */
+    /** POST multipart from a file. The file is streamed (`RequestBody.asRequestBody`). */
     suspend fun uploadImage(
         sessionId: String,
         file: File,
@@ -132,12 +132,9 @@ class PixeldiveClient(
         contentType: String = "image/png",
         metadata: String? = null,
     ): SessionImage {
-        return uploadImage(
-            sessionId = sessionId,
-            filename = filename ?: file.name,
-            payload = file.readBytes(),
-            contentType = contentType,
-            metadata = metadata,
-        )
+        val parsed = ResourceId.parse(sessionId)
+        val body = file.asRequestBody(sanitizeMultipartType(contentType).toMediaType())
+        val form = multipart("file", filename ?: file.name, body, metadataFields(metadata))
+        return transport.upload(SessionImage.serializer(), "/api/v1/sessions/$parsed/images", form)
     }
 }

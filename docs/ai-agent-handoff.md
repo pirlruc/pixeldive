@@ -11,14 +11,14 @@
 
 ## Current slice
 
-Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19). Phase 2 hardening, Python SDK, capture demo, and async S3 (PERF-002) are **on main** ([PR #7](https://github.com/pirlruc/pixeldive/pull/7), merged 2026-09-19). Phase 3 remaining hardening is **on main** ([PR #9](https://github.com/pirlruc/pixeldive/pull/9)). Analog pins, DRY, and 1.6.0 QUAL-003 gates (hadolint, KICS, uv.lock, Trivy/SBOM, pydoclint) are **on main** ([PR #10](https://github.com/pirlruc/pixeldive/pull/10)). iOS SDK + SwiftUI demo (SDK-002) and Android SDK + Compose demo (SDK-003) are **on main** ([PR #12](https://github.com/pirlruc/pixeldive/pull/12); iOS opened as [PR #11](https://github.com/pirlruc/pixeldive/pull/11)).
+Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19). Phase 2 hardening, Python SDK, capture demo, and async S3 (PERF-002) are **on main** ([PR #7](https://github.com/pirlruc/pixeldive/pull/7), merged 2026-09-19). Phase 3 remaining hardening is **on main** ([PR #9](https://github.com/pirlruc/pixeldive/pull/9)). Analog pins, DRY, and 1.6.0 QUAL-003 gates (hadolint, KICS, uv.lock, Trivy/SBOM, pydoclint) are **on main** ([PR #10](https://github.com/pirlruc/pixeldive/pull/10)). iOS SDK + SwiftUI demo (SDK-002) and Android SDK + Compose demo (SDK-003) are **on main** ([PR #12](https://github.com/pirlruc/pixeldive/pull/12); iOS opened as [PR #11](https://github.com/pirlruc/pixeldive/pull/11)). Camera-session ingest (PERF-005) and streaming file uploads (SDK-004) are on this branch.
 
 GitHub Epic/Task issues are not published ([TOOL-002](issues.yml)); statuses live in [`docs/issues.yml`](issues.yml).
 
 | Module | Path | Notes |
 | --- | --- | --- |
 | models | `app/models.py`, `app/schemas.py` | SQLModel tables + Android-aligned JSON payloads; `storage_path` is internal |
-| service | `app/service.py` | Single business layer for REST and gRPC (mixins for list/ingest/batch) |
+| service | `app/service.py` | Single business layer; `add_image` shares ingest with batch |
 | quotas | `app/quotas.py` | In-process per-tenant caps with a lock (SEC-002); shared Postgres is SEC-004 |
 | REST | `app/api.py`, `app/api_images.py` | FastAPI `/api/v1` + `/health` `/ready` `/metrics` |
 | gRPC | `app/grpc_server.py`, `app/grpc_rpc.py`, `proto/session_service.proto` | aio servicer; unary RPCs share `run_unary` |
@@ -103,6 +103,7 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - `ENVIRONMENT=production` requires `AUTH_REQUIRED=true` and `GRPC_INSECURE=false`.
 - Host-native HTTP/gRPC defaults are `127.0.0.1`; image/Compose set `0.0.0.0` in-container.
 - Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001) and skips Gradle unless Java is on PATH (KT-ENV-001). When those tools are present, coverage is fail-closed (llvm-cov / Kover). `check-swift-coverage.py` finds `llvm-cov` next to `swift`. `ios-sdk` on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1`; `android-sdk` sets `PIXELDIVE_REQUIRE_JAVA=1`. Linux URLSession ignores `URLProtocol`; tests use `HTTPPerforming` plus a loopback server. FoundationNetworking has no `URLResponse()`. Do not include the Compose demo from `ANDROID_HOME`. Apple Swift treats CRLF as one `Character`; sanitizers walk `unicodeScalars`. PNG multipart bodies are not UTF-8.
+- Camera sessions should reuse one `PixeldiveClient` / gRPC channel, send in-memory frames (already in RAM from the camera), and use file/path helpers for gallery or on-disk bursts. Local storage hardlinks spools; S3 still streams multipart. Do not bump session rows after the first frame.
 - Android `HttpUrl.resolve` dropped a base path prefix — concatenate like iOS/httpx. Multipart `Content-Type` parameters (`charset=`) must be stripped, not glued onto the subtype. iOS must trim bearer tokens, reject non-file upload URLs, refuse off-origin followed redirects, and must not fabricate sample cameras when discovery is empty.
 
 ## Suggested next work
@@ -122,5 +123,6 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - SDK-002 + SDK-003 shipped in [PR #12](https://github.com/pirlruc/pixeldive/pull/12) (iOS opened as [PR #11](https://github.com/pirlruc/pixeldive/pull/11)): Swift `PixeldiveSDK` + SwiftUI demo; Kotlin `PixeldiveClient` + Compose demo; Swift/Kotlin proposals in `docs/new-guardrails/`
 - Review pass: 3xx/redirect + multipart filename hardening; llvm-cov/Kover/ktlint/detekt fail-closed in CI
 - Follow-up pass: Android base-path join, media-type parameters, cancellable OkHttp; iOS token trim, file URL, off-origin redirect refuse, empty camera discovery
+- Camera ingest: unified `add_image`/`add_images_batch`, local spool hardlink, parallel REST spool, quota release on delete, streaming mobile file uploads ([PERF-005](issues.yml), [SDK-004](issues.yml))
 
 *Last updated: 2026-09-20*

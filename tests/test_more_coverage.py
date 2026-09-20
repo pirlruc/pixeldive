@@ -234,3 +234,40 @@ def test_json_log_exception_and_demo_main(monkeypatch) -> None:
     monkeypatch.setenv("DEMO_HTTP_PORT", "8099")
     demo_main.main()
     assert captured["port"] == 8099
+
+
+@pytest.mark.asyncio
+async def test_collect_uploads_discards_on_failure(
+    service: SessionService,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed REST batch must delete spools that already finished hashing."""
+    from app.api_images import collect_uploads
+    from app.models import ImageUpload
+
+    spool = tmp_path / "partial.part"
+    spool.write_bytes(PNG_1X1)
+    good = ImageUpload(
+        filename="a.png",
+        content_type="image/png",
+        spool_path=str(spool),
+        digest_hex="ab",
+        size_bytes=len(PNG_1X1),
+        header_prefix=PNG_1X1[:16],
+    )
+    calls = {"n": 0}
+
+    async def fake(
+        _file: object, _metadata: object, _service: object, extra: object = None
+    ) -> ImageUpload:
+        del extra
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return good
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("app.api_images.to_upload", fake)
+    with pytest.raises(RuntimeError, match="boom"):
+        await collect_uploads([object(), object()], {}, service)  # type: ignore[list-item]
+    assert not spool.exists()

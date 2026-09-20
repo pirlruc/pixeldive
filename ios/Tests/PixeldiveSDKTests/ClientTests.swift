@@ -273,6 +273,31 @@ final class ClientTests: XCTestCase {
         XCTAssertFalse(emptyCursor.contains("cursor="))
     }
 
+    func testMetadataFieldsAndDiskMultipart() throws {
+        XCTAssertEqual(metadataFields(nil), [:])
+        XCTAssertEqual(metadataFields("{}"), ["metadata": "{}"])
+        let source = FileManager.default.temporaryDirectory.appendingPathComponent("src.png")
+        let dest = FileManager.default.temporaryDirectory.appendingPathComponent("out.mime")
+        try TestPNG.bytes.write(to: source)
+        defer {
+            try? FileManager.default.removeItem(at: source)
+            try? FileManager.default.removeItem(at: dest)
+        }
+        let form = try MultipartForm.write(
+            to: dest,
+            fileField: "file",
+            filename: "src.png",
+            source: source,
+            contentType: "image/png",
+            fields: ["metadata": "{}"]
+        )
+        XCTAssertEqual(form.body.count, 0)
+        XCTAssertNotNil(form.fileURL)
+        let written = try Data(contentsOf: dest)
+        XCTAssertTrue(written.contains(TestPNG.bytes))
+        XCTAssertTrue(String(data: written, encoding: .utf8)?.contains("name=\"metadata\"") == true)
+    }
+
     func testRejectsNonUUIDSession() async {
         let stub = StubPerformer()
         let client = makeClient(stub: stub)

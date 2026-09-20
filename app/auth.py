@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import hmac
 import json
 from dataclasses import dataclass
@@ -65,12 +66,17 @@ def bearer_token(authorization: str | None) -> str | None:
     return token or None
 
 
+def _token_digest(value: str) -> bytes:
+    """SHA-256 digest so compare_digest always sees equal-length bytes."""
+    return hashlib.sha256(value.encode("utf-8")).digest()
+
+
 def lookup_owner(token: str, keys: dict[str, str]) -> str | None:
     """Return the owner for ``token`` using compare_digest against every key."""
     owner: str | None = None
-    token_bytes = token.encode("utf-8")
+    token_digest = _token_digest(token)
     for candidate, mapped in keys.items():
-        if hmac.compare_digest(token_bytes, candidate.encode("utf-8")):
+        if hmac.compare_digest(token_digest, _token_digest(candidate)):
             owner = mapped
     return owner
 

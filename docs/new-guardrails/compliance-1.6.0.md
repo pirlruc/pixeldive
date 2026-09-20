@@ -63,6 +63,7 @@ registry or GitHub Release publish.
 `app/pb/`, `docs/guardrails/`, and `.github/scaffold` remain CodeQL `paths-ignore`
 scope filters ([scanner-exceptions.md](../scanner-exceptions.md)). They are not
 product findings. No finding-level `nosec` / CodeQL suppressions were added.
+Semgrep `p/python` now also covers `scripts/` (CI helpers already in CodeQL).
 
 In-code hardenings in this bump: HMAC API-key compare, in-process quota lock,
 magic-byte upload sniff, production `ENVIRONMENT` fail-closed, download no longer

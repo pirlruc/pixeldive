@@ -55,15 +55,21 @@ async def test_update_status_and_metadata(service: SessionService) -> None:
 async def test_add_image_marks_in_progress(service: SessionService) -> None:
     """First upload moves CREATED → IN_PROGRESS."""
     session = await service.create_session(sample_create())
-    image = await service.add_image(
-        session.id,
-        ImageUpload(filename="frame.png", content_type="image/png", payload=PNG_1X1),
-    )
+    payload = ImageUpload(filename="frame.png", content_type="image/png", payload=PNG_1X1)
+    service.validate_upload(payload)
+    image = await service.add_image(session.id, payload)
     loaded = await service.get_session(session.id)
     assert loaded.status == SessionStatus.IN_PROGRESS.value
     assert image.size_bytes == len(PNG_1X1)
     listed = await service.list_images(session.id)
     assert len(listed.items) == 1
+    again = await service.add_image(
+        session.id,
+        ImageUpload(filename="frame2.png", content_type="image/png", payload=PNG_1X1),
+    )
+    loaded = await service.get_session(session.id)
+    assert loaded.status == SessionStatus.IN_PROGRESS.value
+    assert again.size_bytes == len(PNG_1X1)
 
 
 @pytest.mark.asyncio
