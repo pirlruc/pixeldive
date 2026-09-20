@@ -1,6 +1,6 @@
 import Foundation
 
-struct HTTPTransport: Sendable {
+struct HTTPTransport: @unchecked Sendable {
     let baseURL: URL
     let token: String?
     let session: URLSession
@@ -86,7 +86,7 @@ struct HTTPTransport: Sendable {
     private func send(_ request: URLRequest) async throws -> Data {
         let pair: (Data, URLResponse)
         do {
-            pair = try await session.data(for: request)
+            pair = try await loadURL(session, request)
         } catch {
             throw PixeldiveError.transport(error.localizedDescription)
         }

@@ -15,10 +15,7 @@ public struct PixeldiveClient: Sendable {
         if let session {
             resolved = session
         } else {
-            let config = URLSessionConfiguration.ephemeral
-            config.timeoutIntervalForRequest = timeout
-            config.timeoutIntervalForResource = timeout
-            resolved = URLSession(configuration: config)
+            resolved = makeEphemeralSession(timeout: timeout)
         }
         self.http = HTTPTransport(baseURL: baseURL, token: token, session: resolved)
     }

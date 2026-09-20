@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 @testable import PixeldiveSDK
 import XCTest
 
@@ -62,8 +65,10 @@ final class ClientTests: XCTestCase {
             StubURLProtocol.Step(status: 204, headers: [:], body: Data()),
         ]
         let client = makeClient()
-        XCTAssertEqual(try await client.health().status, "ok")
-        XCTAssertEqual(try await client.ready().status, "ok")
+        let health = try await client.health()
+        XCTAssertEqual(health.status, "ok")
+        let ready = try await client.ready()
+        XCTAssertEqual(ready.status, "ok")
         let created = try await client.createSession(DeviceSnapshot.sampleiPhone())
         XCTAssertEqual(created.id, sessionID)
         let listed = try await client.listSessions(limit: 10)
@@ -168,9 +173,7 @@ final class ClientTests: XCTestCase {
     }
 
     private func makeClient(token: String? = nil) -> PixeldiveClient {
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [StubURLProtocol.self]
-        let session = URLSession(configuration: config)
+        let session = makeEphemeralSession(timeout: 60, protocolClasses: [StubURLProtocol.self])
         return PixeldiveClient(
             baseURL: URL(string: "http://test")!,
             token: token,
