@@ -130,6 +130,11 @@ async def test_update_name_only_and_too_large(service: SessionService) -> None:
                 payload=b"x" * (service._settings.max_image_bytes + 1),
             ),
         )
+    with pytest.raises(UnsupportedContentTypeError, match="does not match"):
+        await service.add_image(
+            session.id,
+            ImageUpload(filename="fake.png", content_type="image/png", payload=b"not-a-png"),
+        )
 
 
 def test_parse_metadata_json() -> None:

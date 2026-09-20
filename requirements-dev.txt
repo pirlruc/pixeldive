@@ -1,13 +1,16 @@
 -r requirements.txt
 aiosqlite==0.22.1
+bandit==1.8.6
 coverage==7.16.1
 grpcio-tools==1.71.0
 httpx==0.28.1
 interrogate==1.7.0
 mypy==1.15.0
+pip-audit==2.9.0
 pytest==9.0.3
 pytest-asyncio==1.4.0
 pytest-cov==7.1.0
 radon==6.0.1
 ruff==0.16.8
+pydoclint==0.7.3
 types-aiofiles==25.1.0.20260518

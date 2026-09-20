@@ -6,6 +6,7 @@ from app.config import Settings
 from app.content_types import ALLOWED_CONTENT_TYPES
 from app.exceptions import EmptyImageError, ImageTooLargeError, UnsupportedContentTypeError
 from app.filenames import sanitize_filename
+from app.magic import header_bytes, matches_declared_type
 from app.models import ImageUpload
 
 
@@ -32,6 +33,10 @@ def validate_upload(upload: ImageUpload, settings: Settings) -> None:
     if size > settings.max_image_bytes:
         raise ImageTooLargeError(
             f"image exceeds max_image_bytes={settings.max_image_bytes}",
+        )
+    if not matches_declared_type(content_type, header_bytes(upload)):
+        raise UnsupportedContentTypeError(
+            f"payload does not match content type: {upload.content_type}",
         )
     upload.content_type = content_type
     upload.size_bytes = size

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Continuous-improvement prompt maintenance
 
-Applies only when [`docs/continuous-improvement.md`](docs/continuous-improvement.md) exists in this
+Applies only when `docs/continuous-improvement.md` exists in this
 repo. Inert elsewhere. That file is the prompt pasted into the repository's GitHub Agents → Automations
 configuration for the **ai-reviewer** cloud-agent run.
 
@@ -46,7 +46,7 @@ Keep these sections, in order, across every repo that carries the file:
 
 ## Output contract
 
-- Propose new work as entries appended to [`docs/issues.yml`](docs/issues.yml) in a pull request.
+- Propose new work as entries appended to `docs/issues.yml` in a pull request.
 - Never `gh issue create` (or equivalent) from the automation — that bypasses the authored-manifest
   contract and the publishing approval gate.
 - The `ai-reviewer` label is applied by `issues-sync.py` after a human merges and syncs; provenance in

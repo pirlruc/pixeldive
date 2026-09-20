@@ -5,7 +5,7 @@ alwaysApply: true
 
 # github-issue-adr methodology
 
-[github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.2.0/github-issue-adr) is the methodology for every
+[github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.5.0/github-issue-adr) is the methodology for every
 repo carrying this scaffold. Do not introduce a second decision-record format alongside it.
 
 ## Core model
@@ -33,7 +33,7 @@ Author issues in `docs/issues.yml`, then sync. Never hardcode issue content into
 issue that the manifest should own — the two drift immediately.
 
 ```bash
-python3 .github/scaffold/scripts/issues-sync.py --repo pirlruc/pixeldive --yaml docs/issues.yml --dry-run
+python3 .github/scaffold/scripts/issues-sync.py --repo pirlruc/<repo> --yaml docs/issues.yml --dry-run
 ```
 
 Creating issues is a publishing action and needs approval — see [agent-workflow.mdc](agent-workflow.mdc). Run

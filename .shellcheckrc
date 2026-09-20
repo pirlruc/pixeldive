@@ -1,0 +1,2 @@
+# SHELL-LINT-001: analog shellcheck_failure_threshold is error.
+severity=error

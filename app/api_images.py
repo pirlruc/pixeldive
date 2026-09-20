@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from app.api_deps import PrincipalDep, ServiceDep
 from app.disposition import attachment_disposition
 from app.filenames import sanitize_filename
+from app.io_sizes import IO_CHUNK_BYTES
 from app.metadata import parse_metadata_json
 from app.models import ImagePage, ImageUpload, SessionImage, SessionImageRead
 from app.service import SessionService
@@ -88,7 +89,12 @@ async def download_image(
     image = await service.get_image(session_id, image_id, principal)
 
     async def chunks() -> AsyncIterator[bytes]:
-        async for chunk in service.stream_image(session_id, image_id, principal):
+        async for chunk in service.stream_image(
+            session_id,
+            image_id,
+            principal,
+            image=image,
+        ):
             yield chunk
 
     return StreamingResponse(
@@ -101,7 +107,7 @@ async def download_image(
 async def file_chunks(file: UploadFile) -> AsyncIterator[bytes]:
     """Yield multipart chunks from an UploadFile."""
     while True:
-        chunk = await file.read(64 * 1024)
+        chunk = await file.read(IO_CHUNK_BYTES)
         if not chunk:
             break
         yield chunk

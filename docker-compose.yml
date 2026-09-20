@@ -1,52 +1,73 @@
 services:
   db:
-    image: postgres:16-alpine
+    # postgres:16-alpine (multi-arch index digest; DOCKER-COMPOSE-001).
+    image: postgres:16-alpine@sha256:3c5c8892d184f738f4fe282d14ddaa613a38f00f4189d2d94725ebe6f2909ddb
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: pixeldive
-      POSTGRES_PASSWORD: pixeldive
-      POSTGRES_DB: pixeldive
+      POSTGRES_USER: ${POSTGRES_USER:-pixeldive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-pixeldive}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pixeldive"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
       interval: 5s
       timeout: 5s
       retries: 10
     volumes:
       - pgdata:/var/lib/postgresql/data
+    mem_limit: 512m
+    cap_drop:
+      - ALL
+    # Entrypoint chowns the data dir then gosu to postgres (DOCKER-COMPOSE-005).
+    # kics-scan ignore-line
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
 
   app:
     build: .
+    restart: unless-stopped
+    user: "65532:65532"
     depends_on:
       db:
         condition: service_healthy
       minio:
-        condition: service_started
+        condition: service_healthy
         required: false
       minio-init:
         condition: service_completed_successfully
         required: false
     environment:
-      DATABASE_URL: postgresql+asyncpg://pixeldive:pixeldive@db:5432/pixeldive
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pixeldive}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pixeldive}
       STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
       STORAGE_ROOT: /data/images
       HTTP_HOST: 0.0.0.0
       HTTP_PORT: "8000"
+      GRPC_HOST: 0.0.0.0
       GRPC_PORT: "50051"
       AUTO_CREATE_TABLES: "false"
       LOG_JSON: "true"
-      GRPC_INSECURE: "true"
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
+      API_KEYS: ${API_KEYS:-}
+      GRPC_INSECURE: ${GRPC_INSECURE:-true}
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
       S3_BUCKET: ${S3_BUCKET:-pixeldive}
       S3_REGION: ${S3_REGION:-us-east-1}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-minioadmin}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       GC_MIN_AGE_SECONDS: ${GC_MIN_AGE_SECONDS:-5}
       ORPHAN_MIN_AGE_SECONDS: ${ORPHAN_MIN_AGE_SECONDS:-60}
       ORPHAN_SWEEP_INTERVAL_SECONDS: ${ORPHAN_SWEEP_INTERVAL_SECONDS:-0}
     ports:
-      - "8000:8000"
-      - "50051:50051"
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:50051:50051"
     volumes:
       - images:/data/images
     read_only: true
@@ -56,31 +77,63 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /tmp
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   minio:
     profiles: ["s3"]
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    # quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z (manifest list; DOCKER-COMPOSE-001).
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - minio:/data
+    mem_limit: 512m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
+  # kics-scan ignore-block
   minio-init:
     profiles: ["s3"]
-    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    # quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z (manifest list; DOCKER-COMPOSE-001).
+    # One-shot bucket bootstrap, not a long-running service (DOCKER-COMPOSE-002).
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
+    restart: on-failure
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     entrypoint:
       - /bin/sh
       - -c
       - |
         i=0
-        until mc alias set local http://minio:9000 minioadmin minioadmin; do
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
           i=$$((i+1))
           if [ "$$i" -gt 30 ]; then exit 1; fi
           sleep 1

@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
-import httpx
-
 from pixeldive_sdk.ids import resource_id
+from pixeldive_sdk.rest_http import RestHttpMixin
 
 
-class RestImageMixin:
+class RestImageMixin(RestHttpMixin):
     """Image routes under ``/api/v1/sessions/{id}/images``."""
-
-    _http: httpx.AsyncClient
 
     async def upload_image(
         self,
@@ -27,13 +24,31 @@ class RestImageMixin:
         data: dict[str, str] = {}
         if metadata is not None:
             data["metadata"] = metadata
-        response = await self._http.post(
+        result: dict[str, Any] = await self._json(
+            "POST",
             f"/api/v1/sessions/{resource_id(session_id)}/images",
             files={"file": (filename, payload, content_type)},
             data=data,
         )
-        response.raise_for_status()
-        result: dict[str, Any] = response.json()
+        return result
+
+    async def upload_images_batch(
+        self,
+        session_id: str,
+        items: Sequence[tuple[str, bytes, str]],
+        metadata: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """POST multipart /api/v1/sessions/{id}/images/batch."""
+        data: dict[str, str] = {}
+        if metadata is not None:
+            data["metadata"] = metadata
+        files = [("files", (name, blob, content_type)) for name, blob, content_type in items]
+        result: list[dict[str, Any]] = await self._json(
+            "POST",
+            f"/api/v1/sessions/{resource_id(session_id)}/images/batch",
+            files=files,
+            data=data,
+        )
         return result
 
     async def list_images(
@@ -44,22 +59,20 @@ class RestImageMixin:
         cursor: str | None = None,
     ) -> dict[str, Any]:
         """GET /api/v1/sessions/{id}/images."""
-        params: dict[str, Any] = {"limit": limit}
-        if cursor:
-            params["cursor"] = cursor
-        response = await self._http.get(
+        payload: dict[str, Any] = await self._json(
+            "GET",
             f"/api/v1/sessions/{resource_id(session_id)}/images",
-            params=params,
+            params=self._page_params(limit, cursor),
         )
-        response.raise_for_status()
-        payload: dict[str, Any] = response.json()
         return payload
 
     async def download_image(self, session_id: str, image_id: str) -> AsyncIterator[bytes]:
         """Stream GET /api/v1/sessions/{id}/images/{image_id}."""
+        headers = self._auth_headers()
         async with self._http.stream(
             "GET",
             f"/api/v1/sessions/{resource_id(session_id)}/images/{resource_id(image_id)}",
+            headers=headers,
         ) as response:
             if response.status_code >= 400:
                 await response.aread()

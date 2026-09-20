@@ -5,15 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import httpx
-
 from pixeldive_sdk.ids import resource_id
+from pixeldive_sdk.rest_http import RestHttpMixin
 
 
-class RestPathUploadMixin:
+class RestPathUploadMixin(RestHttpMixin):
     """POST multipart from a file handle without buffering the whole blob."""
-
-    _http: httpx.AsyncClient
 
     async def upload_image_from_path(
         self,
@@ -30,11 +27,10 @@ class RestPathUploadMixin:
         if metadata is not None:
             data["metadata"] = metadata
         with source.open("rb") as handle:
-            response = await self._http.post(
+            result: dict[str, Any] = await self._json(
+                "POST",
                 f"/api/v1/sessions/{resource_id(session_id)}/images",
                 files={"file": (filename or source.name, handle, content_type)},
                 data=data,
             )
-        response.raise_for_status()
-        result: dict[str, Any] = response.json()
         return result

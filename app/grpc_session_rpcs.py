@@ -1,10 +1,8 @@
 """Session CRUD RPCs for the gRPC SessionService servicer."""
 
 from grpc.aio import ServicerContext
-from pydantic import ValidationError
 
-from app.auth import Principal, authenticate, metadata_authorization
-from app.exceptions import SessionServiceError
+from app.auth import Principal
 from app.grpc_codec import (
     as_uuid,
     camera_caps,
@@ -13,17 +11,11 @@ from app.grpc_codec import (
     session_to_pb,
     struct_to_dict,
 )
-from app.grpc_errors import abort_rpc
+from app.grpc_rpc import run_unary
 from app.grpc_update import update_patch
 from app.models import SessionCreate
 from app.pb import session_service_pb2 as pb
 from app.service import SessionService
-
-
-def rpc_principal(context: ServicerContext, service: SessionService) -> Principal | None:
-    """Resolve the caller from gRPC metadata."""
-    header = metadata_authorization(tuple(context.invocation_metadata()))
-    return authenticate(header, service._settings)
 
 
 class SessionRpcMixin:
@@ -37,8 +29,8 @@ class SessionRpcMixin:
         context: ServicerContext,
     ) -> pb.SessionResponse:
         """Create a session from protobuf device payloads."""
-        try:
-            principal = rpc_principal(context, self._service)
+
+        async def work(principal: Principal | None) -> pb.SessionResponse:
             payload = SessionCreate(
                 session_name=request.session_name,
                 phone_info=phone_info(request.phone_info),
@@ -47,9 +39,9 @@ class SessionRpcMixin:
                 extra_metadata=struct_to_dict(request.metadata),
             )
             session = await self._service.create_session(payload, principal)
-        except (SessionServiceError, ValidationError) as exc:
-            await abort_rpc(context, exc)
-        return pb.SessionResponse(session=session_to_pb(session))
+            return pb.SessionResponse(session=session_to_pb(session))
+
+        return await run_unary(context, self._service, work)
 
     async def GetSession(
         self,
@@ -57,15 +49,15 @@ class SessionRpcMixin:
         context: ServicerContext,
     ) -> pb.SessionResponse:
         """Fetch a session by UUID string."""
-        try:
-            principal = rpc_principal(context, self._service)
+
+        async def work(principal: Principal | None) -> pb.SessionResponse:
             session = await self._service.get_session(
                 as_uuid(request.session_id, context),
                 principal,
             )
-        except (SessionServiceError, ValidationError) as exc:
-            await abort_rpc(context, exc)
-        return pb.SessionResponse(session=session_to_pb(session))
+            return pb.SessionResponse(session=session_to_pb(session))
+
+        return await run_unary(context, self._service, work)
 
     async def UpdateSession(
         self,
@@ -73,16 +65,16 @@ class SessionRpcMixin:
         context: ServicerContext,
     ) -> pb.SessionResponse:
         """Patch name, status, and/or metadata."""
-        try:
-            principal = rpc_principal(context, self._service)
+
+        async def work(principal: Principal | None) -> pb.SessionResponse:
             session = await self._service.update_session(
                 as_uuid(request.session_id, context),
                 update_patch(request),
                 principal,
             )
-        except (SessionServiceError, ValidationError) as exc:
-            await abort_rpc(context, exc)
-        return pb.SessionResponse(session=session_to_pb(session))
+            return pb.SessionResponse(session=session_to_pb(session))
+
+        return await run_unary(context, self._service, work)
 
     async def DeleteSession(
         self,
@@ -90,12 +82,12 @@ class SessionRpcMixin:
         context: ServicerContext,
     ) -> pb.DeleteSessionResponse:
         """Delete a session and unreferenced blobs."""
-        try:
-            principal = rpc_principal(context, self._service)
+
+        async def work(principal: Principal | None) -> pb.DeleteSessionResponse:
             await self._service.delete_session(as_uuid(request.session_id, context), principal)
-        except (SessionServiceError, ValidationError) as exc:
-            await abort_rpc(context, exc)
-        return pb.DeleteSessionResponse(deleted=True)
+            return pb.DeleteSessionResponse(deleted=True)
+
+        return await run_unary(context, self._service, work)
 
     async def ListSessions(
         self,
@@ -103,16 +95,16 @@ class SessionRpcMixin:
         context: ServicerContext,
     ) -> pb.SessionListResponse:
         """List sessions with a cursor."""
-        try:
-            principal = rpc_principal(context, self._service)
+
+        async def work(principal: Principal | None) -> pb.SessionListResponse:
             page = await self._service.list_sessions(
                 limit=request.limit or None,
                 cursor=request.cursor or None,
                 principal=principal,
             )
-        except (SessionServiceError, ValidationError) as exc:
-            await abort_rpc(context, exc)
-        return pb.SessionListResponse(
-            sessions=[session_to_pb(item) for item in page.items],
-            next_cursor=page.next_cursor or "",
-        )
+            return pb.SessionListResponse(
+                sessions=[session_to_pb(item) for item in page.items],
+                next_cursor=page.next_cursor or "",
+            )
+
+        return await run_unary(context, self._service, work)

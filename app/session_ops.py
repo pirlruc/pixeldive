@@ -77,12 +77,20 @@ class SessionOpsMixin(SessionHost):
         session_id: uuid.UUID,
         image_id: uuid.UUID,
         principal: Principal | None = None,
+        *,
+        image: SessionImage | None = None,
     ) -> AsyncIterator[bytes]:
-        """Yield stored bytes for download endpoints."""
-        image = await self.get_image(session_id, image_id, principal)
+        """Yield stored bytes for download endpoints.
+
+        Pass ``image`` when the caller already loaded the row so download does
+        not consume a second quota hit or extra DB round-trip.
+        """
+        row = image or await self.get_image(session_id, image_id, principal)
+        if row.session_id != session_id or row.id != image_id:
+            raise ImageNotFoundError(f"image {image_id} not found")
         try:
             async for chunk in self._storage.stream(
-                image.storage_path,
+                row.storage_path,
                 self._settings.download_chunk_bytes,
             ):
                 yield chunk

@@ -25,14 +25,19 @@ def mtime(value: object) -> float:
 
 def is_missing(exc: BaseException) -> bool:
     """Return True for S3 404 / NotFound client errors."""
-    response = getattr(exc, "response", None) if hasattr(exc, "response") else None
-    status = None
+    response = getattr(exc, "response", None)
     if isinstance(response, dict):
-        status = response.get("Error", {}).get("Code")
-    if status in {"404", "NotFound", "NoSuchKey"}:
-        return True
-    name = type(exc).__name__
-    return name in {"NoSuchKey", "ClientError"} and "404" in str(exc)
+        error = response.get("Error")
+        if isinstance(error, dict) and str(error.get("Code", "")) in {
+            "404",
+            "NotFound",
+            "NoSuchKey",
+        }:
+            return True
+        meta = response.get("ResponseMetadata")
+        if isinstance(meta, dict) and meta.get("HTTPStatusCode") == 404:
+            return True
+    return type(exc).__name__ in {"NoSuchKey", "NotFound"}
 
 
 def age_from_head(response: object) -> float:

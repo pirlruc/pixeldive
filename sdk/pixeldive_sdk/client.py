@@ -25,6 +25,7 @@ class RestClient(RestSessionMixin, RestImageMixin, RestPathUploadMixin):
     ) -> None:
         """Bind a base URL, optional bearer token, and optional shared client."""
         self._base = base_url.rstrip("/")
+        self._token = token
         headers: dict[str, str] = {}
         if token:
             headers["Authorization"] = f"Bearer {token}"
@@ -34,8 +35,6 @@ class RestClient(RestSessionMixin, RestImageMixin, RestPathUploadMixin):
             headers=headers,
             timeout=timeout,
         )
-        if self._owns_client and token:
-            self._http.headers["Authorization"] = f"Bearer {token}"
 
     async def __aenter__(self) -> Self:
         """Return self for ``async with``."""

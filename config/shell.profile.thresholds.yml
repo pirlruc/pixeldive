@@ -1,0 +1,3 @@
+# Consumer copy of docs/guardrails/shell/profile.thresholds.yml (pin 1.6.0).
+
+shellcheck_failure_threshold: error    # SHELL-LINT-001

@@ -6,10 +6,10 @@ import uuid
 from collections.abc import AsyncIterator
 from pathlib import Path
 
-import grpc
 from grpc.aio import ServicerContext
 
 from app.exceptions import EmptyImageError, ImageTooLargeError
+from app.grpc_errors import abort_rpc
 from app.grpc_single_fill import collect_single
 from app.models import ImageUpload
 from app.pb import session_service_pb2 as pb
@@ -28,12 +28,8 @@ async def assemble_single(
     await writer.start()
     try:
         return await collect_single(chunks, context, writer)
-    except ImageTooLargeError:
-        await context.abort(grpc.StatusCode.RESOURCE_EXHAUSTED, "image exceeds max_image_bytes")
-        raise
-    except EmptyImageError:
-        await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "empty image stream")
-        raise
-    except Exception:
+    except Exception as exc:
         await writer.abort()
+        if isinstance(exc, ImageTooLargeError | EmptyImageError):
+            await abort_rpc(context, exc)
         raise

@@ -2,8 +2,9 @@
 """Fail-closed reader for Python numeric gates (CI-022 / PY-TEST-002).
 
 Jobs always read config/python.profile.thresholds.yml. When CI inits
-docs/guardrails with GUARDRAILS_READ_TOKEN, every analog key must match that
-copy (no silent drift). github-scaffold is not cloned in CI.
+docs/guardrails with GUARDRAILS_READ_TOKEN, every analog key must be present
+and the consumer must not be looser than the analog (stricter is allowed).
+github-scaffold is not cloned in CI.
 """
 
 from __future__ import annotations
@@ -14,6 +15,26 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CONSUMER = ROOT / "config" / "python.profile.thresholds.yml"
 ANALOG = ROOT / "docs" / "guardrails" / "python" / "profile.thresholds.yml"
+
+# Keys where a larger number is the stricter gate.
+HIGHER_IS_STRICTER = frozenset(
+    {
+        "statement_coverage",
+        "branch_coverage",
+        "doc_coverage",
+        "min_maintainability_index",
+        "avg_maintainability_index",
+    },
+)
+# Keys where a smaller number is the stricter gate.
+LOWER_IS_STRICTER = frozenset(
+    {
+        "max_cyclomatic_complexity",
+        "avg_cyclomatic_complexity",
+        "pr_size_soft_limit_lines",
+        "lint_exception_max_days",
+    },
+)
 
 
 def parse_int_keys(path: Path) -> dict[str, int]:
@@ -39,17 +60,32 @@ def parse_int_keys(path: Path) -> dict[str, int]:
     return values
 
 
+def _looser_than_analog(key: str, consumer_value: int, analog_value: int) -> bool:
+    """True when the consumer overlay weakens the analog gate."""
+    if key in HIGHER_IS_STRICTER:
+        return consumer_value < analog_value
+    if key in LOWER_IS_STRICTER:
+        return consumer_value > analog_value
+    return consumer_value != analog_value
+
+
 def load_thresholds() -> dict[str, int]:
-    """Load consumer copy and optionally assert analog parity."""
+    """Load consumer copy and optionally assert analog overlay rules."""
     consumer = parse_int_keys(CONSUMER)
     if ANALOG.is_file():
         analog = parse_int_keys(ANALOG)
         for key, analog_value in analog.items():
             consumer_value = consumer.get(key)
-            if consumer_value != analog_value:
+            if consumer_value is None:
                 raise SystemExit(
-                    f"{CONSUMER.name} {key}={consumer_value} != analog pin {analog_value} "
-                    f"({ANALOG}). Update the consumer copy when bumping docs/guardrails.",
+                    f"{CONSUMER.name} missing analog key '{key}' ({ANALOG}). "
+                    "Update the consumer copy when bumping docs/guardrails.",
+                )
+            if _looser_than_analog(key, consumer_value, analog_value):
+                raise SystemExit(
+                    f"{CONSUMER.name} {key}={consumer_value} is looser than analog "
+                    f"{analog_value} ({ANALOG}). Being stricter is allowed; loosening "
+                    "requires a recorded deviation.",
                 )
     return consumer
 

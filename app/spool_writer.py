@@ -5,12 +5,12 @@ from __future__ import annotations
 import hashlib
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import aiofiles
-import aiofiles.os
 
 from app.exceptions import EmptyImageError, ImageTooLargeError
+from app.fs_async import unlink_missing
 from app.spool_file import Spool
 
 
@@ -30,6 +30,13 @@ class SpoolWriter:
         """Open the spool file for writing."""
         self._handle = await aiofiles.open(self.path, "wb")
 
+    async def _close(self) -> None:
+        """Close the open handle if any."""
+        if self._handle is None:
+            return
+        await self._handle.close()
+        self._handle = None
+
     async def feed(self, chunk: bytes) -> None:
         """Append ``chunk`` or raise if the size ceiling is exceeded."""
         if not chunk:
@@ -41,14 +48,11 @@ class SpoolWriter:
         self.hasher.update(chunk)
         if self._handle is None:
             await self.start()
-        assert self._handle is not None
-        await self._handle.write(chunk)
+        await cast(Any, self._handle).write(chunk)
 
     async def finish(self) -> Spool:
         """Close the file and return the spool, rejecting empty payloads."""
-        if self._handle is not None:
-            await self._handle.close()
-            self._handle = None
+        await self._close()
         if self.size == 0:
             await self.abort()
             raise EmptyImageError("image payload is empty")
@@ -56,10 +60,5 @@ class SpoolWriter:
 
     async def abort(self) -> None:
         """Close and delete a partial spool."""
-        if self._handle is not None:
-            await self._handle.close()
-            self._handle = None
-        try:
-            await aiofiles.os.remove(self.path)
-        except FileNotFoundError:
-            return
+        await self._close()
+        await unlink_missing(self.path)

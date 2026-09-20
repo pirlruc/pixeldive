@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from app.filenames import sanitize_filename
+from app.fs_async import unlink_missing
 from app.models import ImageUpload, Session, SessionImage
 from app.spool import Spool
 from app.storage import StorageBackend
@@ -72,9 +73,4 @@ async def discard_spool(upload: ImageUpload) -> None:
     """Delete a spool file after it has been copied into storage."""
     if not upload.spool_path:
         return
-    try:
-        import aiofiles.os
-
-        await aiofiles.os.remove(upload.spool_path)
-    except FileNotFoundError:
-        return
+    await unlink_missing(upload.spool_path)

@@ -7,7 +7,7 @@ alwaysApply: false
 # Supply-chain artifacts (SC-SBOM / SC-PROV / SC-SIGN / SC-LIC)
 
 Cite Guardrail IDs from
-[`docs/guardrails/supply-chain/`](https://github.com/pirlruc/guardrails/tree/main/supply-chain).
+[`docs/guardrails/supply-chain/`](https://github.com/pirlruc/guardrails/tree/1.6.0/supply-chain).
 Do not bake threshold numbers into this rule — read `license_deny_list` and related keys from
 `docs/guardrails/supply-chain/profile.thresholds.yml`.
 

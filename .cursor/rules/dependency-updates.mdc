@@ -7,12 +7,12 @@ alwaysApply: false
 # Dependency updates (SC-DEP-*)
 
 Governs `.github/dependabot.yml` (and `.yaml`). Cite Guardrail IDs from
-[`docs/guardrails/supply-chain/`](https://github.com/pirlruc/guardrails/tree/main/supply-chain).
+[`docs/guardrails/supply-chain/`](https://github.com/pirlruc/guardrails/tree/1.6.0/supply-chain).
 Cadence and open-PR limit come from `docs/guardrails/supply-chain/profile.thresholds.yml` — do not bake numbers
 into this rule.
 
 Process companion:
-[dependency-updates.md](https://github.com/pirlruc/methodologies/blob/1.2.0/github-issue-adr/docs/process/dependency-updates.md).
+[dependency-updates.md](https://github.com/pirlruc/methodologies/blob/1.5.0/github-issue-adr/docs/process/dependency-updates.md).
 
 ## Required shape
 
@@ -63,7 +63,7 @@ Org **Grant Dependabot access** is org-only. On a personal account:
 3. For private OCI (e.g. `dhi.io`), Dependabot `DOCKERHUB_*` secrets + `type: docker-registry`.
 4. Keep the seed's `registries:` block **commented** until those secrets exist.
    Uncommented stubs fail Dependabot closed for every consumer.
-5. Seed comments: [`templates/dependabot.example.yml`](../../templates/dependabot.example.yml).
+5. Seed comments: [dependabot.example.yml](https://github.com/pirlruc/github-scaffold/blob/main/templates/dependabot.example.yml).
 
 ## Migration and verification
 
@@ -75,7 +75,7 @@ Org **Grant Dependabot access** is org-only. On a personal account:
 ## CI interaction
 
 Skip jobs that need **Actions** secrets when `github.actor == 'dependabot[bot]'`
-([CI-024](https://github.com/pirlruc/guardrails/blob/main/ci/guardrails.md)). Dependabot secrets are for
+([CI-024](https://github.com/pirlruc/guardrails/blob/1.6.0/ci/guardrails.md)). Dependabot secrets are for
 version updates only.
 
 ## Do not

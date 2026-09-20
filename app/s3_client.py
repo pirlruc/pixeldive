@@ -6,13 +6,12 @@ import asyncio
 from typing import Any
 
 from app.config import Settings
-from app.s3_adapter_mp import S3MultipartMixin
 from app.s3_session import s3_client_context
 from app.s3_types import S3ObjectClient
-from app.s3_verbs import S3ObjectMixin
+from app.s3_verbs import S3VerbMixin
 
 
-class AioS3Adapter(S3ObjectMixin, S3MultipartMixin):
+class AioS3Adapter(S3VerbMixin):
     """Create an aiobotocore client on first use so ``build_storage`` stays sync."""
 
     def __init__(self, settings: Settings) -> None:

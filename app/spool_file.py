@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-import aiofiles.os
+from app.fs_async import unlink_missing
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,7 +18,4 @@ class Spool:
 
     async def delete(self) -> None:
         """Remove the spool file if it is still present."""
-        try:
-            await aiofiles.os.remove(self.path)
-        except FileNotFoundError:
-            return
+        await unlink_missing(self.path)

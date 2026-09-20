@@ -20,6 +20,13 @@ DOC="$("$PYTHON" scripts/read_python_threshold.py doc_coverage)"
 "$PYTHON" -m mypy app main.py sdk demo
 "$PYTHON" scripts/check-complexity.py
 "$PYTHON" -m interrogate -c pyproject.toml app main.py sdk demo
+"$PYTHON" scripts/run-pydoclint.py --config pyproject.toml app main.py sdk demo
+"$PYTHON" -m bandit -q -r app main.py sdk demo -x app/pb
+"$PYTHON" -m pip_audit -r requirements.txt --no-deps --disable-pip --progress-spinner off
+bash "$ROOT/scripts/run-hadolint.sh"
+bash "$ROOT/scripts/run-kics.sh"
+bash "$ROOT/scripts/run-shellcheck.sh"
+"$PYTHON" scripts/lint-doc-links.py --root "$ROOT"
 "$PYTHON" -m pytest \
   --cov=app --cov=main --cov=sdk --cov=demo --cov-branch \
   --cov-fail-under="${STMT}" \
