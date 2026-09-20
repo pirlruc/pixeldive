@@ -14,8 +14,8 @@
 #   bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml --dry-run
 #   bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml
 #
-# GitHub issue objects are not published yet (Issues: write + github-scaffold
-# analog still pending TOOL-001-T1). This file remains the decision log.
+# GitHub issue objects are not published yet (Issues: write still pending
+# TOOL-002). This file remains the decision log.
 #
 # Shipped on main via https://github.com/pirlruc/pixeldive/pull/1
 # (merged 2026-09-19, commit c1eda05):
@@ -26,16 +26,21 @@
 # (merged 2026-09-19, commit 96192bf):
 #   done  SEC-001, PERF-001, DATA-002, OPS-001, API-002, SDK-001, PERF-002
 #
+# Shipped on main via https://github.com/pirlruc/pixeldive/pull/10
+# (merged 2026-09-20, commit 809aca7):
 #   done  TOOL-001 / TOOL-001-T1 (analog submodule pins 1.6.0 / 1.5.0)
-#   open  TOOL-002
+#   done  QUAL-003 (hadolint, KICS, Trivy/SBOM on CI image, uv.lock, MinIO digest)
+#
+# Shipped on main via https://github.com/pirlruc/pixeldive/pull/12
+# (merged 2026-09-20; includes the iOS work opened as #11):
+#   done  SDK-002 (iOS PixeldiveSDK + SwiftUI demo; Swift proposals in docs/new-guardrails)
+#   done  SDK-003 (Android Pixeldive SDK + Compose demo; Kotlin proposals in docs/new-guardrails)
+#
+#   open  TOOL-002 (GitHub issue objects still unpublished)
 #   done  SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
-#         (this change; GitHub issue objects still unpublished — TOOL-002)
 #   open  SEC-004 (Postgres shared quotas), SEC-005 (Redis quota hot path later)
 #   done  QUAL-002 (CPython 3.13 per PY-RUN-003; boto3 stays out)
 #   done  SEC-006 (production fail-closed, magic-byte uploads, HMAC keys)
-#   done  QUAL-003 (hadolint, KICS, Trivy/SBOM on CI image, uv.lock, MinIO digest)
-#   done  SDK-002 (iOS PixeldiveSDK + SwiftUI demo; Swift proposals in docs/new-guardrails)
-#   done  SDK-003 (Android Pixeldive SDK + Compose demo; Kotlin proposals in docs/new-guardrails)
 
 milestones:
   - name: Tooling — Analog & methodology
@@ -1372,6 +1377,8 @@ milestones:
           - SwiftUI demo creates a session, uploads a photo, and downloads it via the SDK
           - Public image JSON from the SDK does not include storage_path
           - Proposed SWIFT-CPLX/CONC/IOS/SEC IDs live under docs/new-guardrails/swift.md
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/12
+            (iOS work opened as https://github.com/pirlruc/pixeldive/pull/11)
         guardrail_refs:
           - SWIFT-TEST-002
           - SWIFT-LANG-003
@@ -1441,6 +1448,7 @@ milestones:
           - Compose demo creates a session, uploads a photo, and downloads it via the SDK
           - Public image JSON from the SDK does not include storage_path
           - Proposed KT-AND/SEC/ENV IDs live under docs/new-guardrails/kotlin.md
+          - Shipped on main in https://github.com/pirlruc/pixeldive/pull/12
         guardrail_refs:
           - KT-TEST-002
           - KT-API-001

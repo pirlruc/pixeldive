@@ -11,7 +11,7 @@
 
 ## Current slice
 
-Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19). Phase 2 hardening, Python SDK, capture demo, and async S3 (PERF-002) are **on main** ([PR #7](https://github.com/pirlruc/pixeldive/pull/7), merged 2026-09-19). Phase 3 remaining hardening is **on main** ([PR #9](https://github.com/pirlruc/pixeldive/pull/9)). Analog pins, DRY, and 1.6.0 QUAL-003 gates (hadolint, KICS, uv.lock, Trivy/SBOM, pydoclint) are on this branch.
+Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19). Phase 2 hardening, Python SDK, capture demo, and async S3 (PERF-002) are **on main** ([PR #7](https://github.com/pirlruc/pixeldive/pull/7), merged 2026-09-19). Phase 3 remaining hardening is **on main** ([PR #9](https://github.com/pirlruc/pixeldive/pull/9)). Analog pins, DRY, and 1.6.0 QUAL-003 gates (hadolint, KICS, uv.lock, Trivy/SBOM, pydoclint) are **on main** ([PR #10](https://github.com/pirlruc/pixeldive/pull/10)). iOS SDK + SwiftUI demo (SDK-002) and Android SDK + Compose demo (SDK-003) are **on main** ([PR #12](https://github.com/pirlruc/pixeldive/pull/12); iOS opened as [PR #11](https://github.com/pirlruc/pixeldive/pull/11)).
 
 GitHub Epic/Task issues are not published ([TOOL-002](issues.yml)); statuses live in [`docs/issues.yml`](issues.yml).
 
@@ -119,8 +119,7 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Phase 2 + SDK-001 + PERF-002 shipped in [PR #7](https://github.com/pirlruc/pixeldive/pull/7) (`96192bf`)
 - Phase 3 remaining hardening in [PR #9](https://github.com/pirlruc/pixeldive/pull/9)
 - Analog pins 1.6.0 / 1.5.0, DRY, QUAL-003 1.6.0 gates ([PR #10](https://github.com/pirlruc/pixeldive/pull/10))
-- SDK-002: Swift `PixeldiveSDK` + SwiftUI demo + Swift guardrail proposals
-- SDK-003: Kotlin `PixeldiveClient` + Compose demo + Kotlin/Android guardrail proposals
+- SDK-002 + SDK-003 shipped in [PR #12](https://github.com/pirlruc/pixeldive/pull/12) (iOS opened as [PR #11](https://github.com/pirlruc/pixeldive/pull/11)): Swift `PixeldiveSDK` + SwiftUI demo; Kotlin `PixeldiveClient` + Compose demo; Swift/Kotlin proposals in `docs/new-guardrails/`
 - Review pass: 3xx/redirect + multipart filename hardening; llvm-cov/Kover/ktlint/detekt fail-closed in CI
 - Follow-up pass: Android base-path join, media-type parameters, cancellable OkHttp; iOS token trim, file URL, off-origin redirect refuse, empty camera discovery
 
