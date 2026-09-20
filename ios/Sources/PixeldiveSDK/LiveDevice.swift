@@ -156,5 +156,5 @@ func hardwareMachine() -> String {
         guard let value = child.value as? Int8, value != 0 else { return nil }
         return UInt8(bitPattern: value)
     }
-    return String(decoding: bytes, as: UTF8.self)
+    return String(bytes: bytes, encoding: .utf8) ?? ""
 }

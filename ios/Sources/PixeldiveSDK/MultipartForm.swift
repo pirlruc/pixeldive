@@ -14,7 +14,12 @@ struct MultipartForm: Sendable {
     ) -> MultipartForm {
         let boundary = "pixeldive-\(UUID().uuidString.lowercased())"
         var body = Data()
-        appendFile(&body, boundary: boundary, field: fileField, filename: filename, payload: payload, type: contentType)
+        appendFile(
+            &body,
+            boundary: boundary,
+            field: fileField,
+            part: UploadPart(filename: filename, payload: payload, contentType: contentType)
+        )
         for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
             appendField(&body, boundary: boundary, name: name, value: value)
         }
@@ -23,7 +28,7 @@ struct MultipartForm: Sendable {
     }
 
     static func makeBatch(
-        items: [(filename: String, payload: Data, contentType: String)],
+        items: [UploadPart],
         fields: [String: String]
     ) -> MultipartForm {
         let boundary = "pixeldive-\(UUID().uuidString.lowercased())"
@@ -33,9 +38,7 @@ struct MultipartForm: Sendable {
                 &body,
                 boundary: boundary,
                 field: "files",
-                filename: item.filename,
-                payload: item.payload,
-                type: item.contentType
+                part: item
             )
         }
         for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
@@ -50,20 +53,18 @@ private func appendFile(
     _ body: inout Data,
     boundary: String,
     field: String,
-    filename: String,
-    payload: Data,
-    type: String
+    part: UploadPart
 ) {
     let safeField = MultipartSanitizer.token(field, fallback: "file")
-    let safeName = MultipartSanitizer.filename(filename)
-    let safeType = MultipartSanitizer.mediaType(type)
+    let safeName = MultipartSanitizer.filename(part.filename)
+    let safeType = MultipartSanitizer.mediaType(part.contentType)
     appendAscii(&body, "--\(boundary)\r\n")
     appendAscii(
         &body,
         "Content-Disposition: form-data; name=\"\(safeField)\"; filename=\"\(safeName)\"\r\n"
     )
     appendAscii(&body, "Content-Type: \(safeType)\r\n\r\n")
-    body.append(payload)
+    body.append(part.payload)
     appendAscii(&body, "\r\n")
 }
 
@@ -88,9 +89,7 @@ enum MultipartSanitizer {
         let base = raw.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) ?? raw
         var cleaned = ""
         for scalar in base.unicodeScalars {
-            if scalar == "\n" || scalar == "\r" || scalar == "\"" || scalar == "\\" || scalar == ";"
-                || scalar == ":"
-            {
+            if scalar == "\n" || scalar == "\r" || scalar == "\"" || scalar == "\\" || scalar == ";" || scalar == ":" {
                 cleaned.append("_")
             } else {
                 cleaned.append(Character(scalar))

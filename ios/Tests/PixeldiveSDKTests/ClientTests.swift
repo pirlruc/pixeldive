@@ -54,12 +54,12 @@ final class ClientTests: XCTestCase {
     func testHealthReadyAndSessionRoundTrip() async throws {
         let stub = StubPerformer()
         stub.steps = [
-            jsonStep(["status": "ok"]),
-            jsonStep(["status": "ok"]),
-            jsonStep(sessionJSON()),
-            jsonStep(["items": [sessionJSON()], "next_cursor": NSNull()]),
-            jsonStep(sessionJSON()),
-            jsonStep(sessionJSON()),
+            try jsonStep(["status": "ok"]),
+            try jsonStep(["status": "ok"]),
+            try jsonStep(sessionJSON()),
+            try jsonStep(["items": [sessionJSON()], "next_cursor": NSNull()]),
+            try jsonStep(sessionJSON()),
+            try jsonStep(sessionJSON()),
             StubPerformer.Step(status: 204, headers: [:], body: Data()),
         ]
         let client = makeClient(stub: stub)
@@ -90,8 +90,8 @@ final class ClientTests: XCTestCase {
         let png = TestPNG.bytes
         let stub = StubPerformer()
         stub.steps = [
-            jsonStep(imageJSON()),
-            jsonStep(["items": [imageJSON()], "next_cursor": NSNull()]),
+            try jsonStep(imageJSON()),
+            try jsonStep(["items": [imageJSON()], "next_cursor": NSNull()]),
             StubPerformer.Step(
                 status: 200,
                 headers: ["Content-Type": "image/png"],
@@ -129,13 +129,13 @@ final class ClientTests: XCTestCase {
     func testUploadBatchAndFile() async throws {
         let stub = StubPerformer()
         stub.steps = [
-            jsonStep([imageJSON()]),
-            jsonStep(imageJSON()),
+            try jsonStep([imageJSON()]),
+            try jsonStep(imageJSON()),
         ]
         let client = makeClient(stub: stub)
         let batch = try await client.uploadImagesBatch(
             sessionID: sessionID.uuidString,
-            items: [("a.png", TestPNG.bytes, "image/png")],
+            items: [UploadPart(filename: "a.png", payload: TestPNG.bytes, contentType: "image/png")],
             metadata: "{\"batch\":true}"
         )
         XCTAssertEqual(batch.count, 1)
@@ -203,7 +203,7 @@ final class ClientTests: XCTestCase {
 
     func testSanitizesMultipartFilename() async throws {
         let stub = StubPerformer()
-        stub.steps = [jsonStep(imageJSON())]
+        stub.steps = [try jsonStep(imageJSON())]
         let client = makeClient(stub: stub)
         let rawName = "evil\r\nX-Injected: 1\";.png"
         let safeName = MultipartSanitizer.filename(rawName)
@@ -259,8 +259,8 @@ final class ClientTests: XCTestCase {
     func testListSessionsSendsCursor() async throws {
         let stub = StubPerformer()
         stub.steps = [
-            jsonStep(["items": [sessionJSON()], "next_cursor": NSNull()]),
-            jsonStep(["items": [sessionJSON()], "next_cursor": NSNull()]),
+            try jsonStep(["items": [sessionJSON()], "next_cursor": NSNull()]),
+            try jsonStep(["items": [sessionJSON()], "next_cursor": NSNull()]),
         ]
         let client = makeClient(stub: stub)
         _ = try await client.listSessions(limit: 5, cursor: "abc")
@@ -294,8 +294,8 @@ final class ClientTests: XCTestCase {
         )
     }
 
-    private func jsonStep(_ object: Any) -> StubPerformer.Step {
-        let body = try! JSONSerialization.data(withJSONObject: object)
+    private func jsonStep(_ object: Any) throws -> StubPerformer.Step {
+        let body = try JSONSerialization.data(withJSONObject: object)
         return StubPerformer.Step(
             status: 200,
             headers: ["Content-Type": "application/json"],

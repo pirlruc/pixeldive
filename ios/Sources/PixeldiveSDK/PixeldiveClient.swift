@@ -87,7 +87,7 @@ public struct PixeldiveClient: Sendable {
     /// POST multipart `/api/v1/sessions/{id}/images/batch`.
     public func uploadImagesBatch(
         sessionID: String,
-        items: [(filename: String, payload: Data, contentType: String)],
+        items: [UploadPart],
         metadata: String? = nil
     ) async throws -> [SessionImage] {
         let parsed = try ResourceID.parse(sessionID)
