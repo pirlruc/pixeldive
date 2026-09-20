@@ -12,6 +12,7 @@ from app.exceptions import (
     InvalidIdError,
     InvalidMetadataError,
     InvalidStatusError,
+    QuotaExceededError,
     SessionNotFoundError,
     SessionServiceError,
     UnauthenticatedError,
@@ -30,6 +31,7 @@ ERROR_STATUS: dict[type[SessionServiceError], int] = {
     ImageTooLargeError: 413,
     UnauthenticatedError: 401,
     ForbiddenError: 403,
+    QuotaExceededError: 429,
 }
 
 

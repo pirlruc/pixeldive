@@ -27,7 +27,10 @@
 #   done  SEC-001, PERF-001, DATA-002, OPS-001, API-002, SDK-001, PERF-002
 #
 #   open  TOOL-001 / TOOL-001-T1 (analog submodule pins)
-#   open  TOOL-002, SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
+#   open  TOOL-002
+#   done  SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
+#         (this change; GitHub issue objects still unpublished — TOOL-002)
+#   open  SEC-004 (multi-replica quotas), QUAL-002 (CPython 3.12 vs Dependabot 3.14)
 
 milestones:
   - name: Tooling — Analog & methodology
@@ -737,7 +740,7 @@ milestones:
               - bash scripts/issues-sync.sh --repo pirlruc/pixeldive --yaml docs/issues.yml --dry-run
 
       - id: SEC-002
-        status: open
+        status: done
         title: Per-tenant rate limits and upload quotas
         overview:
           problem: >-
@@ -765,11 +768,12 @@ milestones:
           - Upload bytes per tenant (or per session) are capped
           - AUTH_REQUIRED=false does not require quota configuration
           - REST 429 and gRPC RESOURCE_EXHAUSTED map to the same service error
+          - Implemented in the Phase 3 hardening change (in-process limiter)
         guardrail_refs:
           - PY-TEST-002
         tasks:
           - id: SEC-002-T1
-            status: open
+            status: done
             title: Add per-tenant rate and byte quotas behind SessionService
             instructions:
               files:
@@ -780,7 +784,7 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: SEC-003
-        status: open
+        status: done
         title: Do not distinguish missing sessions from other tenants
         overview:
           problem: >-
@@ -802,11 +806,12 @@ milestones:
           - Cross-tenant GET/PUT/DELETE/upload return 404 / NOT_FOUND
           - Owner access is unchanged
           - Unauthenticated requests remain 401 / UNAUTHENTICATED
+          - Implemented in the Phase 3 hardening change
         guardrail_refs:
           - PY-TEST-002
         tasks:
           - id: SEC-003-T1
-            status: open
+            status: done
             title: Map wrong-owner session access to SessionNotFoundError
             instructions:
               files:
@@ -816,7 +821,7 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: API-003
-        status: open
+        status: done
         title: Bring GrpcClient to RestClient session/image parity
         overview:
           problem: >-
@@ -838,12 +843,13 @@ milestones:
           - GrpcClient can get, update, and delete a session
           - GrpcClient can list images, download an image, and batch-upload
           - Public image messages still omit storage_path
+          - Implemented in the Phase 3 hardening change (sdk 0.3.0)
         guardrail_refs:
           - PY-TEST-002
           - PY-DOC-001
         tasks:
           - id: API-003-T1
-            status: open
+            status: done
             title: Wrap remaining SessionService RPCs on GrpcClient
             instructions:
               files:
@@ -853,7 +859,7 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: PERF-003
-        status: open
+        status: done
         title: Multipart or chunked S3 PUT so save_file is O(chunk)
         overview:
           problem: >-
@@ -873,11 +879,12 @@ milestones:
           - save_file peak memory is O(chunk), not O(file)
           - Content-addressed keys and idempotent overwrite behaviour are unchanged
           - Local filesystem backend behaviour is unchanged
+          - Implemented in the Phase 3 hardening change (S3 multipart save_file)
         guardrail_refs:
           - PY-CPLX-001
         tasks:
           - id: PERF-003-T1
-            status: open
+            status: done
             title: Stream spool files to S3 with multipart upload
             instructions:
               files:
@@ -886,7 +893,7 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: PERF-004
-        status: open
+        status: done
         title: Chunk SDK uploads instead of one in-memory payload
         overview:
           problem: >-
@@ -907,11 +914,12 @@ milestones:
           - Both clients can upload from a file path without buffering the whole file
           - gRPC yields multiple ImageChunk messages above a documented size
           - Existing bytes-in APIs remain for small payloads and tests
+          - Implemented in the Phase 3 hardening change (path + chunked gRPC)
         guardrail_refs:
           - PY-CPLX-001
         tasks:
           - id: PERF-004-T1
-            status: open
+            status: done
             title: Add path/iterator upload APIs to RestClient and GrpcClient
             instructions:
               files:
@@ -921,7 +929,7 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: OPS-002
-        status: open
+        status: done
         title: Coordinated dual-server shutdown and storage close
         overview:
           problem: >-
@@ -943,11 +951,12 @@ milestones:
           - One signal handler (or equivalent) stops both servers
           - AioS3Adapter.aclose is invoked when STORAGE_BACKEND=s3
           - Engine dispose still runs after servers stop
+          - Implemented in the Phase 3 hardening change (app/lifecycle.py)
         guardrail_refs:
           - DOCKER-RUN-006
         tasks:
           - id: OPS-002-T1
-            status: open
+            status: done
             title: Drain REST and gRPC together and close the S3 adapter
             instructions:
               files:
@@ -957,7 +966,7 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: OPS-003
-        status: open
+        status: done
         title: MinIO Compose profile for S3-backend integration tests
         overview:
           problem: >-
@@ -977,11 +986,12 @@ milestones:
           - docker compose --profile s3 up boots MinIO and the app on S3
           - A documented command uploads and downloads one image via REST
           - Default (no profile) Compose behaviour is unchanged
+          - Implemented in the Phase 3 hardening change (`scripts/compose-s3.sh`)
         guardrail_refs:
           - DOCKER-RUN-006
         tasks:
           - id: OPS-003-T1
-            status: open
+            status: done
             title: Add a Compose s3 profile with MinIO
             instructions:
               files:
@@ -990,7 +1000,7 @@ milestones:
               - docker compose --profile s3 config
 
       - id: DATA-003
-        status: open
+        status: done
         title: Run a PostgreSQL integration job beside SQLite unit tests
         overview:
           problem: >-
@@ -1010,11 +1020,12 @@ milestones:
           - CI runs SessionService tests against PostgreSQL
           - Local `bash scripts/ci-local.sh` still uses SQLite
           - Alembic upgrade is the schema path in that job (AUTO_CREATE_TABLES=false)
+          - Implemented in the Phase 3 hardening change (`scripts/ci-postgres.sh`)
         guardrail_refs:
           - PY-TEST-002
         tasks:
           - id: DATA-003-T1
-            status: open
+            status: done
             title: Add a PostgreSQL pytest job to quality.yml
             instructions:
               files:
@@ -1023,7 +1034,7 @@ milestones:
               - rg -n "postgres" .github/workflows/quality.yml
 
       - id: DATA-004
-        status: open
+        status: done
         title: Schedule the orphan blob sweeper in the running process
         overview:
           problem: >-
@@ -1046,11 +1057,12 @@ milestones:
           - A configurable interval greater than 0 runs sweep_orphans
           - Interval 0 keeps current test/dev behaviour (no background sweep)
           - README or .env.example documents a non-zero GC_MIN_AGE_SECONDS for production
+          - Implemented in the Phase 3 hardening change (ORPHAN_SWEEP_INTERVAL_SECONDS)
         guardrail_refs:
           - PY-TEST-002
         tasks:
           - id: DATA-004-T1
-            status: open
+            status: done
             title: Add an optional orphan-sweep loop to main.run
             instructions:
               files:
@@ -1058,4 +1070,78 @@ milestones:
                 - app/settings_storage.py
             verification:
               - bash scripts/ci-local.sh
+
+      - id: SEC-004
+        status: open
+        title: Share quota accounting across replicas
+        overview:
+          problem: >-
+            SEC-002 enforces rate and byte caps inside one process. Multiple
+            app replicas each keep their own sliding window, so a captured key
+            can multiply the configured cap by replica count.
+          goal: >-
+            Back TenantQuota with a shared store (Redis or Postgres) so REST
+            and gRPC across replicas share one cap, still skipped when
+            AUTH_REQUIRED is false.
+        architecture:
+          target: >-
+            In the context of horizontally scaled ingest, facing in-process
+            quota counters, we decided to keep the SessionService quota API
+            and swap the backend for a shared store rather than a proxy-only
+            limiter, to keep dual-transport enforcement.
+          modules:
+            - app/quotas.py
+            - app/service.py
+        acceptance_criteria:
+          - Two processes with the same API_KEYS share one rate/byte budget
+          - AUTH_REQUIRED=false remains unlimited
+          - Failure of the shared store fails closed when quotas are configured
+        guardrail_refs:
+          - PY-TEST-002
+        tasks:
+          - id: SEC-004-T1
+            status: open
+            title: Replace in-process TenantQuota with a shared backend
+            instructions:
+              files:
+                - app/quotas.py
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: QUAL-002
+        status: open
+        title: Treat Dependabot Docker Python majors as a runtime decision
+        overview:
+          problem: >-
+            Dependabot grouped PRs proposed python:3.14.6-slim-bookworm while
+            CI and pyproject still pin CPython 3.12. Auto-merging that image
+            would desync the product runtime from PY-* gates. The same PRs
+            also reintroduced boto3 after PERF-002 switched to aiobotocore.
+          goal: >-
+            Keep Dockerfile, Actions setup-python, and requires-python on the
+            same CPython minor until a dedicated runtime bump. Apply pip and
+            Actions SHA bumps independently of Docker major tags.
+        architecture:
+          target: Runtime pin owned by QUAL/CI, not Dependabot Docker majors
+          modules:
+            - Dockerfile
+            - .github/workflows/quality.yml
+            - pyproject.toml
+        acceptance_criteria:
+          - Dockerfile Python minor matches setup-python and requires-python
+          - Dependabot Docker major Python tags are reviewed, not auto-applied
+          - aiobotocore/botocore pins stay compatible (no boto3 reintroduction)
+        guardrail_refs:
+          - DOCKER-BUILD-002
+          - SC-DEP-003
+        tasks:
+          - id: QUAL-002-T1
+            status: done
+            title: Document and enforce the CPython minor pin in CI comments
+            instructions:
+              files:
+                - Dockerfile
+                - .github/workflows/quality.yml
+            verification:
+              - rg -n "3.12" Dockerfile .github/workflows/quality.yml pyproject.toml
 

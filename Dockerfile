@@ -1,4 +1,6 @@
-# python:3.12.14-slim-bookworm (linux/amd64 digest; DOCKER-BUILD-002/003)
+# python:3.12.14-slim-bookworm (linux/amd64 digest; DOCKER-BUILD-002/003).
+# Keep this CPython minor aligned with setup-python and requires-python (QUAL-002).
+# Do not take Dependabot Docker majors (e.g. 3.14) without a dedicated runtime bump.
 FROM python:3.12.14-slim-bookworm@sha256:356b0d18f9385f4bdcc673af60e1e64c9d1504952e4ec36ee32044c722a6bc4e AS builder
 
 WORKDIR /build

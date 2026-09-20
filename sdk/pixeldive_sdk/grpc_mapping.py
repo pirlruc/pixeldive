@@ -1,4 +1,4 @@
-"""Map REST-shaped session dicts onto gRPC CreateSessionRequest."""
+"""Map REST-shaped session dicts onto gRPC requests."""
 
 from __future__ import annotations
 
@@ -26,3 +26,26 @@ def create_session_request(body: dict[str, Any]) -> pb.CreateSessionRequest:
         ),
         metadata=metadata,
     )
+
+
+def update_session_request(
+    session_id: str,
+    payload: dict[str, Any],
+    *,
+    merge_metadata: bool = False,
+) -> pb.UpdateSessionRequest:
+    """Map a REST-shaped patch onto UpdateSessionRequest."""
+    from google.protobuf.struct_pb2 import Struct
+
+    request = pb.UpdateSessionRequest(session_id=session_id, merge_metadata=merge_metadata)
+    if "session_name" in payload and payload["session_name"] is not None:
+        request.session_name = str(payload["session_name"])
+    if "status" in payload and payload["status"] is not None:
+        request.status = str(payload["status"])
+    if "metadata" in payload and payload["metadata"] is not None:
+        metadata = Struct()
+        metadata.update(payload["metadata"])
+        request.metadata.CopyFrom(metadata)
+    if payload.get("clear_metadata"):
+        request.clear_metadata = True
+    return request

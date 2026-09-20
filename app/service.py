@@ -15,9 +15,10 @@ from sqlalchemy.orm import selectinload
 from app.auth import Principal
 from app.blob_gc import gc_unreferenced, sweep_orphans
 from app.config import Settings
-from app.exceptions import ForbiddenError, SessionNotFoundError
+from app.exceptions import SessionNotFoundError
 from app.metrics import Metrics
 from app.models import Session, SessionCreate, SessionStatus, SessionUpdate, utcnow
+from app.quotas import quota_from_settings
 from app.session_batch import SessionBatchMixin
 from app.session_list import SessionListMixin
 from app.session_ops import SessionOpsMixin
@@ -41,6 +42,12 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
         self._settings = settings
         self._metrics = metrics or Metrics()
         self._write_sema = asyncio.Semaphore(settings.max_concurrent_saves)
+        self._quota = quota_from_settings(
+            settings.rate_limit_per_minute,
+            settings.rate_limit_window_seconds,
+            settings.tenant_max_upload_bytes,
+            settings.session_max_upload_bytes,
+        )
 
     async def ping_db(self) -> None:
         """Raise if the database cannot be reached (readiness)."""
@@ -53,6 +60,7 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
         principal: Principal | None = None,
     ) -> Session:
         """Insert a CREATED session with Android device JSON."""
+        self._quota.hit(principal)
         record = Session(
             session_name=payload.session_name,
             status=SessionStatus.CREATED.value,
@@ -74,6 +82,7 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
         principal: Principal | None = None,
     ) -> Session:
         """Load a session or raise SessionNotFoundError."""
+        self._quota.hit(principal)
         async with self._factory() as db:
             return await self._require_session(db, session_id, principal)
 
@@ -84,6 +93,7 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
         principal: Principal | None = None,
     ) -> Session:
         """Apply optional name/status/metadata updates (replace or merge)."""
+        self._quota.hit(principal)
         updates = patch.model_dump(exclude_none=True, by_alias=False)
         merge = bool(updates.pop("merge_metadata", False))
         if "status" in updates:
@@ -107,6 +117,7 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
         principal: Principal | None = None,
     ) -> None:
         """Delete the session row (cascade images) and GC unreferenced blobs."""
+        self._quota.hit(principal)
         async with self._factory() as db:
             record = await self._require_session(db, session_id, principal, with_images=True)
             paths = [image.storage_path for image in record.images]
@@ -138,8 +149,11 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
             statement = statement.options(selectinload(Session.images))  # type: ignore[arg-type]
         result = await db.execute(statement)
         record = result.scalar_one_or_none()
-        if record is None:
+        if record is None or _wrong_owner(record, principal):
             raise SessionNotFoundError(f"session {session_id} not found")
-        if principal is not None and record.owner_id != principal.owner_id:
-            raise ForbiddenError("not allowed to access this session")
         return record
+
+
+def _wrong_owner(record: Session, principal: Principal | None) -> bool:
+    """True when an authenticated caller does not own ``record`` (SEC-003)."""
+    return principal is not None and record.owner_id != principal.owner_id

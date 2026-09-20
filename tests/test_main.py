@@ -30,6 +30,8 @@ def test_main_runs_event_loop(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_run_starts_http_and_grpc(monkeypatch, tmp_path: Path) -> None:
     """run() gathers HTTP serve and gRPC wait, then stops the gRPC server."""
+    import app.runtime as runtime
+
     flags: dict[str, bool] = {}
 
     class FakeGrpc:
@@ -48,14 +50,14 @@ async def test_run_starts_http_and_grpc(monkeypatch, tmp_path: Path) -> None:
         del args, kwargs
         return FakeGrpc(), 9
 
-    monkeypatch.setattr(main_mod, "start_grpc_server", fake_start)
-    monkeypatch.setattr(main_mod.uvicorn, "Server", lambda config: FakeHttp())
+    monkeypatch.setattr(runtime, "start_grpc_server", fake_start)
+    monkeypatch.setattr(runtime.uvicorn, "Server", lambda config: FakeHttp())
     settings = Settings(
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'run.db'}",
         storage_root=tmp_path / "img",
         storage_backend="local",
     )
-    await main_mod.run(settings)
+    await runtime.run(settings)
     assert flags["http"] is True
     assert flags["grpc"] is True
     assert flags["stopped"] is True
@@ -64,6 +66,8 @@ async def test_run_starts_http_and_grpc(monkeypatch, tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_run_uses_alembic_when_create_all_disabled(monkeypatch, tmp_path: Path) -> None:
     """Production path runs Alembic instead of create_all."""
+    import app.runtime as runtime
+
     flags: dict[str, bool] = {}
 
     class FakeGrpc:
@@ -90,9 +94,9 @@ async def test_run_uses_alembic_when_create_all_disabled(monkeypatch, tmp_path: 
         await init_db(engine)
         await engine.dispose()
 
-    monkeypatch.setattr(main_mod, "start_grpc_server", fake_start)
-    monkeypatch.setattr(main_mod.uvicorn, "Server", lambda config: FakeHttp())
-    monkeypatch.setattr(main_mod, "upgrade_head", fake_upgrade)
+    monkeypatch.setattr(runtime, "start_grpc_server", fake_start)
+    monkeypatch.setattr(runtime.uvicorn, "Server", lambda config: FakeHttp())
+    monkeypatch.setattr(runtime, "upgrade_head", fake_upgrade)
     settings = Settings(
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'run.db'}",
         storage_root=tmp_path / "img",
@@ -100,7 +104,7 @@ async def test_run_uses_alembic_when_create_all_disabled(monkeypatch, tmp_path: 
         auto_create_tables=False,
         log_json=False,
     )
-    await main_mod.run(settings)
+    await runtime.run(settings)
     assert flags["migrated"] is True
     assert flags["http"] is True
 

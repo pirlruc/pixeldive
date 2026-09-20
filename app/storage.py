@@ -47,6 +47,9 @@ class StorageBackend(Protocol):
     async def age_seconds(self, storage_path: str) -> float:
         """Return object age in seconds; missing objects are age 0."""
 
+    async def aclose(self) -> None:
+        """Release backend resources (no-op for local disk)."""
+
 
 def build_storage(
     settings: Settings,
@@ -57,4 +60,8 @@ def build_storage(
         settings.storage_root.mkdir(parents=True, exist_ok=True)
         return LocalFilesystemStorage(settings.storage_root)
     factory = s3_factory or default_s3_client
-    return S3CompatibleStorage(factory(settings), settings.s3_bucket)
+    return S3CompatibleStorage(
+        factory(settings),
+        settings.s3_bucket,
+        part_size=settings.s3_multipart_bytes,
+    )

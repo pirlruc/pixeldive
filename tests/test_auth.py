@@ -22,7 +22,7 @@ def _session_json() -> dict:
 
 @pytest.mark.asyncio
 async def test_rest_auth_and_tenant_isolation(tmp_path: Path) -> None:
-    """Missing tokens are 401; another tenant is 403."""
+    """Missing tokens are 401; another tenant is 404 (SEC-003)."""
     settings = Settings(
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'auth.db'}",
         storage_backend="local",
@@ -52,7 +52,7 @@ async def test_rest_auth_and_tenant_isolation(tmp_path: Path) -> None:
             f"/api/v1/sessions/{session_id}",
             headers={"Authorization": "Bearer beta"},
         )
-        assert other.status_code == 403
+        assert other.status_code == 404
         owner = await http.get(
             f"/api/v1/sessions/{session_id}",
             headers={"Authorization": "Bearer alpha"},
@@ -72,7 +72,7 @@ async def test_rest_auth_and_tenant_isolation(tmp_path: Path) -> None:
             files={"file": ("frame.png", PNG_1X1, "image/png")},
             headers={"Authorization": "Bearer beta"},
         )
-        assert foreign.status_code == 403
+        assert foreign.status_code == 404
         after = {path for path in (tmp_path / "images").rglob("*") if path.is_file()}
         assert after == before
     await engine.dispose()

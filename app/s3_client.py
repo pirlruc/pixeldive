@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, cast
+from typing import Any
 
 from app.config import Settings
-from app.s3_invoke import invoke
+from app.s3_adapter_mp import S3MultipartMixin
 from app.s3_session import s3_client_context
 from app.s3_types import S3ObjectClient
+from app.s3_verbs import S3ObjectMixin
 
 
-class AioS3Adapter:
+class AioS3Adapter(S3ObjectMixin, S3MultipartMixin):
     """Create an aiobotocore client on first use so ``build_storage`` stays sync."""
 
     def __init__(self, settings: Settings) -> None:
@@ -37,26 +38,6 @@ class AioS3Adapter:
         cm, self._cm, self._client = self._cm, None, None
         if cm is not None:
             await cm.__aexit__(None, None, None)
-
-    async def put_object(self, **kwargs: object) -> object:
-        """Upload an object."""
-        return await invoke(self._ensure, "put_object", **kwargs)
-
-    async def get_object(self, **kwargs: object) -> dict[str, Any]:
-        """Download an object."""
-        return cast(dict[str, Any], await invoke(self._ensure, "get_object", **kwargs))
-
-    async def delete_object(self, **kwargs: object) -> object:
-        """Delete an object."""
-        return await invoke(self._ensure, "delete_object", **kwargs)
-
-    async def head_object(self, **kwargs: object) -> object:
-        """Probe object existence."""
-        return await invoke(self._ensure, "head_object", **kwargs)
-
-    async def list_objects_v2(self, **kwargs: object) -> dict[str, object]:
-        """List object keys in the bucket."""
-        return cast(dict[str, object], await invoke(self._ensure, "list_objects_v2", **kwargs))
 
 
 def default_s3_client(settings: Settings) -> S3ObjectClient:

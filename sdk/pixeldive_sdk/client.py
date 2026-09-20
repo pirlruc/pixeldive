@@ -8,9 +8,10 @@ import httpx
 
 from pixeldive_sdk.rest_images import RestImageMixin
 from pixeldive_sdk.rest_sessions import RestSessionMixin
+from pixeldive_sdk.rest_upload import RestPathUploadMixin
 
 
-class RestClient(RestSessionMixin, RestImageMixin):
+class RestClient(RestSessionMixin, RestImageMixin, RestPathUploadMixin):
     """Thin httpx wrapper around the session REST API."""
 
     def __init__(

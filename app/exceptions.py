@@ -47,3 +47,7 @@ class UnauthenticatedError(SessionServiceError):
 
 class ForbiddenError(SessionServiceError):
     """Caller is authenticated but cannot access this session."""
+
+
+class QuotaExceededError(SessionServiceError):
+    """Per-tenant rate or upload-byte quota was exceeded (SEC-002)."""

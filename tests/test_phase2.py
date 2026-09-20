@@ -144,7 +144,7 @@ async def test_ready_503_when_db_down(service: SessionService) -> None:
 
 def test_main_rejects_auth_without_keys() -> None:
     """AUTH_REQUIRED with empty API_KEYS fails at startup."""
-    import main as main_mod
+    from app.runtime import validate_auth_settings
 
     with pytest.raises(RuntimeError, match="API_KEYS"):
-        main_mod._validate_auth_settings(Settings(auth_required=True, api_keys=""))
+        validate_auth_settings(Settings(auth_required=True, api_keys=""))
