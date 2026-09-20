@@ -9,8 +9,8 @@ device/camera identity, then upload frames over REST (multipart) or gRPC (client
 | gRPC | `proto/session_service.proto` (`pixeldive.session.v1.SessionService`) |
 | Data | SQLModel + async PostgreSQL (`asyncpg`); Alembic when `AUTO_CREATE_TABLES=false` |
 | Blobs | SHA-256 local filesystem, or async S3-compatible adapter (aiobotocore) |
-| SDK | `sdk/pixeldive_sdk` (`RestClient`, `GrpcClient`) |
-| Demo | `python -m demo` (FastAPI UI that talks to the service only through the SDK) |
+| SDK | `sdk/pixeldive_sdk` (`RestClient`, `GrpcClient`) and `ios/` (`PixeldiveSDK`) |
+| Demo | `python -m demo` (web) and `ios/Demo` (SwiftUI) |
 | Runtime | CPython **3.13** ([QUAL-002](docs/issues.yml), PY-RUN-003) |
 
 Both transports call the same `SessionService` ([ARCH-001](docs/issues.yml)).
@@ -96,10 +96,17 @@ PYTHONPATH=sdk:. PIXELDIVE_BASE_URL=http://127.0.0.1:8000 python3 -m demo
 Open `http://127.0.0.1:8080`. The UI creates Android-shaped sessions, uploads images, and
 downloads them through `pixeldive_sdk.RestClient`.
 
+iOS: open [`ios/README.md`](ios/README.md). `PixeldiveClient` is the Swift twin of
+`RestClient`. The SwiftUI demo (`ios/Demo/PixeldiveDemo.xcodeproj`) talks to the service
+only through that package. Session JSON keeps Android wire keys; iOS identity is mapped
+from `UIDevice` / `AVCaptureDevice` and tagged `metadata.platform=ios`.
+
 ## Quality gates
 
 ```bash
 bash scripts/ci-local.sh
+# macOS / Linux-with-Swift: Foundation package tests (SWIFT-TEST-001)
+PIXELDIVE_REQUIRE_SWIFT=1 bash scripts/check-ios-sdk.sh
 ```
 
 PostgreSQL integration (CI job `postgres` / DATA-003), not the local default:
@@ -109,9 +116,10 @@ PIXELDIVE_TEST_DATABASE_URL=postgresql+asyncpg://pixeldive:pixeldive@127.0.0.1:5
   bash scripts/ci-postgres.sh
 ```
 
-Floors live in `config/python.profile.thresholds.yml` (PY-TEST-002 95/95, PY-DOC-001, PY-CPLX-* max CC 8).
+Floors live in `config/python.profile.thresholds.yml` (PY-TEST-002 95/95, PY-DOC-001, PY-CPLX-* max CC 8)
+and `config/swift.profile.thresholds.yml` (SWIFT-TEST-002 95 line coverage overlay).
 When `GUARDRAILS_READ_TOKEN` is set, CI clones the analog pin and refuses a **looser** overlay (CI-022).
-Stricter values (avg MI 70 vs org 60) are allowed. `docs/guardrail-deviations.yml` is empty.
+Stricter values (avg MI 70 vs org 60; Swift statement coverage 95 vs org 90) are allowed. `docs/guardrail-deviations.yml` is empty.
 `uv.lock` is the PY-RUN-001 lockfile; `requirements.txt` is the pip/Docker freeze
 (`uv export`). Local `scripts/ci-local.sh` also runs pydoclint, hadolint, KICS,
 ShellCheck, and markdown link lint.

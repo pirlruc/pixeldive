@@ -16,3 +16,7 @@ trim_trailing_whitespace = false
 
 [*.{proto,py}]
 max_line_length = 100
+
+[*.swift]
+indent_size = 4
+max_line_length = 100

@@ -137,6 +137,9 @@ jobs:
           semgrep scan --error --severity ERROR --config p/python \
             --exclude app/pb --exclude docs/guardrails --exclude .github/scaffold \
             app main.py sdk demo
+          semgrep scan --error --severity ERROR --config p/swift \
+            --exclude ios/.build --exclude ios/Demo/PixeldiveDemo.xcodeproj \
+            ios
 
   image:
     runs-on: ubuntu-latest

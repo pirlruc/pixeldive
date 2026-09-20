@@ -1,0 +1,52 @@
+# Consumer SwiftLint gates. Numeric floors also live in
+# config/swift.profile.thresholds.yml (SWIFT-TEST-002, proposed SWIFT-CPLX-*).
+opt_in_rules:
+  - attributes
+  - closure_end_indentation
+  - empty_count
+  - explicit_init
+  - last_where
+  - literal_expression_end_indentation
+  - operator_usage_whitespace
+  - overridden_super_call
+  - redundant_nil_coalescing
+  - unneeded_parentheses_in_closure_argument
+
+disabled_rules:
+  - trailing_comma
+
+line_length:
+  warning: 120
+  error: 140
+  ignores_comments: true
+  ignores_urls: true
+
+cyclomatic_complexity:
+  ignores_case_statements: true
+  warning: 8
+  error: 10
+
+function_body_length:
+  warning: 50
+  error: 80
+
+type_body_length:
+  warning: 300
+  error: 400
+
+file_length:
+  warning: 400
+  error: 500
+
+nesting:
+  type_level: 2
+  function_level: 3
+
+identifier_name:
+  min_length:
+    warning: 1
+    error: 1
+
+excluded:
+  - .build
+  - Demo/PixeldiveDemo.xcodeproj

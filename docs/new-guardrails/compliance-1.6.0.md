@@ -70,3 +70,13 @@ double-hits quotas, S3 “missing” no longer treats any `ClientError` whose me
 contains `404` as not-found. Host-native HTTP/gRPC defaults are `127.0.0.1` so
 bandit B104 is not suppressed; the image and Compose still set `0.0.0.0` inside
 the container network.
+
+## Swift pack (SDK-002)
+
+The analog `swift/` pack applies to `ios/`. Consumer overlay:
+`config/swift.profile.thresholds.yml` (statement coverage **95**, stricter than org 90).
+`scripts/check-ios-sdk.sh` plus quality job `ios-sdk` (macos-15). Proposed IDs that
+Kotlin already has (SWIFT-CPLX-001/002, SWIFT-CONC-001/002, SWIFT-IOS-003/004,
+SWIFT-SEC-005, SWIFT-ENV-001 Linux SPM overlay) are in
+[swift.md](swift.md), not in `docs/guardrail-deviations.yml`.
+

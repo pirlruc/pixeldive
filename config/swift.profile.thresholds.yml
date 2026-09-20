@@ -1,0 +1,10 @@
+# Consumer copy of docs/guardrails/swift/profile.thresholds.yml (pin 1.6.0).
+# Overlay rules match scripts/read_python_threshold.py: analog keys required;
+# stricter values allowed; looser values fail closed (CI-022).
+# Extra keys are local policy for proposed SWIFT-CPLX-001 (see docs/new-guardrails/swift.md).
+
+statement_coverage: 95          # SWIFT-TEST-002 (stricter than org 90; matches KT-TEST-002)
+doc_coverage: 90                # SWIFT-DOC-001
+pr_size_soft_limit_lines: 500   # SWIFT-DELIV-001
+lint_exception_max_days: 14     # SWIFT-LINT-002
+max_cyclomatic_complexity: 10   # proposed SWIFT-CPLX-001 (Kotlin analog)

@@ -33,3 +33,10 @@ dist/
 
 # Generated scratch
 *.tmp
+
+# Swift / Xcode
+.build/
+ios/.build/
+xcuserdata/
+*.xcuserstate
+DerivedData/

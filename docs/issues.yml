@@ -34,6 +34,7 @@
 #   done  QUAL-002 (CPython 3.13 per PY-RUN-003; boto3 stays out)
 #   done  SEC-006 (production fail-closed, magic-byte uploads, HMAC keys)
 #   done  QUAL-003 (hadolint, KICS, Trivy/SBOM on CI image, uv.lock, MinIO digest)
+#   done  SDK-002 (iOS PixeldiveSDK + SwiftUI demo; Swift proposals in docs/new-guardrails)
 
 milestones:
   - name: Tooling — Analog & methodology
@@ -1335,4 +1336,74 @@ milestones:
                 - docker-compose.yml
             verification:
               - bash scripts/ci-local.sh
+
+  - name: Mobile clients
+    epics:
+      - id: SDK-002
+        status: done
+        title: iOS SDK and SwiftUI capture demo
+        overview:
+          problem: >-
+            Capture clients on iPhone have no first-party SDK. The Python RestClient
+            and Android-shaped session JSON exist, but there is no Swift client that
+            maps UIDevice/AVCaptureDevice into those keys or a demo app that exercises
+            create/upload/download on device.
+          goal: >-
+            Ship a Swift 6 SPM library (PixeldiveSDK) that mirrors RestClient over
+            REST, plus a SwiftUI demo that uses only that library, while proposing
+            Swift guardrails that Kotlin already has (complexity, structured
+            concurrency, ATS, token storage).
+        architecture:
+          target: >-
+            In the context of iOS capture clients uploading processing sessions,
+            facing an Android-first JSON contract and no Swift analog in this repo,
+            we decided on a Foundation URLSession SDK that encodes the existing
+            Android wire keys plus metadata.platform=ios, rather than forking the
+            backend schema, so one SessionService keeps validating both phones.
+          modules:
+            - ios
+            - ios/Demo
+            - tests/test_ios_sdk.py
+            - docs/new-guardrails/swift.md
+        acceptance_criteria:
+          - PixeldiveClient covers health, ready, session CRUD, image upload/list/download
+          - DeviceSnapshot.sampleiPhone() matches the bundled fixture and SessionCreate
+          - SwiftUI demo creates a session, uploads a photo, and downloads it via the SDK
+          - Public image JSON from the SDK does not include storage_path
+          - Proposed SWIFT-CPLX/CONC/IOS/SEC IDs live under docs/new-guardrails/swift.md
+        guardrail_refs:
+          - SWIFT-TEST-002
+          - SWIFT-LANG-003
+          - SWIFT-IOS-001
+          - KT-CPLX-001
+          - KT-CONC-001
+        tasks:
+          - id: SDK-002-T1
+            status: done
+            title: Implement PixeldiveSDK Swift package
+            instructions:
+              files:
+                - ios
+            verification:
+              - bash scripts/check-ios-sdk.sh
+              - bash scripts/ci-local.sh
+          - id: SDK-002-T2
+            status: done
+            title: Implement SwiftUI demo app that uses the SDK
+            instructions:
+              files:
+                - ios/Demo
+            verification:
+              - test -f ios/Demo/PixeldiveDemo.xcodeproj/project.pbxproj
+          - id: SDK-002-T3
+            status: done
+            title: Propose Swift guardrails from the Kotlin pack
+            instructions:
+              files:
+                - docs/new-guardrails/swift.md
+                - config/swift.profile.thresholds.yml
+            verification:
+              - test -f docs/new-guardrails/swift.md
+              - python3 scripts/read_swift_threshold.py statement_coverage
+
 

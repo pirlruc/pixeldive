@@ -1,0 +1,32 @@
+name: PixeldiveDemo
+options:
+  bundleIdPrefix: com.pirlruc
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+packages:
+  PixeldiveSDK:
+    path: ..
+targets:
+  PixeldiveDemo:
+    type: application
+    platform: iOS
+    sources:
+      - PixeldiveDemoApp.swift
+      - ContentView.swift
+      - DemoModel.swift
+      - LibraryPicker.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pirlruc.pixeldive.demo
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        INFOPLIST_FILE: Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: Info.plist
+      properties:
+        UILaunchScreen: {}
+    dependencies:
+      - package: PixeldiveSDK
