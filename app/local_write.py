@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import aiofiles
 import aiofiles.os
 
 from app.hash_keys import object_key, sha256_hex
+from app.io_sizes import IO_CHUNK_BYTES
 
 
 async def commit_tmp(tmp_path: Path, destination: Path) -> None:
@@ -25,22 +26,34 @@ async def commit_tmp(tmp_path: Path, destination: Path) -> None:
             raise
 
 
+async def save_atomic(
+    contained: Callable[[str], Path],
+    key: str,
+    write_tmp: Callable[[Path], Awaitable[None]],
+) -> str:
+    """Write ``key`` via a tmp file, skipping when the destination exists."""
+    destination = contained(key)
+    await aiofiles.os.makedirs(destination.parent, exist_ok=True)
+    if await aiofiles.os.path.isfile(destination):
+        return key
+    tmp_path = destination.parent / f".{uuid.uuid4().hex}.tmp"
+    await write_tmp(tmp_path)
+    await commit_tmp(tmp_path, destination)
+    return key
+
+
 async def save_payload(
     contained: Callable[[str], Path],
     payload: bytes,
     content_type: str,
 ) -> str:
     """Write payload atomically; skip the write when the hash path exists."""
-    key = object_key(sha256_hex(payload), content_type)
-    destination = contained(key)
-    await aiofiles.os.makedirs(destination.parent, exist_ok=True)
-    if await aiofiles.os.path.isfile(destination):
-        return key
-    tmp_path = destination.parent / f".{uuid.uuid4().hex}.tmp"
-    async with aiofiles.open(tmp_path, "wb") as handle:
-        await handle.write(payload)
-    await commit_tmp(tmp_path, destination)
-    return key
+
+    async def write_tmp(tmp_path: Path) -> None:
+        async with aiofiles.open(tmp_path, "wb") as handle:
+            await handle.write(payload)
+
+    return await save_atomic(contained, object_key(sha256_hex(payload), content_type), write_tmp)
 
 
 async def save_spool_file(
@@ -50,17 +63,13 @@ async def save_spool_file(
     content_type: str,
 ) -> str:
     """Copy a spool file into the content-addressed layout."""
-    key = object_key(digest_hex, content_type)
-    destination = contained(key)
-    await aiofiles.os.makedirs(destination.parent, exist_ok=True)
-    if await aiofiles.os.path.isfile(destination):
-        return key
-    tmp_path = destination.parent / f".{uuid.uuid4().hex}.tmp"
-    async with aiofiles.open(source, "rb") as src, aiofiles.open(tmp_path, "wb") as dst:
-        while True:
-            chunk = await src.read(64 * 1024)
-            if not chunk:
-                break
-            await dst.write(chunk)
-    await commit_tmp(tmp_path, destination)
-    return key
+
+    async def write_tmp(tmp_path: Path) -> None:
+        async with aiofiles.open(source, "rb") as src, aiofiles.open(tmp_path, "wb") as dst:
+            while True:
+                chunk = await src.read(IO_CHUNK_BYTES)
+                if not chunk:
+                    break
+                await dst.write(chunk)
+
+    return await save_atomic(contained, object_key(digest_hex, content_type), write_tmp)

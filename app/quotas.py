@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 import uuid
 from collections import deque
@@ -26,19 +27,21 @@ class TenantQuota:
     _hits: dict[str, deque[float]] = field(default_factory=dict)
     _tenant_bytes: dict[str, int] = field(default_factory=dict)
     _session_bytes: dict[uuid.UUID, int] = field(default_factory=dict)
+    _lock: threading.Lock = field(default_factory=threading.Lock)
 
     def hit(self, principal: Principal | None) -> None:
         """Count one request; raise when the sliding window is full."""
         if principal is None or self.requests_per_window <= 0:
             return
-        now = time.monotonic()
-        bucket = self._hits.setdefault(principal.owner_id, deque())
-        cutoff = now - self.window_seconds
-        while bucket and bucket[0] <= cutoff:
-            bucket.popleft()
-        if len(bucket) >= self.requests_per_window:
-            raise QuotaExceededError("rate limit exceeded")
-        bucket.append(now)
+        with self._lock:
+            now = time.monotonic()
+            bucket = self._hits.setdefault(principal.owner_id, deque())
+            cutoff = now - self.window_seconds
+            while bucket and bucket[0] <= cutoff:
+                bucket.popleft()
+            if len(bucket) >= self.requests_per_window:
+                raise QuotaExceededError("rate limit exceeded")
+            bucket.append(now)
 
     def reserve_bytes(
         self,
@@ -50,20 +53,21 @@ class TenantQuota:
         if principal is None or nbytes <= 0:
             return
         owner = principal.owner_id
-        _reject_if_over(
-            self._tenant_bytes.get(owner, 0),
-            nbytes,
-            self.tenant_max_bytes,
-            "tenant upload quota exceeded",
-        )
-        _reject_if_over(
-            self._session_bytes.get(session_id, 0),
-            nbytes,
-            self.session_max_bytes,
-            "session upload quota exceeded",
-        )
-        _add_bytes(self._tenant_bytes, owner, nbytes, self.tenant_max_bytes)
-        _add_bytes(self._session_bytes, session_id, nbytes, self.session_max_bytes)
+        with self._lock:
+            _reject_if_over(
+                self._tenant_bytes.get(owner, 0),
+                nbytes,
+                self.tenant_max_bytes,
+                "tenant upload quota exceeded",
+            )
+            _reject_if_over(
+                self._session_bytes.get(session_id, 0),
+                nbytes,
+                self.session_max_bytes,
+                "session upload quota exceeded",
+            )
+            _add_bytes(self._tenant_bytes, owner, nbytes, self.tenant_max_bytes)
+            _add_bytes(self._session_bytes, session_id, nbytes, self.session_max_bytes)
 
     def release_bytes(
         self,
@@ -74,8 +78,9 @@ class TenantQuota:
         """Return reserved bytes after a failed persist so retries are not starved."""
         if principal is None or nbytes <= 0:
             return
-        _sub_bytes(self._tenant_bytes, principal.owner_id, nbytes, self.tenant_max_bytes)
-        _sub_bytes(self._session_bytes, session_id, nbytes, self.session_max_bytes)
+        with self._lock:
+            _sub_bytes(self._tenant_bytes, principal.owner_id, nbytes, self.tenant_max_bytes)
+            _sub_bytes(self._session_bytes, session_id, nbytes, self.session_max_bytes)
 
 
 def _reject_if_over(used: int, nbytes: int, cap: int, message: str) -> None:

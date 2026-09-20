@@ -12,6 +12,7 @@ from grpc.aio import ServicerContext
 
 from app.exceptions import EmptyImageError, ImageTooLargeError
 from app.grpc_batch_ingest import ingest_batch_chunk
+from app.grpc_errors import abort_rpc
 from app.models import ImageUpload
 from app.pb import session_service_pb2 as pb
 from app.spool import SpoolWriter
@@ -50,20 +51,11 @@ async def assemble_batch(
             )
     except (ImageTooLargeError, EmptyImageError) as exc:
         await abort_pending(pending)
-        await abort_limit(context, exc)
-        raise
+        await abort_rpc(context, exc)
     except Exception:
         await abort_pending(pending)
         raise
     return await finish_batch(session_id, pending, completed, context)
-
-
-async def abort_limit(context: ServicerContext, exc: BaseException) -> None:
-    """Map oversize images to RESOURCE_EXHAUSTED; empty streams stay INVALID_ARGUMENT."""
-    if isinstance(exc, ImageTooLargeError):
-        await context.abort(grpc.StatusCode.RESOURCE_EXHAUSTED, "image exceeds max_image_bytes")
-        return
-    await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "empty image stream")
 
 
 async def finish_batch(

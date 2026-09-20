@@ -17,11 +17,12 @@ Both transports call the same `SessionService` ([ARCH-001](docs/issues.yml)).
 
 ## Methodology
 
-[GitHub Issue-native ADR](https://github.com/pirlruc/methodologies/tree/1.2.0/github-issue-adr) —
+[GitHub Issue-native ADR](https://github.com/pirlruc/methodologies/tree/1.5.0/github-issue-adr) —
 Epic = decision record, optional Y-statement, no ADR markdown files. Templates:
-[pirlruc/github-scaffold](https://github.com/pirlruc/github-scaffold) @ 1.2.0. Quality: pin
-[pirlruc/guardrails](https://github.com/pirlruc/guardrails) at `docs/guardrails/`. Applies to
+[pirlruc/github-scaffold](https://github.com/pirlruc/github-scaffold) @ 1.5.0. Quality: pin
+[pirlruc/guardrails](https://github.com/pirlruc/guardrails) @ 1.6.0 at `docs/guardrails/`. Applies to
 **new issues only**. Authored backlog: [`docs/issues.yml`](docs/issues.yml).
+Proposed analog additions: [`docs/new-guardrails/`](docs/new-guardrails/).
 
 Android payload shape follows the same keys [FinSilo](https://github.com/pirlruc/finsilo) and
 Heimdall clients already read (`Build`, `ActivityManager`, `DisplayMetrics`, Camera2). This repo is
@@ -68,11 +69,16 @@ curl -F 'file=@frame.png;type=image/png' http://127.0.0.1:8000/api/v1/sessions/<
 - REST: `http://127.0.0.1:8000/health`, `/ready`, `/metrics`, `/api/v1/sessions`
 - gRPC: `127.0.0.1:50051`
 
-Production-shaped auth: set `AUTH_REQUIRED=true` and `API_KEYS=token:owner-id` (see `.env.example`).
-Optional per-tenant quotas: `RATE_LIMIT_PER_MINUTE`, `TENANT_MAX_UPLOAD_BYTES`,
-`SESSION_MAX_UPLOAD_BYTES` (0 = unlimited). gRPC TLS is off until `GRPC_INSECURE=false`
-plus cert/key paths. Set `GC_MIN_AGE_SECONDS` and `ORPHAN_SWEEP_INTERVAL_SECONDS` to
+Production-shaped auth: set `ENVIRONMENT=production` (refuses to start without
+`AUTH_REQUIRED=true` and `GRPC_INSECURE=false`), plus `API_KEYS=token:owner-id`
+(see `.env.example`). Local tests keep auth off. Optional per-tenant quotas:
+`RATE_LIMIT_PER_MINUTE`, `TENANT_MAX_UPLOAD_BYTES`, `SESSION_MAX_UPLOAD_BYTES`
+(0 = unlimited). Set `GC_MIN_AGE_SECONDS` and `ORPHAN_SWEEP_INTERVAL_SECONDS` to
 positive values in production so concurrent same-hash uploads are not collected early.
+
+Compose host ports bind to `127.0.0.1`. Named volumes `pgdata`, `images`, and
+`minio` hold state — back them up with `docker compose run --rm` / volume snapshots
+before destroying the stack (DOCKER-COMPOSE-008).
 
 ## Demo (SDK on an app)
 
@@ -98,9 +104,9 @@ PIXELDIVE_TEST_DATABASE_URL=postgresql+asyncpg://pixeldive:pixeldive@127.0.0.1:5
   bash scripts/ci-postgres.sh
 ```
 
-Floors live in `config/python.profile.thresholds.yml` (PY-TEST-002 95/95, PY-DOC-001, PY-CPLX-*).
-When `GUARDRAILS_READ_TOKEN` is set, CI clones the analog pin and refuses drift (CI-022).
-`docs/guardrail-deviations.yml` is empty — gates are not lowered.
+Floors live in `config/python.profile.thresholds.yml` (PY-TEST-002 95/95, PY-DOC-001, PY-CPLX-* max CC 8).
+When `GUARDRAILS_READ_TOKEN` is set, CI clones the analog pin and refuses a **looser** overlay (CI-022).
+Stricter values (avg MI 70 vs org 60) are allowed. `docs/guardrail-deviations.yml` is empty.
 
 ## Agent handoff
 

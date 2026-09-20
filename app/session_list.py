@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 from sqlmodel import col
 
 from app.auth import Principal
 from app.models import Session, SessionImage
-from app.pagination import Page, clamp_limit, decode_cursor, next_cursor
+from app.pagination import Page, clamp_limit, cursor_predicate, next_cursor
 from app.session_host import SessionHost
 
 
@@ -36,14 +36,14 @@ class SessionListMixin(SessionHost):
         )
         if principal is not None:
             statement = statement.where(col(Session.owner_id) == principal.owner_id)
-        if cursor:
-            stamp, item_id = decode_cursor(cursor)
-            statement = statement.where(
-                or_(
-                    col(Session.created_at) < stamp,
-                    and_(col(Session.created_at) == stamp, col(Session.id) < item_id),
-                ),
-            )
+        predicate = cursor_predicate(
+            col(Session.created_at),
+            col(Session.id),
+            cursor,
+            descending=True,
+        )
+        if predicate is not None:
+            statement = statement.where(predicate)
         statement = statement.limit(page_size + 1)
         async with self._factory() as db:
             result = await db.execute(statement)
@@ -75,17 +75,14 @@ class SessionListMixin(SessionHost):
                 .where(SessionImage.session_id == session_id)  # type: ignore[arg-type]
                 .order_by(col(SessionImage.uploaded_at), col(SessionImage.id))
             )
-            if cursor:
-                stamp, item_id = decode_cursor(cursor)
-                statement = statement.where(
-                    or_(
-                        col(SessionImage.uploaded_at) > stamp,
-                        and_(
-                            col(SessionImage.uploaded_at) == stamp,
-                            col(SessionImage.id) > item_id,
-                        ),
-                    ),
-                )
+            predicate = cursor_predicate(
+                col(SessionImage.uploaded_at),
+                col(SessionImage.id),
+                cursor,
+                descending=False,
+            )
+            if predicate is not None:
+                statement = statement.where(predicate)
             statement = statement.limit(page_size + 1)
             result = await db.execute(statement)
             rows = list(result.scalars().all())

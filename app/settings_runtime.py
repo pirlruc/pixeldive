@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from app.io_sizes import GRPC_UPLOAD_CHUNK_BYTES, IO_CHUNK_BYTES
+
 
 class RuntimeSettingsMixin:
     """Process bind addresses, upload ceilings, and credentials."""
@@ -13,7 +15,7 @@ class RuntimeSettingsMixin:
     max_image_bytes: int = 32 * 1024 * 1024
     max_batch_images: int = 100
     max_concurrent_saves: int = 8
-    download_chunk_bytes: int = 64 * 1024
+    download_chunk_bytes: int = IO_CHUNK_BYTES
     list_default_limit: int = 50
     list_max_limit: int = 200
     auth_required: bool = False
@@ -28,4 +30,5 @@ class RuntimeSettingsMixin:
     tenant_max_upload_bytes: int = 0
     session_max_upload_bytes: int = 0
     orphan_sweep_interval_seconds: float = 0.0
-    grpc_upload_chunk_bytes: int = 256 * 1024
+    grpc_upload_chunk_bytes: int = GRPC_UPLOAD_CHUNK_BYTES
+    environment: str = "development"

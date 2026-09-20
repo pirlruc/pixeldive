@@ -148,3 +148,11 @@ def test_main_rejects_auth_without_keys() -> None:
 
     with pytest.raises(RuntimeError, match="API_KEYS"):
         validate_auth_settings(Settings(auth_required=True, api_keys=""))
+
+
+def test_main_rejects_production_without_auth() -> None:
+    """Production profile cannot boot with AUTH_REQUIRED off."""
+    from app.runtime import validate_auth_settings
+
+    with pytest.raises(RuntimeError, match="AUTH_REQUIRED"):
+        validate_auth_settings(Settings(environment="production"))

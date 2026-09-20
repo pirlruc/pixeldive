@@ -5,7 +5,7 @@ alwaysApply: true
 
 # AI agent handoff maintenance
 
-[`docs/ai-agent-handoff.md`](docs/ai-agent-handoff.md) is the living handoff doc for the next agent. Treat it as part of session hygiene.
+`docs/ai-agent-handoff.md` is the living handoff doc for the next agent. Treat it as part of session hygiene.
 
 ## At session start
 
@@ -37,7 +37,7 @@ Do **not** duplicate full content from `docs/issues.yml` or `README.md` — link
 
 ## Related docs
 
-When handoff status changes, also update [`docs/issues.yml`](docs/issues.yml) when closing or reconciling phases.
+When handoff status changes, also update `docs/issues.yml` when closing or reconciling phases.
 
 When guardrails are referenced, use [`docs/guardrails/`](https://github.com/pirlruc/guardrails) in the consuming repository — see [guardrails-compliance.mdc](guardrails-compliance.mdc).
 

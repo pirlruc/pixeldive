@@ -1,13 +1,15 @@
-# Consumer copy of docs/guardrails/python/profile.thresholds.yml (intended pin 1.3.0).
+# Consumer copy of docs/guardrails/python/profile.thresholds.yml (pin 1.6.0).
 # CI inits docs/guardrails with GUARDRAILS_READ_TOKEN (not GITHUB_TOKEN). When the
-# analog tree is present, scripts/read_python_threshold.py requires every key to match.
+# analog tree is present, scripts/read_python_threshold.py requires every analog
+# key and forbids a looser overlay. Stricter values are allowed (avg MI 70 > 60).
 # .github/scaffold is not cloned in CI.
 
 statement_coverage: 95          # PY-TEST-002
 branch_coverage: 95             # PY-TEST-002
 doc_coverage: 95                # PY-DOC-001
-max_cyclomatic_complexity: 10   # PY-CPLX-001
+max_cyclomatic_complexity: 8    # PY-CPLX-001 (org 1.6.0)
 avg_cyclomatic_complexity: 5    # PY-CPLX-001
 min_maintainability_index: 40   # PY-CPLX-002
-avg_maintainability_index: 70   # PY-CPLX-002
+avg_maintainability_index: 70   # PY-CPLX-002 (stricter than org 60)
 pr_size_soft_limit_lines: 500   # PY-DELIV-001
+lint_exception_max_days: 14     # PY-QUAL-001

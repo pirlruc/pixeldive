@@ -1,6 +1,6 @@
 ---
 description: Production container image authoring (product artifact, not tooling env)
-globs: "**/Dockerfile*,**/.dockerignore,**/container-structure-test*.yml,**/*compose*.yml"
+globs: "**/Dockerfile*,**/.dockerignore,**/container-structure-test*.y*ml,**/*compose*.y*ml"
 alwaysApply: false
 ---
 
@@ -31,5 +31,17 @@ silently skip.
 
 ## Compose / IaC
 
-Validate with `docker compose config` and Compose Spec schema (`DOCKER-LINT-003`).
-Scan with KICS; record exclusions in a tracked doc (`DOCKER-LINT-002`).
+When editing `compose.yaml`, `compose.yml`, `docker-compose.yaml`, or an overlay:
+
+1. Validate with `docker compose config` and the Compose Spec schema (`DOCKER-LINT-003`).
+2. Scan with KICS; record exclusions in a tracked doc (`DOCKER-LINT-002`).
+3. Pin every service image by digest with the tag in a comment, including third-party images (`DOCKER-COMPOSE-001`).
+4. Declare `restart:` and `healthcheck:`; dependents use `condition: service_healthy` (`DOCKER-COMPOSE-002`).
+5. Named volumes for state; no anonymous volumes; bind mounts carry a why-comment (`DOCKER-COMPOSE-003`).
+6. Secrets via env files or the `secrets:` block; gitignore `.env`; commit `.env.example` (`DOCKER-COMPOSE-004`).
+7. `no-new-privileges` and capability drops. `privileged: true` exceeds `compose_privileged_services_max` and needs a recorded deviation (`DOCKER-COMPOSE-005`).
+8. Publish only needed ports, bound to an explicit interface (`compose_default_port_bind`, usually `127.0.0.1`) (`DOCKER-COMPOSE-006`).
+9. Memory limits on long-running services (`DOCKER-COMPOSE-007`).
+10. Document backup and restore for every stateful named volume (`DOCKER-COMPOSE-008`).
+
+Threshold numbers live in `docs/guardrails/docker/profile.thresholds.yml` — do not bake them into this rule.

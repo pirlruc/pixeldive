@@ -6,10 +6,20 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
+
+from sqlalchemy import and_, or_
 
 from app.cursors import decode_cursor, encode_cursor
 
-__all__ = ["Page", "clamp_limit", "decode_cursor", "encode_cursor", "next_cursor"]
+__all__ = [
+    "Page",
+    "clamp_limit",
+    "cursor_predicate",
+    "decode_cursor",
+    "encode_cursor",
+    "next_cursor",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +28,22 @@ class Page[T]:
 
     items: list[T]
     next_cursor: str | None
+
+
+def cursor_predicate(
+    stamp_col: Any,
+    id_col: Any,
+    cursor: str | None,
+    *,
+    descending: bool,
+) -> Any | None:
+    """Return a WHERE clause that continues after ``cursor``, or ``None``."""
+    if not cursor:
+        return None
+    stamp, item_id = decode_cursor(cursor)
+    if descending:
+        return or_(stamp_col < stamp, and_(stamp_col == stamp, id_col < item_id))
+    return or_(stamp_col > stamp, and_(stamp_col == stamp, id_col > item_id))
 
 
 def clamp_limit(limit: int | None, default: int, maximum: int) -> int:

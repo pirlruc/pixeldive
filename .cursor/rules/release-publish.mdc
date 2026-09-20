@@ -7,7 +7,7 @@ alwaysApply: false
 # Release and publish (REL-*)
 
 Cite Guardrail IDs from
-[`docs/guardrails/release/`](https://github.com/pirlruc/guardrails/tree/main/release).
+[`docs/guardrails/release/`](https://github.com/pirlruc/guardrails/tree/1.6.0/release).
 Conventional Commits (see [conventional-commits.mdc](conventional-commits.mdc)) govern commit **input**;
 this rule governs release **output**. Do not bake cadence numbers into this file.
 

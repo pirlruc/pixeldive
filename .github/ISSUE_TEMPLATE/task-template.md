@@ -56,4 +56,4 @@ assignees: ''
 
 - **creator:** AI_Implementer_1
 - **confidence_score:**
-- **target_branch:** `feature/<branch_name>`
+- **target_branch:** `feature-<purpose>`

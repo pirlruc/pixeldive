@@ -20,9 +20,23 @@ from app.storage import build_storage
 
 logger = logging.getLogger("pixeldive")
 
+_PRODUCTION = frozenset({"prod", "production"})
+
+
+def is_production(settings: Settings) -> bool:
+    """True when ``ENVIRONMENT`` names a production profile."""
+    return settings.environment.strip().lower() in _PRODUCTION
+
 
 def validate_auth_settings(settings: Settings) -> None:
-    """Fail fast when auth is required without any configured tokens."""
+    """Fail fast when auth is required without tokens, or production is open."""
+    if is_production(settings):
+        if not settings.auth_required:
+            msg = "ENVIRONMENT=production requires AUTH_REQUIRED=true"
+            raise RuntimeError(msg)
+        if settings.grpc_insecure:
+            msg = "ENVIRONMENT=production requires GRPC_INSECURE=false"
+            raise RuntimeError(msg)
     if settings.auth_required and not settings.api_key_map():
         msg = "AUTH_REQUIRED is true but API_KEYS is empty"
         raise RuntimeError(msg)
@@ -33,6 +47,8 @@ async def run(settings: Settings | None = None) -> None:
     settings = settings or get_settings()
     configure_logging(json_logs=settings.log_json)
     validate_auth_settings(settings)
+    if not settings.auth_required:
+        logger.warning("AUTH_REQUIRED is false; sessions are unauthenticated")
     engine = create_engine(settings)
     if settings.auto_create_tables:
         await init_db(engine)

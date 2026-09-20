@@ -1,7 +1,7 @@
 # Authored backlog for pixeldive. Source of truth for GitHub Epic/Task issues.
 #
-# Schema: https://github.com/pirlruc/github-scaffold/blob/1.2.0/docs/issues-schema.md
-# Methodology: https://github.com/pirlruc/methodologies/tree/1.2.0/github-issue-adr
+# Schema: https://github.com/pirlruc/github-scaffold/blob/1.5.0/docs/issues-schema.md
+# Methodology: https://github.com/pirlruc/methodologies/tree/1.5.0/github-issue-adr
 #
 # The Epic is the decision record — there are no ADR markdown files.
 # Deviations from guardrails go in docs/guardrail-deviations.yml, not here.
@@ -26,18 +26,20 @@
 # (merged 2026-09-19, commit 96192bf):
 #   done  SEC-001, PERF-001, DATA-002, OPS-001, API-002, SDK-001, PERF-002
 #
-#   open  TOOL-001 / TOOL-001-T1 (analog submodule pins)
+#   done  TOOL-001 / TOOL-001-T1 (analog submodule pins 1.6.0 / 1.5.0)
 #   open  TOOL-002
 #   done  SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
 #         (this change; GitHub issue objects still unpublished — TOOL-002)
 #   open  SEC-004 (Postgres shared quotas), SEC-005 (Redis quota hot path later)
 #   done  QUAL-002 (CPython 3.13 per PY-RUN-003; boto3 stays out)
+#   done  SEC-006 (production fail-closed, magic-byte uploads, HMAC keys)
+#   open  QUAL-003 (hadolint, KICS, Trivy, SBOM, uv.lock, MinIO digest)
 
 milestones:
   - name: Tooling — Analog & methodology
     epics:
       - id: TOOL-001
-        status: open
+        status: done
         title: Pin analog repos and adopt github-issue-adr
         overview:
           problem: >-
@@ -45,8 +47,8 @@ milestones:
             authored backlog, and no issue templates. github-issue-adr requires
             Epic issues as decision records and docs/issues.yml as the manifest.
           goal: >-
-            Adopt the same analog pins as FinSilo/Heimdall (guardrails 1.3.0,
-            github-scaffold 1.2.0, methodologies cited at 1.2.0), sync Cursor
+            Adopt the same analog pins as FinSilo/Heimdall (guardrails 1.6.0,
+            github-scaffold 1.5.0, methodologies cited at 1.5.0), sync Cursor
             rules and GitHub templates, and keep docs/issues.yml as the
             decision log. No docs/adr/ tree.
         architecture:
@@ -59,18 +61,19 @@ milestones:
             - scripts/issues-sync.sh
             - .cursor/rules
         acceptance_criteria:
-          - Cursor rules and issue/PR templates match github-scaffold 1.2.0
+          - Cursor rules and issue/PR templates match github-scaffold 1.5.0
           - docs/issues.yml is the authored backlog; no docs/adr/
           - Wrapper scripts under scripts/ call the scaffold copies
-          - docs/guardrails is pinned at tag 1.3.0 when GUARDRAILS_READ_TOKEN exists
-          - .github/scaffold is pinned at tag 1.2.0 when a Contents-read token exists
+          - docs/guardrails is pinned at tag 1.6.0 when GUARDRAILS_READ_TOKEN exists
+          - .github/scaffold is pinned at tag 1.5.0 when a Contents-read token exists
           - Phase 1 templates, Cursor rules, and this manifest shipped in pirlruc/pixeldive#1
         guardrail_refs:
           - PY-TEST-002
           - CI-022
+          - SC-DEP-004
         tasks:
           - id: TOOL-001-T1
-            status: open
+            status: done
             title: Pin guardrails and github-scaffold submodules
             instructions:
               files:
@@ -1168,6 +1171,122 @@ milestones:
             verification:
               - rg -n "3.13" Dockerfile .github/workflows/quality.yml pyproject.toml
               - rg -n "boto3" requirements.txt && exit 1 || true
+
+      - id: QUAL-003
+        status: open
+        title: Close remaining 1.6.0 Docker and supply-chain gates
+        overview:
+          problem: >-
+            Guardrails 1.6.0 adds hadolint, KICS, image vuln scans, SBOM,
+            signing/provenance on publish, uv.lock as the Python package
+            manager, and digest pins for every Compose image. pixeldive now
+            runs bandit and pip-audit and digest-pins Postgres, but does not
+            yet publish images or use uv.
+          goal: >-
+            Add hadolint/KICS/Trivy (or Grype) and a CycloneDX SBOM when an
+            image is published; pin MinIO by digest; migrate install to uv.lock
+            or record a PY-RUN-001 decision. Signing/provenance stay tied to
+            a real publish path (Free-plan private-repo limits documented in
+            supply-chain pack).
+        architecture:
+          target: >-
+            In the context of guardrails 1.6.0 Docker/SC packs, facing no
+            current image publish workflow, we decided to land SAST and
+            pip-audit now and keep hadolint/Trivy/SBOM/uv as follow-up rather
+            than recording unverified deviations.
+          modules:
+            - Dockerfile
+            - docker-compose.yml
+            - .github/workflows
+            - requirements.txt
+        acceptance_criteria:
+          - hadolint fails at the org warning threshold on Dockerfile
+          - Compose/IaC is KICS-scanned or exclusions are in scanner-exceptions.md
+          - Published images (when a publish path exists) have Trivy + SBOM
+          - MinIO Compose images are digest-pinned or the tag gap is a recorded deviation
+        guardrail_refs:
+          - DOCKER-LINT-001
+          - DOCKER-LINT-002
+          - DOCKER-SEC-001
+          - DOCKER-COMPOSE-001
+          - SC-SBOM-001
+          - PY-RUN-001
+          - PY-DOC-002
+        tasks:
+          - id: QUAL-003-T1
+            status: open
+            title: Add hadolint, KICS, and MinIO digest pins
+            instructions:
+              files:
+                - Dockerfile
+                - docker-compose.yml
+                - .github/workflows
+            verification:
+              - bash scripts/ci-local.sh
+          - id: QUAL-003-T2
+            status: open
+            title: Add image vuln scan and SBOM on a publish path
+            instructions:
+              files:
+                - .github/workflows
+            verification:
+              - test -f .github/workflows/security.yml
+          - id: QUAL-003-T3
+            status: open
+            title: Decide uv.lock vs pinned requirements.txt (PY-RUN-001)
+            instructions:
+              files:
+                - pyproject.toml
+                - requirements.txt
+            verification:
+              - test -f requirements.txt
+
+      - id: SEC-006
+        status: done
+        title: Production fail-closed auth and upload sniffing
+        overview:
+          problem: >-
+            AUTH_REQUIRED and GRPC_INSECURE default off for tests. A production
+            process could bind 0.0.0.0 with no credentials. Uploads trusted
+            Content-Type. API key lookup used dict membership. In-process
+            quotas raced. Downloads hit the rate limiter twice.
+          goal: >-
+            ENVIRONMENT=production refuses to start without auth and gRPC TLS.
+            Image magic bytes must match the declared type. Token compare uses
+            hmac.compare_digest. Quota mutations take a lock. stream_image
+            reuses an already-loaded row.
+        architecture:
+          target: >-
+            In the context of opt-in auth for local tests, facing accidental
+            production exposure, we decided a named production profile
+            fail-closed plus magic-byte sniffing rather than flipping the
+            development defaults that every unit test relies on.
+          modules:
+            - app/runtime.py
+            - app/magic.py
+            - app/auth.py
+            - app/quotas.py
+            - app/session_ops.py
+        acceptance_criteria:
+          - ENVIRONMENT=production with AUTH_REQUIRED=false raises at startup
+          - PNG declared as JPEG (or raw bytes as PNG) is 422
+          - Unknown bearer tokens still 401
+          - Download after get_image does not consume a second quota hit
+        guardrail_refs:
+          - PY-SEC-002
+          - PY-TEST-002
+        tasks:
+          - id: SEC-006-T1
+            status: done
+            title: Fail closed in production and sniff upload magic
+            instructions:
+              files:
+                - app/runtime.py
+                - app/magic.py
+                - app/auth.py
+                - app/quotas.py
+            verification:
+              - bash scripts/ci-local.sh
 
       - id: SEC-005
         status: open

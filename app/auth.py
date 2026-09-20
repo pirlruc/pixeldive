@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -64,6 +65,16 @@ def bearer_token(authorization: str | None) -> str | None:
     return token or None
 
 
+def lookup_owner(token: str, keys: dict[str, str]) -> str | None:
+    """Return the owner for ``token`` using compare_digest against every key."""
+    owner: str | None = None
+    token_bytes = token.encode("utf-8")
+    for candidate, mapped in keys.items():
+        if hmac.compare_digest(token_bytes, candidate.encode("utf-8")):
+            owner = mapped
+    return owner
+
+
 def authenticate(authorization: str | None, settings: Settings) -> Principal | None:
     """Return a Principal when auth is on; None when auth is disabled.
 
@@ -74,9 +85,10 @@ def authenticate(authorization: str | None, settings: Settings) -> Principal | N
         return None
     token = bearer_token(authorization)
     keys = settings.api_key_map()
-    if token is None or token not in keys:
+    owner = lookup_owner(token, keys) if token is not None else None
+    if owner is None:
         raise UnauthenticatedError("invalid or missing bearer token")
-    return Principal(owner_id=keys[token])
+    return Principal(owner_id=owner)
 
 
 def metadata_authorization(

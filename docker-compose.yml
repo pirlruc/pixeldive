@@ -1,22 +1,28 @@
 services:
   db:
-    image: postgres:16-alpine
+    # postgres:16-alpine (multi-arch index digest; DOCKER-COMPOSE-001).
+    image: postgres:16-alpine@sha256:3c5c8892d184f738f4fe282d14ddaa613a38f00f4189d2d94725ebe6f2909ddb
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: pixeldive
-      POSTGRES_PASSWORD: pixeldive
-      POSTGRES_DB: pixeldive
+      POSTGRES_USER: ${POSTGRES_USER:-pixeldive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pixeldive}
+      POSTGRES_DB: ${POSTGRES_DB:-pixeldive}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pixeldive"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
       interval: 5s
       timeout: 5s
       retries: 10
     volumes:
       - pgdata:/var/lib/postgresql/data
+    mem_limit: 512m
+    security_opt:
+      - no-new-privileges:true
 
   app:
     build: .
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -27,7 +33,7 @@ services:
         condition: service_completed_successfully
         required: false
     environment:
-      DATABASE_URL: postgresql+asyncpg://pixeldive:pixeldive@db:5432/pixeldive
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pixeldive}:${POSTGRES_PASSWORD:-pixeldive}@db:5432/${POSTGRES_DB:-pixeldive}
       STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
       STORAGE_ROOT: /data/images
       HTTP_HOST: 0.0.0.0
@@ -35,7 +41,10 @@ services:
       GRPC_PORT: "50051"
       AUTO_CREATE_TABLES: "false"
       LOG_JSON: "true"
-      GRPC_INSECURE: "true"
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
+      API_KEYS: ${API_KEYS:-}
+      GRPC_INSECURE: ${GRPC_INSECURE:-true}
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
       S3_BUCKET: ${S3_BUCKET:-pixeldive}
       S3_REGION: ${S3_REGION:-us-east-1}
@@ -45,8 +54,8 @@ services:
       ORPHAN_MIN_AGE_SECONDS: ${ORPHAN_MIN_AGE_SECONDS:-60}
       ORPHAN_SWEEP_INTERVAL_SECONDS: ${ORPHAN_SWEEP_INTERVAL_SECONDS:-0}
     ports:
-      - "8000:8000"
-      - "50051:50051"
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:50051:50051"
     volumes:
       - images:/data/images
     read_only: true
@@ -56,31 +65,42 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /tmp
+    mem_limit: 512m
 
   minio:
     profiles: ["s3"]
+    # Tag pin; Dependabot docker does not refresh compose tags (DOCKER-COMPOSE-001 follow-up).
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - minio:/data
+    mem_limit: 512m
+    security_opt:
+      - no-new-privileges:true
+    # The MinIO server image is scratch-based (no curl/sh) so an HTTP
+    # healthcheck cannot run in-container (DOCKER-COMPOSE-002). minio-init retries.
 
   minio-init:
     profiles: ["s3"]
     image: minio/mc:RELEASE.2025-04-16T18-13-26Z
     depends_on:
       - minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     entrypoint:
       - /bin/sh
       - -c
       - |
         i=0
-        until mc alias set local http://minio:9000 minioadmin minioadmin; do
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
           i=$$((i+1))
           if [ "$$i" -gt 30 ]; then exit 1; fi
           sleep 1

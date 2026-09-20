@@ -79,6 +79,9 @@ asyncio_mode = "auto"
 pythonpath = [".", "sdk"]
 testpaths = ["tests"]
 
+[tool.bandit]
+exclude_dirs = ["tests", "migrations", "app/pb"]
+
 [tool.ruff]
 extend-exclude = ["app/pb"]
 line-length = 100

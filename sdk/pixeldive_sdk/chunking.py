@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
-DEFAULT_CHUNK_BYTES = 256 * 1024
+from app.io_sizes import GRPC_UPLOAD_CHUNK_BYTES
+
+DEFAULT_CHUNK_BYTES = GRPC_UPLOAD_CHUNK_BYTES
 
 
 def iter_bytes(payload: bytes, chunk_size: int = DEFAULT_CHUNK_BYTES) -> Iterator[bytes]:

@@ -7,26 +7,14 @@ from pathlib import Path
 from typing import Any, cast
 
 from app.pb import session_service_pb2 as pb
-from app.pb import session_service_pb2_grpc as pb_grpc
 from pixeldive_sdk.chunking import DEFAULT_CHUNK_BYTES, iter_bytes, iter_path
+from pixeldive_sdk.grpc_host import GrpcHostMixin
 from pixeldive_sdk.grpc_iter import batch_image_chunks, single_image_chunks
 from pixeldive_sdk.ids import resource_id
 
 
-class GrpcImageCallsMixin:
+class GrpcImageCallsMixin(GrpcHostMixin):
     """Image upload/list/download RPCs that require an open stub."""
-
-    async def connect(self) -> None:
-        """Open the channel; implemented by GrpcClient."""
-        raise NotImplementedError  # pragma: no cover
-
-    def _metadata(self) -> list[tuple[str, str]]:
-        """Invocation metadata; implemented by GrpcClient."""
-        raise NotImplementedError  # pragma: no cover
-
-    def _require_stub(self) -> pb_grpc.SessionServiceStub:
-        """Return the stub; implemented by GrpcClient."""
-        raise NotImplementedError  # pragma: no cover
 
     async def upload_image(
         self,
@@ -99,10 +87,9 @@ class GrpcImageCallsMixin:
         cursor: str = "",
     ) -> pb.ImageListResponse:
         """List image metadata for a session."""
-        await self.connect()
-        response = await self._require_stub().ListSessionImages(
+        response = await self._unary(
+            "ListSessionImages",
             pb.ListImagesRequest(session_id=resource_id(session_id), limit=limit, cursor=cursor),
-            metadata=self._metadata(),
         )
         return cast(pb.ImageListResponse, response)
 

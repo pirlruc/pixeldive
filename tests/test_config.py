@@ -49,12 +49,17 @@ def test_s3_missing_helper() -> None:
         response = {"Error": {"Code": "NoSuchKey"}}
 
     class ClientError(Exception):
-        """botocore-shaped name used by the string fallback."""
+        """botocore-shaped name used by the HTTPStatusCode fallback."""
+
+        response = {"ResponseMetadata": {"HTTPStatusCode": 404}}
+
+    class Timeout(Exception):
+        """Unrelated client error whose message happens to contain 404."""
 
     assert _is_missing(Err()) is True
     assert _is_missing(RuntimeError("boom")) is False
-    assert _is_missing(ClientError("An error occurred (404) when calling HeadObject")) is True
-    assert _is_missing(ClientError("timeout")) is False
+    assert _is_missing(ClientError()) is True
+    assert _is_missing(Timeout("An error occurred (404) when calling HeadObject")) is False
 
 
 def test_postgres_engine_skips_sqlite_pragma() -> None:
