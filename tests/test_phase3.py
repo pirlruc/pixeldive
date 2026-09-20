@@ -325,8 +325,9 @@ def test_quota_release_allows_retry() -> None:
     quota.reserve_bytes(principal, session_id, 10)
     with pytest.raises(QuotaExceededError):
         quota.reserve_bytes(principal, session_id, 1)
+    quota.release_bytes(principal, session_id, 4)
+    quota.reserve_bytes(principal, session_id, 4)
     quota.release_bytes(principal, session_id, 10)
-    quota.reserve_bytes(principal, session_id, 10)
     quota.release_bytes(None, session_id, 10)
     quota.release_bytes(principal, session_id, 0)
     unlimited = TenantQuota(0, 60.0, 0, 0)
