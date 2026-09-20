@@ -6,6 +6,7 @@ github-issue-adr decision records. Implement them in the analog repo (new IDs or
 to existing IDs), then bump the `docs/guardrails` gitlink here.
 
 Companion: [compliance-1.6.0.md](compliance-1.6.0.md) (what this repo already does vs 1.6.0).
+Swift/iOS proposals (Kotlin analog): [swift.md](swift.md).
 
 ## New IDs to add
 
@@ -130,3 +131,17 @@ third-party images.
   instead (already implied by bind-address / Compose port-bind rules).
 - An org requirement to fail CI on CodeQL **medium**. [CI-005](https://github.com/pirlruc/guardrails/blob/1.6.0/ci/guardrails.md)
   is High/Critical. Stricter is allowed per-repo without a new ID.
+
+## Swift / iOS
+
+The analog already ships a `swift/` pack. After adding `ios/PixeldiveSDK`, several
+Kotlin/Android rules still have no Swift twin (complexity, structured concurrency,
+ATS, token storage). Those proposals, plus a SWIFT-ENV-001 overlay for
+Foundation-only `swift test` on Linux, live in [swift.md](swift.md).
+
+## Kotlin / Android
+
+The analog already ships a `kotlin/` pack. After adding `android/` (JVM OkHttp SDK +
+Compose demo), Android-specific twins of SWIFT-IOS-003/004 and SWIFT-SEC-005 were
+still missing, as was a Linux JVM test overlay. Those proposals live in
+[kotlin.md](kotlin.md).

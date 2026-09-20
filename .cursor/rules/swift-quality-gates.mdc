@@ -1,0 +1,42 @@
+---
+description: Prove SWIFT-* quality gates still hold before finishing Swift edits
+globs: "**/*.swift"
+alwaysApply: false
+---
+
+# Swift quality gates (executable companion to guardrails-compliance)
+
+When you add or edit **Swift** (`.swift`) files, prove the org Swift guardrails still hold
+before finishing. This rule supplies **commands**; threshold **numbers** live in
+`docs/guardrails/swift/profile.thresholds.yml` (consumer overlay
+`config/swift.profile.thresholds.yml`). Policy and deviations:
+[guardrails-compliance.mdc](guardrails-compliance.mdc). Proposed IDs:
+[`docs/new-guardrails/swift.md`](../../docs/new-guardrails/swift.md).
+
+## Prefer local CI parity
+
+```bash
+PIXELDIVE_REQUIRE_SWIFT=1 bash scripts/check-ios-sdk.sh
+```
+
+Linux hosts without Swift skip unless `PIXELDIVE_REQUIRE_SWIFT=1` (SWIFT-ENV-001;
+proposed overlay allows Foundation-only `swift test` on Linux). The SwiftUI demo
+still needs Xcode.
+
+## Per-gate fallback (map to Guardrail IDs)
+
+| Check | Typical command | Guardrail |
+|-------|-----------------|-----------|
+| Format | SwiftFormat with `ios/.swiftformat` | SWIFT-ENV-002, SWIFT-LINT-001 |
+| Lint | SwiftLint with `ios/.swiftlint.yml` | SWIFT-LINT-001, proposed SWIFT-CPLX-001 |
+| Tests | `swift test --package-path ios` | SWIFT-TEST-001 |
+| Line coverage | Xcode / llvm-cov; no branch key | SWIFT-TEST-002 |
+| Docs | Doc comments on public API | SWIFT-DOC-001 |
+
+Cite the Guardrail ID in the PR when a gate fails or when recording a deviation.
+
+## Design habit
+
+Keep `PixeldiveClient` on Foundation/`URLSession`. Map iOS device APIs into the
+existing Android JSON keys; put native iOS fields in `metadata`. Prefer `struct`
+Codable models (proposed SWIFT-API-004 / KT-API-001).

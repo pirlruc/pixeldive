@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pixeldive</string>
+    <string name="camera_rationale">Pixeldive reads Camera2 characteristics to fill the Android session payload.</string>
+    <string name="photos_rationale">Pixeldive uploads a photo you pick into the selected processing session.</string>
+</resources>

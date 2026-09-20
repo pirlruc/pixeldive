@@ -1,0 +1,53 @@
+{
+  "session_name": "ios-demo-capture",
+  "phone_info": {
+    "manufacturer": "Apple",
+    "model": "iPhone 16 Pro",
+    "brand": "apple",
+    "device": "iPhone17,1",
+    "board": "iPhone17,1",
+    "android_version": "18.6",
+    "sdk_int": 18
+  },
+  "phone_capabilities": {
+    "total_ram_mb": 8192,
+    "available_ram_mb": 4096,
+    "cpu_abi": "arm64",
+    "cpu_cores": 6,
+    "screen_width_px": 1206,
+    "screen_height_px": 2622,
+    "screen_density_dpi": 460,
+    "is_low_ram_device": false
+  },
+  "camera_capabilities": {
+    "camera_count": 2,
+    "cameras": [
+      {
+        "camera_id": "com.apple.avfoundation.avcapturedevice.built-in_video:0",
+        "lens_facing": "BACK",
+        "hardware_level": "LEVEL_3",
+        "sensor_orientation": 90,
+        "max_resolution": "4032x3024",
+        "has_flash": true,
+        "has_optical_stabilization": true,
+        "supported_capabilities": ["BACKWARD_COMPATIBLE", "RAW"]
+      },
+      {
+        "camera_id": "com.apple.avfoundation.avcapturedevice.built-in_video:1",
+        "lens_facing": "FRONT",
+        "hardware_level": "LIMITED",
+        "sensor_orientation": 270,
+        "max_resolution": "3088x2316",
+        "has_flash": false,
+        "has_optical_stabilization": false,
+        "supported_capabilities": ["BACKWARD_COMPATIBLE"]
+      }
+    ]
+  },
+  "metadata": {
+    "source": "pixeldive-ios-sdk",
+    "platform": "ios",
+    "system_name": "iOS",
+    "ios_version": "18.6"
+  }
+}

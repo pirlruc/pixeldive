@@ -9,8 +9,8 @@ device/camera identity, then upload frames over REST (multipart) or gRPC (client
 | gRPC | `proto/session_service.proto` (`pixeldive.session.v1.SessionService`) |
 | Data | SQLModel + async PostgreSQL (`asyncpg`); Alembic when `AUTO_CREATE_TABLES=false` |
 | Blobs | SHA-256 local filesystem, or async S3-compatible adapter (aiobotocore) |
-| SDK | `sdk/pixeldive_sdk` (`RestClient`, `GrpcClient`) |
-| Demo | `python -m demo` (FastAPI UI that talks to the service only through the SDK) |
+| SDK | `sdk/pixeldive_sdk` (`RestClient`, `GrpcClient`), `ios/` (`PixeldiveSDK`), and `android/` (Kotlin `PixeldiveClient`) |
+| Demo | `python -m demo` (web), `ios/Demo` (SwiftUI), and `android/demo` (Compose) |
 | Runtime | CPython **3.13** ([QUAL-002](docs/issues.yml), PY-RUN-003) |
 
 Both transports call the same `SessionService` ([ARCH-001](docs/issues.yml)).
@@ -26,7 +26,9 @@ Proposed analog additions: [`docs/new-guardrails/`](docs/new-guardrails/).
 
 Android payload shape follows the same keys [FinSilo](https://github.com/pirlruc/finsilo) and
 Heimdall clients already read (`Build`, `ActivityManager`, `DisplayMetrics`, Camera2). This repo is
-the Python service, not an Android app — do not copy Heimdall's `app → kit → core` Gradle layout.
+the Python service, not an Android Gradle multi-module clone of Heimdall — do not copy
+Heimdall's `app → kit → core` layout. The first-party client lives in `android/` as a
+JVM `:sdk` plus a Compose `:demo`.
 
 ## Quick start
 
@@ -96,10 +98,24 @@ PYTHONPATH=sdk:. PIXELDIVE_BASE_URL=http://127.0.0.1:8000 python3 -m demo
 Open `http://127.0.0.1:8080`. The UI creates Android-shaped sessions, uploads images, and
 downloads them through `pixeldive_sdk.RestClient`.
 
+iOS: open [`ios/README.md`](ios/README.md). `PixeldiveClient` is the Swift twin of
+`RestClient`. The SwiftUI demo (`ios/Demo/PixeldiveDemo.xcodeproj`) talks to the service
+only through that package. Session JSON keeps Android wire keys; iOS identity is mapped
+from `UIDevice` / `AVCaptureDevice` and tagged `metadata.platform=ios`.
+
+Android: open [`android/README.md`](android/README.md). The Kotlin `PixeldiveClient` is
+the JVM twin of `RestClient`. The Compose demo (`android/demo`) talks to the service
+only through that library and maps `Build` / Camera2 into the same keys, tagged
+`metadata.platform=android`.
+
 ## Quality gates
 
 ```bash
 bash scripts/ci-local.sh
+# macOS / Linux-with-Swift: Foundation package tests (SWIFT-TEST-001)
+PIXELDIVE_REQUIRE_SWIFT=1 bash scripts/check-ios-sdk.sh
+# Linux-with-JDK: Kotlin JVM package tests (KT-TEST-001)
+PIXELDIVE_REQUIRE_JAVA=1 bash scripts/check-android-sdk.sh
 ```
 
 PostgreSQL integration (CI job `postgres` / DATA-003), not the local default:
@@ -109,9 +125,11 @@ PIXELDIVE_TEST_DATABASE_URL=postgresql+asyncpg://pixeldive:pixeldive@127.0.0.1:5
   bash scripts/ci-postgres.sh
 ```
 
-Floors live in `config/python.profile.thresholds.yml` (PY-TEST-002 95/95, PY-DOC-001, PY-CPLX-* max CC 8).
+Floors live in `config/python.profile.thresholds.yml` (PY-TEST-002 95/95, PY-DOC-001, PY-CPLX-* max CC 8)
+and `config/swift.profile.thresholds.yml` (SWIFT-TEST-002 95 line coverage overlay)
+and `config/kotlin.profile.thresholds.yml` (KT-TEST-002 95/95).
 When `GUARDRAILS_READ_TOKEN` is set, CI clones the analog pin and refuses a **looser** overlay (CI-022).
-Stricter values (avg MI 70 vs org 60) are allowed. `docs/guardrail-deviations.yml` is empty.
+Stricter values (avg MI 70 vs org 60; Swift statement coverage 95 vs org 90) are allowed. `docs/guardrail-deviations.yml` is empty.
 `uv.lock` is the PY-RUN-001 lockfile; `requirements.txt` is the pip/Docker freeze
 (`uv export`). Local `scripts/ci-local.sh` also runs pydoclint, hadolint, KICS,
 ShellCheck, and markdown link lint.

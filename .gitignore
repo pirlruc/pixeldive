@@ -33,3 +33,16 @@ dist/
 
 # Generated scratch
 *.tmp
+
+# Swift / Xcode
+.build/
+ios/.build/
+xcuserdata/
+*.xcuserstate
+DerivedData/
+
+# Kotlin / Gradle
+android/.gradle/
+android/**/build/
+android/local.properties
+android/.kotlin/

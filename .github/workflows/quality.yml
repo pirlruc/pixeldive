@@ -15,7 +15,7 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -134,3 +134,67 @@ jobs:
         env:
           PIXELDIVE_TEST_DATABASE_URL: postgresql+asyncpg://pixeldive:pixeldive@localhost:5432/pixeldive
         run: bash scripts/ci-postgres.sh
+
+  ios-sdk:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Init guardrails analog
+        env:
+          GUARDRAILS_READ_TOKEN: ${{ secrets.GUARDRAILS_READ_TOKEN }}
+        run: bash scripts/ci-init-guardrails.sh
+
+      - name: SWIFT-* gates
+        env:
+          PIXELDIVE_REQUIRE_SWIFT: "1"
+        run: bash scripts/check-ios-sdk.sh
+
+      - name: Trivy iOS sources (SWIFT-SEC-004)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ios
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  android-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Init guardrails analog
+        env:
+          GUARDRAILS_READ_TOKEN: ${{ secrets.GUARDRAILS_READ_TOKEN }}
+        run: bash scripts/ci-init-guardrails.sh
+
+      - name: Set up Java
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: KT-* gates
+        env:
+          PIXELDIVE_REQUIRE_JAVA: "1"
+        run: bash scripts/check-android-sdk.sh
+
+      - name: Trivy Android sources (KT-SEC-004)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: android
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
