@@ -5,6 +5,8 @@ from typing import Any
 
 from app.exceptions import InvalidMetadataError
 
+MAX_METADATA_JSON_CHARS = 65_536
+
 
 def promote_metadata(data: Any) -> Any:
     """Accept client key ``metadata`` as ``extra_metadata`` (DATA-001)."""
@@ -19,6 +21,8 @@ def parse_metadata_json(raw: str | None) -> dict:
     """Parse an optional JSON object used by REST form fields and gRPC chunks."""
     if raw is None or raw.strip() == "":
         return {}
+    if len(raw) > MAX_METADATA_JSON_CHARS:
+        raise InvalidMetadataError("metadata exceeds 65536 characters")
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError as exc:

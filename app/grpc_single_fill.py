@@ -10,6 +10,7 @@ import grpc
 from grpc.aio import ServicerContext
 
 from app.grpc_codec import as_uuid
+from app.grpc_errors import require_session_id
 from app.grpc_headers import chunk_headers
 from app.models import ImageUpload
 from app.pb import session_service_pb2 as pb
@@ -63,9 +64,7 @@ async def single_header(
     content_type: str,
 ) -> tuple[uuid.UUID, str, str, dict[str, Any]]:
     """Parse session_id/filename/type/metadata from the first chunk."""
-    if not chunk.session_id:
-        await writer.abort()
-        await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "session_id is required")
+    await require_session_id(chunk.session_id, context, writer.abort)
     name, media_type, metadata = chunk_headers(
         chunk.filename,
         chunk.content_type,

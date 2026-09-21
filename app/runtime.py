@@ -14,6 +14,7 @@ from app.lifecycle import close_storage, orphan_sweep_loop, serve_until_stopped
 from app.metrics import Metrics
 from app.migrate import upgrade_head
 from app.observability import configure_logging
+from app.production_limits import require_production_quotas
 from app.service import SessionService
 from app.storage import build_storage
 from app.tls_files import grpc_tls_files, http_tls_files
@@ -32,6 +33,7 @@ def validate_auth_settings(settings: Settings) -> None:
     """Fail fast when auth is required without tokens, or production is open."""
     if is_production(settings):
         require_production_transports(settings)
+        require_production_quotas(settings)
     if settings.auth_required and not settings.api_key_map():
         msg = "AUTH_REQUIRED is true but API_KEYS is empty"
         raise RuntimeError(msg)

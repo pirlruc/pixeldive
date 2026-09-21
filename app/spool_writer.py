@@ -9,6 +9,7 @@ from typing import Any, cast
 
 import aiofiles
 
+from app.empty_chunks import empty_run_exceeded
 from app.exceptions import EmptyImageError, ImageTooLargeError
 from app.fs_async import unlink_missing
 from app.magic import HEADER_SIZE
@@ -27,6 +28,7 @@ class SpoolWriter:
         self.hasher = hashlib.sha256()
         self.header = bytearray()
         self._handle: Any = None
+        self._empty_run = 0
 
     async def start(self) -> None:
         """Open the spool file for writing."""
@@ -41,8 +43,15 @@ class SpoolWriter:
 
     async def feed(self, chunk: bytes) -> None:
         """Append ``chunk`` or raise if the size ceiling is exceeded."""
+        # Empty frames do not count toward max_image_bytes. A long run of them
+        # is a stalled client, so the stream aborts instead of staying open.
         if not chunk:
+            self._empty_run += 1
+            if empty_run_exceeded(self._empty_run):
+                await self.abort()
+                raise EmptyImageError("too many empty upload chunks")
             return
+        self._empty_run = 0
         self.size += len(chunk)
         if self.size > self.max_bytes:
             await self.abort()

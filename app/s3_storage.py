@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 
 from app.hash_keys import object_key, sha256_hex
@@ -30,11 +30,14 @@ class S3CompatibleStorage:
         bucket: str,
         *,
         part_size: int = 8 * 1024 * 1024,
+        known_limit: int = 4096,
     ) -> None:
         """Bind an async S3 client to ``bucket``."""
         self._client = client
         self._bucket = bucket
         self._part_size = part_size
+        self._known: set[str] = set()
+        self._known_limit = known_limit
 
     async def _put(self, key: str, payload: bytes, content_type: str) -> None:
         """PUT bytes under ``key``."""
@@ -46,23 +49,39 @@ class S3CompatibleStorage:
         )
 
     async def save(self, payload: bytes, content_type: str) -> str:
-        """PUT the object (idempotent; no HEAD round trip)."""
+        """PUT the object unless this process already stored the same key."""
         key = object_key(sha256_hex(payload), content_type)
-        await self._put(key, payload, content_type)
-        return key
+        return await self._store_once(key, lambda: self._put(key, payload, content_type))
 
     async def save_file(self, source: Path, digest_hex: str, content_type: str) -> str:
-        """Multipart-PUT a spool file using the precomputed digest as the key."""
+        """Multipart-PUT a spool unless this process already stored that key."""
         key = object_key(digest_hex, content_type)
-        await put_file_multipart(
-            self._client,
-            bucket=self._bucket,
-            key=key,
-            source=source,
-            content_type=content_type,
-            part_size=self._part_size,
-        )
+
+        async def write() -> None:
+            await put_file_multipart(
+                self._client,
+                bucket=self._bucket,
+                key=key,
+                source=source,
+                content_type=content_type,
+                part_size=self._part_size,
+            )
+
+        return await self._store_once(key, write)
+
+    async def _store_once(self, key: str, write: Callable[[], Awaitable[None]]) -> str:
+        """Skip a repeat PUT in this process; ``delete`` drops the remembered key."""
+        if key in self._known:
+            return key
+        await write()
+        self._remember(key)
         return key
+
+    def _remember(self, key: str) -> None:
+        """Remember ``key``, clearing the set when it reaches ``known_limit``."""
+        if len(self._known) >= self._known_limit:
+            self._known.clear()
+        self._known.add(key)
 
     async def aclose(self) -> None:
         """Close the underlying client when it exposes ``aclose``."""
@@ -83,6 +102,7 @@ class S3CompatibleStorage:
     async def delete(self, storage_path: str) -> None:
         """Delete the object; S3 delete is idempotent."""
         await self._client.delete_object(Bucket=self._bucket, Key=storage_path)
+        self._known.discard(storage_path)
 
     async def _head(self, storage_path: str) -> object | None:
         """HEAD an object; missing keys return None."""

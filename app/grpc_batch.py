@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncIterator
+from functools import partial
 from pathlib import Path
 from typing import Any
 
 import grpc
 from grpc.aio import ServicerContext
 
-from app.exceptions import EmptyImageError, ImageTooLargeError
 from app.grpc_batch_ingest import ingest_batch_chunk
-from app.grpc_errors import abort_rpc
+from app.grpc_errors import rethrow_ingest
 from app.models import ImageUpload
 from app.pb import session_service_pb2 as pb
 from app.spool import SpoolWriter
@@ -49,12 +49,8 @@ async def assemble_batch(
                 max_images=max_images,
                 spool_dir=spool_dir,
             )
-    except (ImageTooLargeError, EmptyImageError) as exc:
-        await abort_pending(pending)
-        await abort_rpc(context, exc)
-    except Exception:
-        await abort_pending(pending)
-        raise
+    except Exception as exc:
+        await rethrow_ingest(context, exc, partial(abort_pending, pending))
     return await finish_batch(session_id, pending, completed, context)
 
 

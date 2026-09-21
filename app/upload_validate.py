@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from app.config import Settings
 from app.content_types import ALLOWED_CONTENT_TYPES
 from app.exceptions import EmptyImageError, ImageTooLargeError, UnsupportedContentTypeError
@@ -16,9 +18,9 @@ def normalize_content_type(raw: str | None) -> str:
 
 
 def upload_size(upload: ImageUpload) -> int:
-    """Prefer explicit ``size_bytes``, else ``len(payload)``."""
-    if upload.size_bytes:
-        return upload.size_bytes
+    """Return the spool length, or the in-memory payload length when there is no spool."""
+    if upload.spool_path:
+        return Path(upload.spool_path).stat().st_size
     return len(upload.payload)
 
 

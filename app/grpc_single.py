@@ -8,8 +8,7 @@ from pathlib import Path
 
 from grpc.aio import ServicerContext
 
-from app.exceptions import EmptyImageError, ImageTooLargeError
-from app.grpc_errors import abort_rpc
+from app.grpc_errors import rethrow_ingest
 from app.grpc_single_fill import collect_single
 from app.models import ImageUpload
 from app.pb import session_service_pb2 as pb
@@ -29,7 +28,4 @@ async def assemble_single(
     try:
         return await collect_single(chunks, context, writer)
     except Exception as exc:
-        await writer.abort()
-        if isinstance(exc, ImageTooLargeError | EmptyImageError):
-            await abort_rpc(context, exc)
-        raise
+        await rethrow_ingest(context, exc, writer.abort)

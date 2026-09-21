@@ -62,7 +62,11 @@ registry or GitHub Release publish.
 
 `app/pb/`, `docs/guardrails/`, and `.github/scaffold` remain CodeQL `paths-ignore`
 scope filters ([scanner-exceptions.md](../scanner-exceptions.md)). They are not
-product findings. No finding-level `nosec` / CodeQL suppressions were added.
+product findings. Dropping them would scan generated stubs or private analog
+pins. KICS ignores on `minio-init` and Postgres `cap_add`, and Trivy
+`ignore-unfixed` for Debian `will_not_fix` / `fix_deferred`, stay for the same
+reason: the code cannot satisfy those queries. No finding-level `nosec` /
+CodeQL suppressions were added.
 Semgrep `p/python` now also covers `scripts/` (CI helpers already in CodeQL).
 `check-swift-coverage.py` keeps that scan: llvm-cov argv is the literal names
 `xcrun`/`llvm-cov` (PATH is adjusted, not passed), and the iOS package path is

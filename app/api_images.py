@@ -17,6 +17,7 @@ from app.io_sizes import IO_CHUNK_BYTES
 from app.metadata import parse_metadata_json
 from app.models import ImagePage, ImageUpload, SessionImage, SessionImageRead
 from app.service import SessionService
+from app.session_batch import reject_batch_count
 from app.spool import spool_chunks
 from app.uploads import discard_spool, upload_from_spool
 
@@ -139,11 +140,31 @@ async def collect_uploads(
     extra: dict[str, Any],
     service: SessionService,
 ) -> list[ImageUpload]:
-    """Spool batch files concurrently and discard completed spools on failure."""
-    results = await asyncio.gather(
-        *[to_upload(item, None, service, extra=extra) for item in files],
-        return_exceptions=True,
-    )
+    """Spool batch files with bounded concurrency and discard finished spools on failure."""
+    reject_batch_count(len(files), service._settings.max_batch_images)
+    results = await _spool_all(files, extra, service)
+    return await _raise_spool_errors(results)
+
+
+async def _spool_all(
+    files: Sequence[UploadFile],
+    extra: dict[str, Any],
+    service: SessionService,
+) -> list[ImageUpload | BaseException]:
+    """Spool every file, limiting in-flight writes to ``max_concurrent_saves``."""
+    sem = asyncio.Semaphore(service._settings.max_concurrent_saves)
+
+    async def one(item: UploadFile) -> ImageUpload:
+        async with sem:
+            return await to_upload(item, None, service, extra=extra)
+
+    return await asyncio.gather(*[one(item) for item in files], return_exceptions=True)
+
+
+async def _raise_spool_errors(
+    results: Sequence[ImageUpload | BaseException],
+) -> list[ImageUpload]:
+    """Return uploads, or delete the ones that finished and raise the first error."""
     uploads = [item for item in results if not isinstance(item, BaseException)]
     errors = [item for item in results if isinstance(item, BaseException)]
     if not errors:

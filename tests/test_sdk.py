@@ -132,9 +132,38 @@ async def test_demo_grpc_camera_upload(service: SessionService) -> None:
         download = await http.get(f"/api/sessions/{session_id}/images/{image_id}/download")
         assert download.status_code == 200
         assert download.content == PNG_1X1
+        direct = await demo.state.client.upload_image(
+            session_id,
+            "frame.png",
+            PNG_1X1,
+            "image/png",
+        )
+        assert direct["filename"] == "frame.png"
     await grpc.aclose()
     await rest.aclose()
     await server.stop(grace=0)
+
+
+@pytest.mark.asyncio
+async def test_demo_upload_rejects_oversized_body(
+    service: SessionService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The demo caps the multipart body before calling the SDK."""
+    from demo.app import create_demo_app
+
+    monkeypatch.setenv("DEMO_MAX_IMAGE_BYTES", "8")
+    backend = create_app(service)
+    demo = create_demo_app(asgi_client_for(backend))
+    transport = ASGITransport(app=demo)
+    async with AsyncClient(transport=transport, base_url="http://demo") as http:
+        created = await http.post("/api/sessions")
+        session_id = created.json()["id"]
+        response = await http.post(
+            f"/api/sessions/{session_id}/images",
+            files={"file": ("frame.png", b"0123456789", "image/png")},
+        )
+        assert response.status_code == 413
 
 
 @pytest.mark.asyncio

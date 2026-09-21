@@ -28,7 +28,8 @@ language SAST ([PY-SEC-002](https://github.com/pirlruc/guardrails/blob/1.6.0/pyt
 
 **Why here:** `AUTH_REQUIRED=false`, `HTTP_INSECURE=true`, and `GRPC_INSECURE=true`
 are correct for tests and Compose, and are a production footgun without a fail-closed
-profile. pixeldive now requires all three to be hardened when `ENVIRONMENT=production`.
+profile. pixeldive now requires those flags plus positive rate and byte quotas
+when `ENVIRONMENT=production` (`0` stays unlimited in development).
 
 ### PY-SEC-007 — Sniff declared Content-Type for untrusted uploads
 

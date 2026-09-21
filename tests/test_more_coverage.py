@@ -11,7 +11,7 @@ from httpx import ASGITransport, AsyncClient
 from app.api import create_app
 from app.auth import bearer_token, parse_api_keys
 from app.blob_gc import gc_unreferenced, referenced_paths, sweep_orphans
-from app.exceptions import ImageTooLargeError
+from app.exceptions import EmptyImageError, ImageTooLargeError
 from app.pagination import clamp_limit, next_cursor
 from app.s3_listing import age_from_head, contents, mtime
 from app.service import SessionService
@@ -50,6 +50,11 @@ async def test_spool_gc_and_discard(tmp_path: Path, service: SessionService, sto
     await writer.feed(b"")
     with pytest.raises(ImageTooLargeError):
         await writer.feed(b"123456789")
+    stalled = SpoolWriter(tmp_path, max_bytes=8)
+    await stalled.start()
+    with pytest.raises(EmptyImageError, match="empty upload chunks"):
+        for _ in range(65):
+            await stalled.feed(b"")
     missing = Spool(tmp_path / "gone.part", "abc", 1)
     await missing.delete()
     await discard_spool(

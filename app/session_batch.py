@@ -85,9 +85,14 @@ class SessionBatchMixin(SessionHost):
         return images
 
 
+def reject_batch_count(count: int, max_images: int) -> None:
+    """Reject a batch larger than ``max_images`` before any spool I/O."""
+    if count > max_images:
+        raise BatchLimitError(f"batch exceeds max_batch_images={max_images}")
+
+
 def reject_bad_batch(uploads: Sequence[ImageUpload], max_images: int) -> None:
     """Reject empty or oversized batches before any I/O."""
     if not uploads:
         raise BatchLimitError("batch is empty")
-    if len(uploads) > max_images:
-        raise BatchLimitError(f"batch exceeds max_batch_images={max_images}")
+    reject_batch_count(len(uploads), max_images)

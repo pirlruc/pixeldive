@@ -77,9 +77,10 @@ Production-shaped auth: set `ENVIRONMENT=production` (refuses to start without
 `AUTH_REQUIRED=true`, `HTTP_INSECURE=false`, and `GRPC_INSECURE=false`), plus
 `API_KEYS=token:owner-id` and a PEM pair (`TLS_CERT_FILE` / `TLS_KEY_FILE`, or
 the per-transport `HTTP_TLS_*` / `GRPC_TLS_*` files — see `.env.example`). Local
-tests keep auth and TLS off. Optional per-tenant quotas:
-`RATE_LIMIT_PER_MINUTE`, `TENANT_MAX_UPLOAD_BYTES`, `SESSION_MAX_UPLOAD_BYTES`
-(0 = unlimited). Set `GC_MIN_AGE_SECONDS` and `ORPHAN_SWEEP_INTERVAL_SECONDS` to
+tests keep auth and TLS off. Per-tenant quotas
+`RATE_LIMIT_PER_MINUTE`, `TENANT_MAX_UPLOAD_BYTES`, and `SESSION_MAX_UPLOAD_BYTES`
+are required and must be positive when `ENVIRONMENT=production` (0 stays
+unlimited in development). Set `GC_MIN_AGE_SECONDS` and `ORPHAN_SWEEP_INTERVAL_SECONDS` to
 positive values in production so concurrent same-hash uploads are not collected early.
 Process defaults bind HTTP/gRPC to `127.0.0.1`; the Docker image and Compose set
 `HTTP_HOST`/`GRPC_HOST` to `0.0.0.0` so the published loopback ports reach the

@@ -11,6 +11,7 @@ from grpc.aio import ServicerContext
 
 from app.grpc_batch_slots import apply_batch_chunk, new_batch_slot, upload_from_slot
 from app.grpc_codec import as_uuid
+from app.grpc_errors import require_session_id
 from app.models import ImageUpload
 from app.pb import session_service_pb2 as pb
 
@@ -49,6 +50,5 @@ async def batch_session_id(
     """Require session_id on the first chunk."""
     if session_id is not None:
         return session_id
-    if not chunk.session_id:
-        await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "session_id is required")
+    await require_session_id(chunk.session_id, context)
     return as_uuid(chunk.session_id, context)

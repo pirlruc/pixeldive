@@ -13,6 +13,7 @@ from pixeldive_sdk import sample_session_payload
 from demo.clients import DemoClients
 from demo.download import continue_download, open_download
 from demo.ui import PAGE
+from demo.upload_body import write_upload
 
 SdkFactory = Callable[[], Awaitable[DemoClients]]
 
@@ -60,13 +61,16 @@ def register_demo_routes(app: FastAPI, sdk: SdkFactory) -> None:
     async def upload_image(session_id: uuid.UUID, file: UploadFile = File(...)) -> dict[str, Any]:
         """Upload a browser-selected or camera-captured image through the SDK."""
         remote = await sdk()
-        payload = await file.read()
-        return await remote.upload_image(
-            str(session_id),
-            file.filename or "frame.png",
-            payload,
-            file.content_type or "image/png",
-        )
+        path = await write_upload(file)
+        try:
+            return await remote.upload_image_from_path(
+                str(session_id),
+                str(path),
+                filename=file.filename or "frame.png",
+                content_type=file.content_type or "image/png",
+            )
+        finally:
+            path.unlink(missing_ok=True)
 
     @app.get("/api/sessions/{session_id}/images/{image_id}/download")
     async def download_image(session_id: uuid.UUID, image_id: uuid.UUID) -> StreamingResponse:

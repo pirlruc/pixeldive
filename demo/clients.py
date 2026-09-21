@@ -61,6 +61,30 @@ class DemoClients:
         image = await self.grpc.upload_image(session_id, filename, payload, content_type)
         return session_image_json(image)
 
+    async def upload_image_from_path(
+        self,
+        session_id: str,
+        path: str,
+        *,
+        filename: str,
+        content_type: str,
+    ) -> dict[str, Any]:
+        """Upload one file from disk, preferring gRPC client-streaming."""
+        if self.grpc is None:
+            return await self.rest.upload_image_from_path(
+                session_id,
+                path,
+                filename=filename,
+                content_type=content_type,
+            )
+        image = await self.grpc.upload_image_from_path(
+            session_id,
+            path,
+            filename=filename,
+            content_type=content_type,
+        )
+        return session_image_json(image)
+
     def download_image(self, session_id: str, image_id: str) -> AsyncIterator[bytes]:
         """Download image bytes, preferring gRPC server-streaming."""
         if self.grpc is None:
