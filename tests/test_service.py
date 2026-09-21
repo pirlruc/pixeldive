@@ -14,9 +14,9 @@ from app.exceptions import (
     SessionNotFoundError,
     UnsupportedContentTypeError,
 )
-from app.metadata import parse_metadata_json
 from app.models import ImageUpload, SessionStatus, SessionUpdate
-from app.service import SessionService
+from app.sessions.metadata import parse_metadata_json
+from app.sessions.service import SessionService
 from tests.conftest import PNG_1X1, sample_create
 
 
@@ -144,11 +144,15 @@ async def test_update_name_only_and_too_large(service: SessionService) -> None:
 
 
 def test_parse_metadata_json() -> None:
-    """Empty/object JSON is accepted; arrays are not."""
+    """Empty/object JSON is accepted; arrays and oversized bodies are not."""
     assert parse_metadata_json(None) == {}
     assert parse_metadata_json('{"iso": 100}') == {"iso": 100}
     with pytest.raises(InvalidMetadataError):
         parse_metadata_json("[1]")
+    with pytest.raises(InvalidMetadataError, match="65536"):
+        parse_metadata_json("{" + ("a" * 70_000))
+    with pytest.raises(InvalidMetadataError, match="JSON object"):
+        parse_metadata_json("[" * 20_000 + "]" * 20_000)
 
 
 @pytest.mark.asyncio
@@ -211,3 +215,19 @@ async def test_invalid_type_discards_spool(service: SessionService, tmp_path) ->
             ),
         )
     assert not spool.exists()
+
+
+@pytest.mark.asyncio
+async def test_declared_size_does_not_replace_payload(service: SessionService) -> None:
+    """A caller-supplied size_bytes cannot shrink or inflate the stored length."""
+    session = await service.create_session(sample_create())
+    image = await service.add_image(
+        session.id,
+        ImageUpload(
+            filename="frame.png",
+            content_type="image/png",
+            payload=PNG_1X1,
+            size_bytes=1,
+        ),
+    )
+    assert image.size_bytes == len(PNG_1X1)

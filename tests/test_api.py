@@ -109,6 +109,24 @@ async def test_upload_list_download_batch(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_batch_rejects_too_many_files_before_spool(client: AsyncClient, service) -> None:
+    """REST batch refuses extra parts before spooling them."""
+    service._settings.max_batch_images = 1
+    created = await client.post("/api/v1/sessions", json=_session_json())
+    session_id = created.json()["id"]
+    response = await client.post(
+        f"/api/v1/sessions/{session_id}/images/batch",
+        files=[
+            ("files", ("a.png", PNG_1X1, "image/png")),
+            ("files", ("b.png", PNG_1X1, "image/png")),
+        ],
+    )
+    assert response.status_code == 422
+    listed = await client.get(f"/api/v1/sessions/{session_id}/images")
+    assert listed.json()["items"] == []
+
+
+@pytest.mark.asyncio
 async def test_upload_rejects_non_image_and_bad_metadata(client: AsyncClient) -> None:
     """text/plain and non-object metadata are 422."""
     created = await client.post("/api/v1/sessions", json=_session_json())

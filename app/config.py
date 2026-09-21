@@ -47,7 +47,7 @@ class Settings(StorageSettingsMixin, RuntimeSettingsMixin, BaseSettings):
 
     def api_key_map(self) -> dict[str, str]:
         """Parse ``api_keys`` into token → owner_id."""
-        from app.auth import parse_api_keys
+        from app.sessions.auth import parse_api_keys
 
         return parse_api_keys(self.api_keys)
 

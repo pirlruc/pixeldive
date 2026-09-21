@@ -7,7 +7,7 @@ import logging
 import signal
 from typing import Any
 
-from app.service import SessionService
+from app.sessions.service import SessionService
 
 logger = logging.getLogger("pixeldive")
 

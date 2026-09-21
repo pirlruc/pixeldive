@@ -51,6 +51,22 @@ class GrpcImageCallsMixin(GrpcHostMixin):
             iter_path(source, chunk_size),
         )
 
+    async def upload_image_from_iter(
+        self,
+        session_id: str,
+        pieces: Any,
+        *,
+        filename: str,
+        content_type: str = "image/png",
+    ) -> pb.SessionImage:
+        """Client-stream an async iterator without buffering the whole payload."""
+        return await self._upload_chunks(
+            resource_id(session_id),
+            filename,
+            content_type,
+            pieces,
+        )
+
     async def upload_images_batch(
         self,
         session_id: str,

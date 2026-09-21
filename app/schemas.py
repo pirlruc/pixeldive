@@ -12,7 +12,7 @@ from sqlmodel import Field as SQLField
 from sqlmodel import SQLModel
 
 from app.device_models import CameraCapabilities, PhoneCapabilities, PhoneInfo
-from app.metadata import promote_metadata
+from app.sessions.metadata import promote_metadata
 from app.timestamps import SessionStatus
 
 

@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from app.blobs.storage import LocalFilesystemStorage, build_storage
 from app.config import Settings
 from app.database import create_engine, init_db, session_scope
-from app.storage import LocalFilesystemStorage, build_storage
 
 
 def test_invalid_storage_backend() -> None:
@@ -43,7 +43,7 @@ async def test_init_db_and_session_scope(tmp_path: Path) -> None:
 
 def test_s3_missing_helper() -> None:
     """404-shaped errors are treated as missing objects."""
-    from app.storage import _is_missing
+    from app.blobs.storage import _is_missing
 
     class Err(Exception):
         response = {"Error": {"Code": "NoSuchKey"}}
@@ -60,7 +60,7 @@ def test_s3_missing_helper() -> None:
     assert _is_missing(RuntimeError("boom")) is False
     assert _is_missing(ClientError()) is True
     assert _is_missing(Timeout("An error occurred (404) when calling HeadObject")) is False
-    from app.s3_listing import missing_or_raise
+    from app.blobs.s3_listing import missing_or_raise
 
     missing_or_raise(Err())
     with pytest.raises(RuntimeError):
@@ -78,8 +78,8 @@ def test_postgres_engine_skips_sqlite_pragma() -> None:
 
 def test_default_s3_client() -> None:
     """_default_s3_client returns a lazy async adapter bound to settings."""
-    from app.s3_client import AioS3Adapter
-    from app.storage import _default_s3_client
+    from app.blobs.s3_client import AioS3Adapter
+    from app.blobs.storage import _default_s3_client
 
     settings = Settings(
         storage_backend="s3", s3_endpoint_url="http://127.0.0.1:9000", s3_bucket="b"

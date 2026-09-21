@@ -80,18 +80,13 @@ internal object ImageProto {
         return pieces
     }
 
-    fun decodeUpload(body: ByteArray): SessionImage {
-        val reader = ProtoReader(body)
-        while (true) {
-            val next = reader.next() ?: break
-            if (next.first == 1 && next.second == 2) {
-                return decodeSessionImage(next.third)
-            }
-        }
-        throw PixeldiveException.Decoding("gRPC upload response missing image")
-    }
+    fun decodeUpload(body: ByteArray): SessionImage =
+        fieldOneImages(body).firstOrNull()
+            ?: throw PixeldiveException.Decoding("gRPC upload response missing image")
 
-    fun decodeBatch(body: ByteArray): List<SessionImage> {
+    fun decodeBatch(body: ByteArray): List<SessionImage> = fieldOneImages(body)
+
+    private fun fieldOneImages(body: ByteArray): List<SessionImage> {
         val reader = ProtoReader(body)
         val images = ArrayList<SessionImage>()
         while (true) {

@@ -8,15 +8,15 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from pixeldive_sdk import RestClient, sample_session_payload
 
-from app.api import create_app
-from app.auth import Principal, lookup_owner
+from app.blobs.magic import header_bytes, matches_declared_type
 from app.config import Settings
 from app.error_map import ERROR_STATUS
 from app.exceptions import ImageNotFoundError, SessionServiceError
-from app.magic import header_bytes, matches_declared_type
 from app.models import ImageUpload
+from app.rest.api import create_app
 from app.runtime import validate_auth_settings
-from app.service import SessionService
+from app.sessions.auth import Principal, lookup_owner
+from app.sessions.service import SessionService
 from tests.conftest import JPEG_MIN, PNG_1X1, sample_create
 from tests.factories import auth_settings, make_service
 
@@ -114,8 +114,23 @@ def test_production_requires_auth_and_tls() -> None:
             grpc_insecure=False,
             tls_cert_file=Path("/certs/server.crt"),
             tls_key_file=Path("/certs/server.key"),
+            rate_limit_per_minute=60,
+            tenant_max_upload_bytes=1024,
+            session_max_upload_bytes=1024,
         ),
     )
+    with pytest.raises(RuntimeError, match="RATE_LIMIT_PER_MINUTE"):
+        validate_auth_settings(
+            Settings(
+                environment="production",
+                auth_required=True,
+                api_keys="alpha:tenant-a",
+                http_insecure=False,
+                grpc_insecure=False,
+                tls_cert_file=Path("/certs/server.crt"),
+                tls_key_file=Path("/certs/server.key"),
+            ),
+        )
 
 
 def test_consumer_thresholds_are_not_looser_than_analog() -> None:

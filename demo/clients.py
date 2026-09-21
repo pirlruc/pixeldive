@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
 from pixeldive_sdk import GrpcClient, RestClient
@@ -59,6 +59,49 @@ class DemoClients:
         if self.grpc is None:
             return await self.rest.upload_image(session_id, filename, payload, content_type)
         image = await self.grpc.upload_image(session_id, filename, payload, content_type)
+        return session_image_json(image)
+
+    async def upload_image_from_path(
+        self,
+        session_id: str,
+        path: str,
+        *,
+        filename: str,
+        content_type: str,
+    ) -> dict[str, Any]:
+        """Upload one file from disk, preferring gRPC client-streaming."""
+        if self.grpc is None:
+            return await self.rest.upload_image_from_path(
+                session_id,
+                path,
+                filename=filename,
+                content_type=content_type,
+            )
+        image = await self.grpc.upload_image_from_path(
+            session_id,
+            path,
+            filename=filename,
+            content_type=content_type,
+        )
+        return session_image_json(image)
+
+    async def upload_image_from_iter(
+        self,
+        session_id: str,
+        pieces: AsyncIterator[bytes] | Iterator[bytes],
+        *,
+        filename: str,
+        content_type: str,
+    ) -> dict[str, Any]:
+        """Stream chunks over gRPC. REST still needs a file for multipart."""
+        if self.grpc is None:
+            raise RuntimeError("chunked upload requires a gRPC client")
+        image = await self.grpc.upload_image_from_iter(
+            session_id,
+            pieces,
+            filename=filename,
+            content_type=content_type,
+        )
         return session_image_json(image)
 
     def download_image(self, session_id: str, image_id: str) -> AsyncIterator[bytes]:

@@ -8,15 +8,15 @@ from pathlib import Path
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.api import create_app
-from app.auth import bearer_token, parse_api_keys
-from app.blob_gc import gc_unreferenced, referenced_paths, sweep_orphans
-from app.exceptions import ImageTooLargeError
-from app.pagination import clamp_limit, next_cursor
-from app.s3_listing import age_from_head, contents, mtime
-from app.service import SessionService
-from app.spool import Spool, SpoolWriter, spool_chunks
-from app.uploads import discard_spool
+from app.blobs.blob_gc import gc_unreferenced, referenced_paths, sweep_orphans
+from app.blobs.s3_listing import age_from_head, contents, mtime
+from app.blobs.spool import Spool, SpoolWriter, spool_chunks
+from app.blobs.uploads import discard_spool
+from app.exceptions import EmptyImageError, ImageTooLargeError
+from app.rest.api import create_app
+from app.sessions.auth import bearer_token, parse_api_keys
+from app.sessions.pagination import clamp_limit, next_cursor
+from app.sessions.service import SessionService
 from tests.conftest import JPEG_MIN, PNG_1X1, sample_create
 
 
@@ -50,6 +50,11 @@ async def test_spool_gc_and_discard(tmp_path: Path, service: SessionService, sto
     await writer.feed(b"")
     with pytest.raises(ImageTooLargeError):
         await writer.feed(b"123456789")
+    stalled = SpoolWriter(tmp_path, max_bytes=8)
+    await stalled.start()
+    with pytest.raises(EmptyImageError, match="empty upload chunks"):
+        for _ in range(65):
+            await stalled.feed(b"")
     missing = Spool(tmp_path / "gone.part", "abc", 1)
     await missing.delete()
     await discard_spool(
@@ -91,7 +96,7 @@ async def test_spool_gc_and_discard(tmp_path: Path, service: SessionService, sto
 
 def test_list_local_blobs_skips_missing_and_dotted(tmp_path: Path) -> None:
     """Incoming spools and missing roots are ignored by the sweeper walk."""
-    from app.local_listing import list_local_blobs
+    from app.blobs.local_listing import list_local_blobs
 
     missing = tmp_path / "gone"
     assert list_local_blobs(missing) == []
@@ -281,8 +286,8 @@ async def test_collect_uploads_discards_on_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A failed REST batch must delete spools that already finished hashing."""
-    from app.api_images import collect_uploads
     from app.models import ImageUpload
+    from app.rest.api_images import collect_uploads
 
     spool = tmp_path / "partial.part"
     spool.write_bytes(PNG_1X1)
@@ -305,7 +310,7 @@ async def test_collect_uploads_discards_on_failure(
             return good
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("app.api_images.to_upload", fake)
+    monkeypatch.setattr("app.rest.api_images.to_upload", fake)
     with pytest.raises(RuntimeError, match="boom"):
         await collect_uploads([object(), object()], {}, service)  # type: ignore[list-item]
     assert not spool.exists()

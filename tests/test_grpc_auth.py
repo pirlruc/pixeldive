@@ -7,9 +7,9 @@ from pathlib import Path
 import grpc
 import pytest
 
-from app.grpc_server import start_grpc_server
 from app.pb import session_service_pb2 as pb
 from app.pb import session_service_pb2_grpc as pb_grpc
+from app.rpc.grpc_server import start_grpc_server
 from tests.factories import auth_settings, make_service
 from tests.test_grpc import _create_request
 

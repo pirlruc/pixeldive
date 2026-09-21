@@ -85,16 +85,18 @@ enum ImageProto {
     }
 
     static func decodeUpload(_ body: Data) throws -> SessionImage {
-        var reader = ProtoReader(bytes: body)
-        while let next = try reader.next() {
-            if next.number == 1, next.wire == 2 {
-                return try decodeSessionImage(next.value)
-            }
+        let images = try fieldOneImages(body)
+        guard let image = images.first else {
+            throw PixeldiveError.decoding("gRPC upload response missing image")
         }
-        throw PixeldiveError.decoding("gRPC upload response missing image")
+        return image
     }
 
     static func decodeBatch(_ body: Data) throws -> [SessionImage] {
+        try fieldOneImages(body)
+    }
+
+    private static func fieldOneImages(_ body: Data) throws -> [SessionImage] {
         var reader = ProtoReader(bytes: body)
         var images: [SessionImage] = []
         while let next = try reader.next() {

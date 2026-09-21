@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from pixeldive_sdk import GrpcClient, RestClient, sample_session_payload
 
-from app.api import create_app
-from app.grpc_server import start_grpc_server
-from app.service import SessionService
+from app.rest.api import create_app
+from app.rpc.grpc_server import start_grpc_server
+from app.sessions.service import SessionService
 from demo.app import asgi_client_for, create_demo_app
 from tests.conftest import PNG_1X1
 
@@ -94,7 +97,10 @@ async def test_demo_app_uses_sdk(service: SessionService) -> None:
 
 
 @pytest.mark.asyncio
-async def test_demo_grpc_camera_upload(service: SessionService) -> None:
+async def test_demo_grpc_camera_upload(
+    service: SessionService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Demo image routes client-stream over gRPC when a GrpcClient is bound."""
     from app.pb import session_service_pb2 as pb
     from demo.app import create_demo_app
@@ -118,6 +124,11 @@ async def test_demo_grpc_camera_upload(service: SessionService) -> None:
     grpc = GrpcClient(f"127.0.0.1:{port}")
     await grpc.connect()
     demo = create_demo_app(DemoClients(rest, grpc))
+
+    async def fail_spool(_file: object) -> None:
+        raise AssertionError("gRPC path must not write a second temp file")
+
+    monkeypatch.setattr("demo.routes.write_upload", fail_spool)
     transport = ASGITransport(app=demo)
     async with AsyncClient(transport=transport, base_url="http://demo") as http:
         created = await http.post("/api/sessions")
@@ -132,9 +143,54 @@ async def test_demo_grpc_camera_upload(service: SessionService) -> None:
         download = await http.get(f"/api/sessions/{session_id}/images/{image_id}/download")
         assert download.status_code == 200
         assert download.content == PNG_1X1
+        direct = await demo.state.client.upload_image(
+            session_id,
+            "frame.png",
+            PNG_1X1,
+            "image/png",
+        )
+        assert direct["filename"] == "frame.png"
+        with tempfile.TemporaryDirectory() as directory:
+            frame = Path(directory) / "frame.png"
+            frame.write_bytes(PNG_1X1)
+            from_path = await demo.state.client.upload_image_from_path(
+                session_id,
+                str(frame),
+                filename="frame.png",
+                content_type="image/png",
+            )
+        assert from_path["filename"] == "frame.png"
+        monkeypatch.setenv("DEMO_MAX_IMAGE_BYTES", "8")
+        oversized = await http.post(
+            f"/api/sessions/{session_id}/images",
+            files={"file": ("frame.png", b"0123456789", "image/png")},
+        )
+        assert oversized.status_code == 413
     await grpc.aclose()
     await rest.aclose()
     await server.stop(grace=0)
+
+
+@pytest.mark.asyncio
+async def test_demo_upload_rejects_oversized_body(
+    service: SessionService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The demo caps the multipart body before calling the SDK."""
+    from demo.app import create_demo_app
+
+    monkeypatch.setenv("DEMO_MAX_IMAGE_BYTES", "8")
+    backend = create_app(service)
+    demo = create_demo_app(asgi_client_for(backend))
+    transport = ASGITransport(app=demo)
+    async with AsyncClient(transport=transport, base_url="http://demo") as http:
+        created = await http.post("/api/sessions")
+        session_id = created.json()["id"]
+        response = await http.post(
+            f"/api/sessions/{session_id}/images",
+            files={"file": ("frame.png", b"0123456789", "image/png")},
+        )
+        assert response.status_code == 413
 
 
 @pytest.mark.asyncio
@@ -152,6 +208,13 @@ async def test_demo_clients_rest_fallback(service: SessionService, monkeypatch) 
         __import__("pixeldive_sdk", fromlist=["sample_session_payload"]).sample_session_payload("d")
     )
     image = await wrapped.upload_image(created["id"], "frame.png", PNG_1X1, "image/png")
+    with pytest.raises(RuntimeError, match="gRPC"):
+        await wrapped.upload_image_from_iter(
+            created["id"],
+            iter([PNG_1X1]),
+            filename="frame.png",
+            content_type="image/png",
+        )
     payload = b"".join(
         [chunk async for chunk in wrapped.download_image(created["id"], image["id"])]
     )

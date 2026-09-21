@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from app.storage import LocalFilesystemStorage, S3CompatibleStorage, object_key, sha256_hex
+from app.blobs.storage import LocalFilesystemStorage, S3CompatibleStorage, object_key, sha256_hex
 from tests.conftest import PNG_1X1
 
 
@@ -28,9 +28,11 @@ class FakeS3:
         self.parts: dict[str, dict[int, bytes]] = {}
         self.aborted: list[str] = []
         self.part_sizes: list[int] = []
+        self.put_calls = 0
 
     async def put_object(self, **kwargs: object) -> None:
         """Store Body under Key."""
+        self.put_calls += 1
         key = str(kwargs["Key"])
         self.objects[key] = bytes(kwargs["Body"])
         self.content_types[key] = str(kwargs.get("ContentType", ""))
@@ -246,7 +248,7 @@ async def test_s3_exists_reraises_unexpected() -> None:
 
 def test_unknown_content_type_uses_bin_extension() -> None:
     """Unrecognized types fall back to ``.bin``."""
-    from app.hash_keys import object_key, sha256_hex
+    from app.blobs.hash_keys import object_key, sha256_hex
 
     key = object_key(sha256_hex(b"abc"), "application/octet-stream")
     assert key.endswith(".bin")
@@ -264,8 +266,27 @@ async def test_s3_adapter_round_trip() -> None:
     payload = b"".join([chunk async for chunk in backend.stream(key, chunk_size=32)])
     assert payload == PNG_1X1
     assert client.last_body is not None and client.last_body.closed is True
+    assert client.put_calls == 1
+    client.objects.pop(key)
+    await backend.save(PNG_1X1, "image/png")
+    assert client.put_calls == 2
     await backend.delete(key)
     assert not await backend.exists(key)
+    await backend.save(PNG_1X1, "image/png")
+    assert client.put_calls == 3
+
+
+@pytest.mark.asyncio
+async def test_s3_known_key_cache_evicts() -> None:
+    """A full remember-set is cleared so a later repeat still uploads."""
+    client = FakeS3()
+    backend = S3CompatibleStorage(client, bucket="pixeldive", known_limit=1)
+    first = await backend.save(b"one", "image/png")
+    second = await backend.save(b"two", "image/png")
+    assert first != second
+    assert client.put_calls == 2
+    await backend.save(b"one", "image/png")
+    assert client.put_calls == 3
 
 
 @pytest.mark.asyncio
@@ -277,6 +298,9 @@ async def test_s3_save_file_and_list_blobs(tmp_path: Path) -> None:
     source.write_bytes(PNG_1X1)
     digest = sha256_hex(PNG_1X1)
     key = await backend.save_file(source, digest, "image/png")
+    again = await backend.save_file(source, digest, "image/png")
+    assert again == key
+    assert client.put_calls == 1
     blobs = await backend.list_blobs()
     assert blobs[0][0] == key
     assert await backend.age_seconds(key) >= 0
@@ -376,8 +400,8 @@ async def test_aio_s3_adapter_lazy_client(monkeypatch: pytest.MonkeyPatch) -> No
             return FakeCM()
 
     monkeypatch.setattr("aiobotocore.session.get_session", lambda: FakeSession())
+    from app.blobs.s3_client import AioS3Adapter, default_s3_client
     from app.config import Settings
-    from app.s3_client import AioS3Adapter, default_s3_client
 
     settings = Settings(
         storage_backend="s3",
@@ -411,8 +435,8 @@ async def test_aio_s3_adapter_lazy_client(monkeypatch: pytest.MonkeyPatch) -> No
 @pytest.mark.asyncio
 async def test_aio_s3_adapter_concurrent_ensure(monkeypatch: pytest.MonkeyPatch) -> None:
     """Two first calls share one client after the lock."""
+    from app.blobs.s3_client import AioS3Adapter
     from app.config import Settings
-    from app.s3_client import AioS3Adapter
 
     opened = {"n": 0}
 
@@ -464,7 +488,7 @@ async def test_local_save_file_hardlink_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Cross-device link failures fall back to a streamed copy."""
-    from app.local_write import try_link
+    from app.blobs.local_write import try_link
 
     backend = LocalFilesystemStorage(tmp_path)
     source = tmp_path / "frame.png"
@@ -473,7 +497,7 @@ async def test_local_save_file_hardlink_fallback(
     def boom(_src: object, _dst: object) -> None:
         raise OSError("cross-device")
 
-    monkeypatch.setattr("app.local_write.os.link", boom)
+    monkeypatch.setattr("app.blobs.local_write.os.link", boom)
     key = await backend.save_file(source, sha256_hex(PNG_1X1), "image/png")
     assert await backend.exists(key)
     monkeypatch.undo()
@@ -508,7 +532,7 @@ async def test_s3_stream_reraises_unexpected() -> None:
 @pytest.mark.asyncio
 async def test_iter_body_closes_async_and_sync() -> None:
     """iter_body closes bodies that expose aclose or close."""
-    from app.s3_stream import close_body, iter_body
+    from app.blobs.s3_stream import close_body, iter_body
 
     closed = {"async": 0, "sync": 0}
 
