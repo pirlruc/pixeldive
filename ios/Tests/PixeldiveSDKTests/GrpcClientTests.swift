@@ -2,6 +2,10 @@ import Foundation
 @testable import PixeldiveSDK
 import XCTest
 
+#if canImport(GRPC)
+import GRPC
+#endif
+
 final class StubGrpc: GrpcStreaming, @unchecked Sendable {
     var response: Data
     var serverMessages: [Data]
@@ -119,6 +123,20 @@ final class GrpcClientTests: XCTestCase {
         stream.close()
         let insecure = PixeldiveGrpcClient.insecure(host: "127.0.0.1", port: 1, token: "tok")
         insecure.close()
+        #endif
+    }
+
+    func testNioBytesStatusAndPayloadBox() throws {
+        #if canImport(GRPC)
+        PixeldiveGrpcClient.insecure(host: "127.0.0.1", port: 1).close()
+        XCTAssertEqual(try roundTripGrpcBytes(Data("hi".utf8)), Data("hi".utf8))
+        XCTAssertEqual(try roundTripGrpcBytes(Data()), Data())
+        let box = PayloadBox()
+        box.append(Data("a".utf8))
+        box.append(Data("b".utf8))
+        XCTAssertEqual(box.snapshot(), [Data("a".utf8), Data("b".utf8)])
+        try checkGrpcStatus(GRPCStatus.ok)
+        XCTAssertThrowsError(try checkGrpcStatus(GRPCStatus(code: .permissionDenied, message: "nope")))
         #endif
     }
 }

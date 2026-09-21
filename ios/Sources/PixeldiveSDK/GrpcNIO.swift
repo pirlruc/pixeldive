@@ -19,7 +19,13 @@ struct GrpcBytes: GRPCPayload, Sendable {
     }
 }
 
-private final class PayloadBox: @unchecked Sendable {
+func roundTripGrpcBytes(_ data: Data) throws -> Data {
+    var buffer = ByteBufferAllocator().buffer(capacity: max(data.count, 1))
+    try GrpcBytes(data).serialize(into: &buffer)
+    return try GrpcBytes(serializedByteBuffer: &buffer).data
+}
+
+final class PayloadBox: @unchecked Sendable {
     private let lock = NSLock()
     private var items: [Data] = []
 
@@ -76,7 +82,7 @@ public final class NioGrpcStreaming: GrpcStreaming, @unchecked Sendable {
             )
             try await call.sendMessages(messages.map { GrpcBytes($0) }).get()
             try await call.sendEnd().get()
-            try check(try await call.status.get())
+            try checkGrpcStatus(try await call.status.get())
             return try await call.response.get().data
         }
     }
@@ -91,7 +97,7 @@ public final class NioGrpcStreaming: GrpcStreaming, @unchecked Sendable {
             ) { message in
                 box.append(message.data)
             }
-            try check(try await call.status.get())
+            try checkGrpcStatus(try await call.status.get())
             return box.snapshot()
         }
     }
@@ -117,7 +123,7 @@ private func grpcOptions(_ token: String?, _ timeout: TimeAmount) -> CallOptions
     return options
 }
 
-private func check(_ status: GRPCStatus) throws {
+func checkGrpcStatus(_ status: GRPCStatus) throws {
     if status.code == .ok {
         return
     }

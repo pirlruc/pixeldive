@@ -27,7 +27,14 @@ let package = Package(
         ),
         .testTarget(
             name: "PixeldiveSDKTests",
-            dependencies: ["PixeldiveSDK"]
+            dependencies: [
+                "PixeldiveSDK",
+                .product(
+                    name: "GRPC",
+                    package: "grpc-swift",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS])
+                ),
+            ]
         ),
     ],
     swiftLanguageModes: [.v6]
