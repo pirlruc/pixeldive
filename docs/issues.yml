@@ -49,7 +49,7 @@
 #   done  SEC-006 (production fail-closed, magic-byte uploads, HMAC keys)
 #
 # Shipped on main via https://github.com/pirlruc/pixeldive/pull/14
-# (merged 2026-09-21):
+# (merged 2026-09-21, commit 78b0baa):
 #   done  SEC-007 (HTTP TLS + shared PEM; production fail-closed for HTTP and gRPC)
 #   open  SDK-008 (iOS/Android custom trust stores for private CAs)
 
