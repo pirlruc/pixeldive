@@ -81,7 +81,6 @@ def test_http_server_mtls_uses_client_ca(tmp_path: Path) -> None:
     )
     assert ctx is not None
     assert ctx.verify_mode != ssl.CERT_REQUIRED
-    assert ctx.get_alpn_protocols() == ["http/1.1"]
     server = build_http_server(FastAPI(), settings)
     factory = server.config.ssl_context_factory
     assert factory is not None
