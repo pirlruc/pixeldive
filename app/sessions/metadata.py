@@ -25,7 +25,7 @@ def parse_metadata_json(raw: str | None) -> dict:
         raise InvalidMetadataError("metadata exceeds 65536 characters")
     try:
         parsed = json.loads(raw)
-    except json.JSONDecodeError as exc:
+    except (json.JSONDecodeError, RecursionError) as exc:
         raise InvalidMetadataError("metadata must be a JSON object") from exc
     if not isinstance(parsed, dict):
         raise InvalidMetadataError("metadata must be a JSON object")

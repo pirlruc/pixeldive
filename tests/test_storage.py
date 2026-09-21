@@ -267,10 +267,13 @@ async def test_s3_adapter_round_trip() -> None:
     assert payload == PNG_1X1
     assert client.last_body is not None and client.last_body.closed is True
     assert client.put_calls == 1
+    client.objects.pop(key)
+    await backend.save(PNG_1X1, "image/png")
+    assert client.put_calls == 2
     await backend.delete(key)
     assert not await backend.exists(key)
     await backend.save(PNG_1X1, "image/png")
-    assert client.put_calls == 2
+    assert client.put_calls == 3
 
 
 @pytest.mark.asyncio

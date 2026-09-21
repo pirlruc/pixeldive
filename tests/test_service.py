@@ -151,6 +151,8 @@ def test_parse_metadata_json() -> None:
         parse_metadata_json("[1]")
     with pytest.raises(InvalidMetadataError, match="65536"):
         parse_metadata_json("{" + ("a" * 70_000))
+    with pytest.raises(InvalidMetadataError, match="JSON object"):
+        parse_metadata_json("[" * 20_000 + "]" * 20_000)
 
 
 @pytest.mark.asyncio

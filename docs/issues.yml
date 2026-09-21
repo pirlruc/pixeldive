@@ -1378,7 +1378,8 @@ milestones:
           goal: >-
             Reject oversized REST batches before spool I/O, measure bytes from
             the spool or payload, cap metadata, require positive production
-            quotas, skip repeat S3 puts inside one process, and spill demo
+            quotas, skip a repeat S3 PUT inside one process only when HEAD
+            still sees the object, and spill demo
             uploads to a capped temp file streamed by the SDK.
         architecture:
           target: >-

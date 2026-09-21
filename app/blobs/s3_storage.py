@@ -49,12 +49,12 @@ class S3CompatibleStorage:
         )
 
     async def save(self, payload: bytes, content_type: str) -> str:
-        """PUT the object unless this process already stored the same key."""
+        """PUT the object unless this process can still see the same key."""
         key = object_key(sha256_hex(payload), content_type)
         return await self._store_once(key, lambda: self._put(key, payload, content_type))
 
     async def save_file(self, source: Path, digest_hex: str, content_type: str) -> str:
-        """Multipart-PUT a spool unless this process already stored that key."""
+        """Multipart-PUT a spool unless this process can still see that key."""
         key = object_key(digest_hex, content_type)
 
         async def write() -> None:
@@ -70,12 +70,16 @@ class S3CompatibleStorage:
         return await self._store_once(key, write)
 
     async def _store_once(self, key: str, write: Callable[[], Awaitable[None]]) -> str:
-        """Skip a repeat PUT in this process; ``delete`` drops the remembered key."""
-        if key in self._known:
+        """Skip a repeat PUT only when a HEAD still sees the object."""
+        if await self._still_stored(key):
             return key
         await write()
         self._remember(key)
         return key
+
+    async def _still_stored(self, key: str) -> bool:
+        """True when the remember-set hit and the object is still in the bucket."""
+        return key in self._known and await self.exists(key)
 
     def _remember(self, key: str) -> None:
         """Remember ``key``, clearing the set when it reaches ``known_limit``."""

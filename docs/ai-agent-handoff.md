@@ -126,7 +126,7 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 
 - [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
 - [SEC-004](issues.yml) shared quota store on PostgreSQL (`app/sessions/quotas.py`; first multi-replica tests). In-process `TenantQuota` is still sync
-- S3 put-skip is process-local and cleared on `delete`; replicas still re-PUT until SEC-004
+- S3 put-skip is process-local. A cache hit still HEADs, so a missing object is uploaded again. Replicas still re-PUT until SEC-004
 - [SDK-007](issues.yml) TLS gRPC constructors + protobuf Struct metadata on mobile
 - [SEC-005](issues.yml) optional Redis quota hot path if Postgres contends
 - [SDK-008](issues.yml) iOS/Android custom CA trust for private PKI
