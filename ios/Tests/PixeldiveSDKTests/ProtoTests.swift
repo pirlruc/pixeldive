@@ -103,7 +103,7 @@ final class ProtoTests: XCTestCase {
         XCTAssertEqual(next32.1, 5)
         var bad = ProtoReader(bytes: Data([0x0B]))
         XCTAssertThrowsError(try bad.next())
-        var trunc = ProtoReader(bytes: Data([0x08]))
+        var trunc = ProtoReader(bytes: Data([0x80]))
         XCTAssertThrowsError(try trunc.readVarint())
         var overflow = ProtoReader(bytes: Data(repeating: 0x80, count: 10))
         XCTAssertThrowsError(try overflow.readVarint())

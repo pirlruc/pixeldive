@@ -69,27 +69,41 @@ public final class NioGrpcStreaming: GrpcStreaming, @unchecked Sendable {
     }
 
     public func clientStreaming(path: String, messages: [Data], token: String?) async throws -> Data {
-        let call: ClientStreamingCall<GrpcBytes, GrpcBytes> = connection.makeClientStreamingCall(
-            path: path,
-            callOptions: grpcOptions(token, timeout)
-        )
-        try await call.sendMessages(messages.map { GrpcBytes($0) }).get()
-        try await call.sendEnd().get()
-        try check(try await call.status.get())
-        return try await call.response.get().data
+        try await grpcCall {
+            let call: ClientStreamingCall<GrpcBytes, GrpcBytes> = connection.makeClientStreamingCall(
+                path: path,
+                callOptions: grpcOptions(token, timeout)
+            )
+            try await call.sendMessages(messages.map { GrpcBytes($0) }).get()
+            try await call.sendEnd().get()
+            try check(try await call.status.get())
+            return try await call.response.get().data
+        }
     }
 
     public func serverStreaming(path: String, request: Data, token: String?) async throws -> [Data] {
-        let box = PayloadBox()
-        let call: ServerStreamingCall<GrpcBytes, GrpcBytes> = connection.makeServerStreamingCall(
-            path: path,
-            request: GrpcBytes(request),
-            callOptions: grpcOptions(token, timeout)
-        ) { message in
-            box.append(message.data)
+        try await grpcCall {
+            let box = PayloadBox()
+            let call: ServerStreamingCall<GrpcBytes, GrpcBytes> = connection.makeServerStreamingCall(
+                path: path,
+                request: GrpcBytes(request),
+                callOptions: grpcOptions(token, timeout)
+            ) { message in
+                box.append(message.data)
+            }
+            try check(try await call.status.get())
+            return box.snapshot()
         }
-        try check(try await call.status.get())
-        return box.snapshot()
+    }
+
+    private func grpcCall<T>(_ body: () async throws -> T) async throws -> T {
+        do {
+            return try await body()
+        } catch let error as PixeldiveError {
+            throw error
+        } catch {
+            throw PixeldiveError.transport(String(describing: error))
+        }
     }
 }
 
