@@ -87,6 +87,8 @@ container.
 
 Python SDK TLS: `RestClient("https://…", token=…, verify="/path/ca.pem")` and
 `GrpcClient("host:port", token=…, insecure=False, root_certificates=pem_bytes)`.
+Passing PEMs with `insecure=True` raises. IP targets can set
+`ssl_target_name_override` to the certificate's DNS name.
 iOS/Android clients use platform TLS when the base URL is `https://`; custom CA
 loading is [SDK-004](docs/issues.yml).
 

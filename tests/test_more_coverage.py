@@ -208,6 +208,20 @@ async def test_sdk_cursors_owned_client_and_demo_settings(
         "private_key": None,
         "certificate_chain": None,
     }
+    with pytest.raises(ValueError, match="insecure=False"):
+        open_channel("127.0.0.1:9", insecure=True, root_certificates=b"ca")
+    assert (
+        open_channel(
+            "127.0.0.1:9",
+            insecure=False,
+            root_certificates=b"ca",
+            ssl_target_name_override="localhost",
+        )
+        == "secure-channel"
+    )
+    options = secure["options"]
+    assert isinstance(options, list)
+    assert ("grpc.ssl_target_name_override", "localhost") in options
 
     req = Request("GET", "http://x")
     text_err = HTTPStatusError(

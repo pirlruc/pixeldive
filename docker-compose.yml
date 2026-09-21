@@ -67,6 +67,10 @@ services:
       GRPC_TLS_CERT_FILE: ${GRPC_TLS_CERT_FILE:-}
       GRPC_TLS_KEY_FILE: ${GRPC_TLS_KEY_FILE:-}
       GRPC_TLS_CLIENT_CA_FILE: ${GRPC_TLS_CLIENT_CA_FILE:-}
+      HTTP_TLS_CLIENT_CERT_FILE: ${HTTP_TLS_CLIENT_CERT_FILE:-}
+      HTTP_TLS_CLIENT_KEY_FILE: ${HTTP_TLS_CLIENT_KEY_FILE:-}
+      TLS_CLIENT_CERT_FILE: ${TLS_CLIENT_CERT_FILE:-}
+      TLS_CLIENT_KEY_FILE: ${TLS_CLIENT_KEY_FILE:-}
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
       S3_BUCKET: ${S3_BUCKET:-pixeldive}
       S3_REGION: ${S3_REGION:-us-east-1}
@@ -78,6 +82,8 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
       - "127.0.0.1:50051:50051"
+    # TLS: mount operator PEMs read-only, then point TLS_CERT_FILE /
+    # TLS_KEY_FILE at them (for example `./certs:/certs:ro`).
     volumes:
       - images:/data/images
     read_only: true

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ssl
 from collections.abc import Callable
+from functools import partial
 from typing import Any
 
 import uvicorn
@@ -36,17 +37,18 @@ def ssl_context_for(files: TlsFiles) -> ssl.SSLContext:
     if files.client_ca_file is not None:
         ctx.load_verify_locations(str(files.client_ca_file))
         ctx.verify_mode = ssl.CERT_REQUIRED
+    ctx.set_alpn_protocols(["http/1.1"])
     return ctx
 
 
-def _tls12_factory(
+def uvicorn_ssl_context(
     _config: uvicorn.Config,
-    default_factory: Callable[[], ssl.SSLContext],
+    _default_factory: Callable[[], ssl.SSLContext],
+    files: TlsFiles,
 ) -> ssl.SSLContext:
-    """Raise the uvicorn default context to TLS 1.2."""
-    ctx = default_factory()
-    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
-    return ctx
+    """Ignore uvicorn's certfile factory; load TLS 1.2+ from resolved PEMs."""
+    del _config, _default_factory
+    return ssl_context_for(files)
 
 
 def build_http_server(app: Any, settings: Settings) -> uvicorn.Server:
@@ -60,10 +62,5 @@ def build_http_server(app: Any, settings: Settings) -> uvicorn.Server:
         "lifespan": "on",
     }
     if files is not None:
-        kwargs["ssl_certfile"] = str(files.cert_file)
-        kwargs["ssl_keyfile"] = str(files.key_file)
-        kwargs["ssl_context_factory"] = _tls12_factory
-        if files.client_ca_file is not None:
-            kwargs["ssl_ca_certs"] = str(files.client_ca_file)
-            kwargs["ssl_cert_reqs"] = ssl.CERT_REQUIRED
+        kwargs["ssl_context_factory"] = partial(uvicorn_ssl_context, files=files)
     return uvicorn.Server(uvicorn.Config(**kwargs))

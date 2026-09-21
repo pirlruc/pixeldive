@@ -82,7 +82,5 @@ def grpc_tls_files(settings: Settings) -> TlsFiles | None:
         shared_cert=settings.tls_cert_file,
         shared_key=settings.tls_key_file,
         shared_ca=settings.tls_client_ca_file,
-        required_error=(
-            "GRPC_INSECURE is false but GRPC_TLS_CERT_FILE / GRPC_TLS_KEY_FILE are unset"
-        ),
+        required_error="GRPC_INSECURE is false but TLS cert/key files are unset",
     )

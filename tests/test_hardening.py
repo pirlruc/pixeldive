@@ -98,8 +98,8 @@ def test_production_requires_auth_and_tls() -> None:
             api_keys="alpha:tenant-a",
             http_insecure=False,
             grpc_insecure=False,
-            grpc_tls_cert_file=Path("/certs/server.crt"),
-            grpc_tls_key_file=Path("/certs/server.key"),
+            tls_cert_file=Path("/certs/server.crt"),
+            tls_key_file=Path("/certs/server.key"),
         ),
     )
 

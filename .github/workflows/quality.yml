@@ -2,6 +2,9 @@ name: quality
 
 on:
   pull_request:
+    # Default types omit ready_for_review; draft Cursor PRs need it plus
+    # synchronize so converting a draft and later pushes both run gates.
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 

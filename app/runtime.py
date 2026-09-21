@@ -48,6 +48,8 @@ def require_production_transports(settings: Settings) -> None:
     if settings.grpc_insecure:
         msg = "ENVIRONMENT=production requires GRPC_INSECURE=false"
         raise RuntimeError(msg)
+    http_tls_files(settings)
+    grpc_tls_files(settings)
 
 
 async def run(settings: Settings | None = None) -> None:

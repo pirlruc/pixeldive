@@ -81,9 +81,13 @@ def test_http_server_mtls_uses_client_ca(tmp_path: Path) -> None:
     )
     assert ctx is not None
     assert ctx.verify_mode != ssl.CERT_REQUIRED
+    assert ctx.get_alpn_protocols() == ["http/1.1"]
     server = build_http_server(FastAPI(), settings)
-    assert server.config.ssl_cert_reqs == ssl.CERT_REQUIRED
-    assert server.config.ssl_ca_certs == str(cert)
+    factory = server.config.ssl_context_factory
+    assert factory is not None
+    loaded = factory(server.config, lambda: ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER))
+    assert loaded.verify_mode == ssl.CERT_REQUIRED
+    assert loaded.minimum_version == ssl.TLSVersion.TLSv1_2
 
 
 def test_rest_client_verify_accepts_ca_path(tmp_path: Path) -> None:
@@ -123,6 +127,18 @@ def test_production_requires_http_and_grpc_tls() -> None:
                 api_keys="alpha:tenant-a",
                 http_insecure=False,
                 grpc_insecure=True,
+            ),
+        )
+    with pytest.raises(RuntimeError, match="cert/key files are unset"):
+        validate_auth_settings(
+            Settings(
+                environment="prod",
+                auth_required=True,
+                api_keys="alpha:tenant-a",
+                http_insecure=False,
+                grpc_insecure=False,
+                grpc_tls_cert_file=Path("/certs/server.crt"),
+                grpc_tls_key_file=Path("/certs/server.key"),
             ),
         )
 
@@ -191,10 +207,11 @@ async def test_https_and_grpcs_round_trip(tmp_path: Path) -> None:
             assert uploaded["size_bytes"] == len(PNG_1X1)
         pem = cert.read_bytes()
         async with GrpcClient(
-            f"localhost:{grpc_port}",
+            f"127.0.0.1:{grpc_port}",
             token="alpha",
             insecure=False,
             root_certificates=pem,
+            ssl_target_name_override="localhost",
         ) as grpc_client:
             session = await grpc_client.create_session(sample_session_payload("tls-grpc"))
             assert session.session_name == "tls-grpc"
@@ -314,3 +331,40 @@ def test_ready_probe_main_exits_on_error(monkeypatch: pytest.MonkeyPatch) -> Non
     with pytest.raises(SystemExit) as exited:
         main()
     assert exited.value.code == 1
+    monkeypatch.setattr(
+        "app.ready_probe.probe",
+        lambda: (_ for _ in ()).throw(ValueError("bad port")),
+    )
+    with pytest.raises(SystemExit) as exited:
+        main()
+    assert exited.value.code == 1
+
+
+def test_ready_probe_rejects_bad_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Non-integer HTTP_PORT fails closed instead of crashing the probe."""
+    from app.ready_probe import ready_port
+
+    monkeypatch.setenv("HTTP_PORT", "not-a-port")
+    with pytest.raises(ValueError):
+        ready_port()
+
+
+def test_ready_probe_loads_mtls_client_identity(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """HEALTHCHECK presents a client cert when HTTP mTLS env is set."""
+    cert, key = write_self_signed(tmp_path)
+    monkeypatch.setenv("HTTP_TLS_CERT_FILE", str(cert))
+    monkeypatch.setenv("HTTP_TLS_CLIENT_CERT_FILE", str(cert))
+    monkeypatch.setenv("HTTP_TLS_CLIENT_KEY_FILE", str(key))
+    https_context()
+    monkeypatch.delenv("HTTP_TLS_CLIENT_KEY_FILE")
+    with pytest.raises(ValueError, match="both"):
+        https_context()
+
+
+def test_grpc_client_rejects_pems_on_insecure_channel() -> None:
+    """Passing TLS PEMs with insecure=True is a configuration error."""
+    with pytest.raises(ValueError, match="insecure=False"):
+        GrpcClient("127.0.0.1:1", insecure=True, root_certificates=b"ca")

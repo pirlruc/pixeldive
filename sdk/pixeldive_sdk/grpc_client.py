@@ -8,7 +8,7 @@ import grpc
 
 from app.pb import session_service_pb2_grpc as pb_grpc
 from pixeldive_sdk.grpc_calls import GrpcCallsMixin
-from pixeldive_sdk.grpc_channel import open_channel, stub_for
+from pixeldive_sdk.grpc_channel import open_channel, reject_tls_on_insecure, stub_for
 
 
 class GrpcClient(GrpcCallsMixin):
@@ -23,14 +23,23 @@ class GrpcClient(GrpcCallsMixin):
         root_certificates: bytes | None = None,
         private_key: bytes | None = None,
         certificate_chain: bytes | None = None,
+        ssl_target_name_override: str | None = None,
     ) -> None:
         """Connect to ``host:port`` with optional bearer metadata and TLS PEMs."""
+        if insecure:
+            reject_tls_on_insecure(
+                root_certificates,
+                private_key,
+                certificate_chain,
+                ssl_target_name_override,
+            )
         self._target = target
         self._token = token
         self._insecure = insecure
         self._root_certificates = root_certificates
         self._private_key = private_key
         self._certificate_chain = certificate_chain
+        self._ssl_target_name_override = ssl_target_name_override
         self._channel: grpc.aio.Channel | None = None
         self._stub: pb_grpc.SessionServiceStub | None = None
 
@@ -50,6 +59,7 @@ class GrpcClient(GrpcCallsMixin):
             root_certificates=self._root_certificates,
             private_key=self._private_key,
             certificate_chain=self._certificate_chain,
+            ssl_target_name_override=self._ssl_target_name_override,
         )
         self._stub = stub_for(self._channel)
 
