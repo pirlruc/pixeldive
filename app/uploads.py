@@ -38,6 +38,7 @@ def upload_from_spool(
         spool_path=str(spool.path),
         digest_hex=spool.digest_hex,
         size_bytes=spool.size_bytes,
+        header_prefix=spool.header,
     )
 
 

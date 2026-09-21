@@ -9,6 +9,7 @@
 		A10000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A10000000000000000000003 /* DemoModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoModel.swift; sourceTree = "<group>"; };
 		A10000000000000000000005 /* LibraryPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryPicker.swift; sourceTree = "<group>"; };
+		A10000000000000000000006 /* CameraFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraFeed.swift; sourceTree = "<group>"; };
 		A10000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000010 /* PixeldiveDemo */ = {isa = PBXNativeTarget; buildConfigurationList = A10000000000000000000020 /* Build configuration list for PBXNativeTarget "PixeldiveDemo" */; buildPhases = (
 				A10000000000000000000014 /* Sources */,
@@ -32,6 +33,7 @@
 				A10000000000000000000002 /* ContentView.swift */,
 				A10000000000000000000003 /* DemoModel.swift */,
 				A10000000000000000000005 /* LibraryPicker.swift */,
+				A10000000000000000000006 /* CameraFeed.swift */,
 				A10000000000000000000004 /* Info.plist */,
 				A10000000000000000000031 /* Products */,
 			); sourceTree = "<group>"; };
@@ -40,6 +42,7 @@
 				A10000000000000000000024 /* ContentView.swift in Sources */,
 				A10000000000000000000025 /* DemoModel.swift in Sources */,
 				A10000000000000000000029 /* LibraryPicker.swift in Sources */,
+				A1000000000000000000002A /* CameraFeed.swift in Sources */,
 			); runOnlyForDeploymentPostprocessing = 0; };
 		A10000000000000000000015 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (
 				A10000000000000000000026 /* PixeldiveSDK in Frameworks */,
@@ -62,6 +65,7 @@
 		A10000000000000000000024 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* ContentView.swift */; };
 		A10000000000000000000025 /* DemoModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* DemoModel.swift */; };
 		A10000000000000000000029 /* LibraryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* LibraryPicker.swift */; };
+		A1000000000000000000002A /* CameraFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* CameraFeed.swift */; };
 		A10000000000000000000026 /* PixeldiveSDK in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000022 /* PixeldiveSDK */; };
 		A10000000000000000000027 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Info.plist; INFOPLIST_KEY_CFBundleDisplayName = Pixeldive; IPHONEOS_DEPLOYMENT_TARGET = 15.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.pirlruc.pixeldive.demo; PRODUCT_NAME = "$(TARGET_NAME)"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SUPPORTS_MACCATALYST = NO; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Debug; };
 		A10000000000000000000028 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Info.plist; INFOPLIST_KEY_CFBundleDisplayName = Pixeldive; IPHONEOS_DEPLOYMENT_TARGET = 15.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.pirlruc.pixeldive.demo; PRODUCT_NAME = "$(TARGET_NAME)"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SUPPORTS_MACCATALYST = NO; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = "1,2"; VALIDATE_PRODUCT = YES;}; name = Release; };

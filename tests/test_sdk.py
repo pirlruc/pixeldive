@@ -94,6 +94,133 @@ async def test_demo_app_uses_sdk(service: SessionService) -> None:
 
 
 @pytest.mark.asyncio
+async def test_demo_grpc_camera_upload(service: SessionService) -> None:
+    """Demo image routes client-stream over gRPC when a GrpcClient is bound."""
+    from app.pb import session_service_pb2 as pb
+    from demo.app import create_demo_app
+    from demo.clients import DemoClients
+    from demo.image_json import session_image_json
+    from demo.ui import PAGE
+
+    assert "getUserMedia" in PAGE
+    assert "GrpcClient" in PAGE
+    empty = session_image_json(pb.SessionImage(id="x", session_id="y", filename="f.png"))
+    assert empty["uploaded_at"] == ""
+    assert empty["size_bytes"] == 0
+    assert empty["metadata"] == {}
+    with_meta = pb.SessionImage(id="x", session_id="y", filename="f.png")
+    with_meta.metadata["source"] = "camera"
+    assert session_image_json(with_meta)["metadata"]["source"] == "camera"
+
+    backend = create_app(service)
+    rest = asgi_client_for(backend)
+    server, port = await start_grpc_server(service, "127.0.0.1", 0)
+    grpc = GrpcClient(f"127.0.0.1:{port}")
+    await grpc.connect()
+    demo = create_demo_app(DemoClients(rest, grpc))
+    transport = ASGITransport(app=demo)
+    async with AsyncClient(transport=transport, base_url="http://demo") as http:
+        created = await http.post("/api/sessions")
+        session_id = created.json()["id"]
+        uploaded = await http.post(
+            f"/api/sessions/{session_id}/images",
+            files={"file": ("frame.png", PNG_1X1, "image/png")},
+        )
+        assert uploaded.status_code == 200
+        assert uploaded.json()["filename"] == "frame.png"
+        image_id = uploaded.json()["id"]
+        download = await http.get(f"/api/sessions/{session_id}/images/{image_id}/download")
+        assert download.status_code == 200
+        assert download.content == PNG_1X1
+    await grpc.aclose()
+    await rest.aclose()
+    await server.stop(grace=0)
+
+
+@pytest.mark.asyncio
+async def test_demo_clients_rest_fallback(service: SessionService, monkeypatch) -> None:
+    """Empty gRPC target keeps image upload on RestClient."""
+    from demo.app import open_demo_clients, wrap_demo_client
+    from demo.clients import DemoClients
+
+    assert wrap_demo_client(None) is None
+    backend = create_app(service)
+    rest = asgi_client_for(backend)
+    wrapped = wrap_demo_client(rest)
+    assert isinstance(wrapped, DemoClients)
+    created = await wrapped.create_session(
+        __import__("pixeldive_sdk", fromlist=["sample_session_payload"]).sample_session_payload("d")
+    )
+    image = await wrapped.upload_image(created["id"], "frame.png", PNG_1X1, "image/png")
+    payload = b"".join(
+        [chunk async for chunk in wrapped.download_image(created["id"], image["id"])]
+    )
+    assert payload == PNG_1X1
+    await wrapped.aclose()
+
+    monkeypatch.setenv("PIXELDIVE_GRPC_TARGET", "  ")
+    opened = open_demo_clients()
+    assert opened.grpc is None
+    await opened.aclose()
+
+
+@pytest.mark.asyncio
+async def test_demo_sdk_factory_and_download_edges(service: SessionService, monkeypatch) -> None:
+    """Cover DemoClients lookup fallback and empty download iterators."""
+    from demo.app import create_demo_app, open_demo_clients
+    from demo.clients import DemoClients
+    from demo.download import continue_download, open_download
+
+    backend = create_app(service)
+    rest = asgi_client_for(backend)
+    demo = create_demo_app(rest)
+    demo.state.client = object()
+    monkeypatch.setattr("demo.app.open_demo_clients", lambda: DemoClients(rest))
+    async with demo.router.lifespan_context(demo):
+        transport = ASGITransport(app=demo)
+        async with AsyncClient(transport=transport, base_url="http://demo") as http:
+            health = await http.get("/api/health")
+            assert health.status_code == 200
+
+    class EmptyRemote:
+        def download_image(self, session_id: str, image_id: str):
+            return _EmptyChunks()
+
+    first, stream = await open_download(EmptyRemote(), "s", "i")
+    assert first == b""
+    chunks = [piece async for piece in continue_download(first, stream)]
+    assert chunks == [b""]
+
+    class BoomRemote:
+        def download_image(self, session_id: str, image_id: str):
+            return _BoomChunks()
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await open_download(BoomRemote(), "s", "i")
+    await rest.aclose()
+    _ = open_demo_clients
+
+
+class _EmptyChunks:
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        raise StopAsyncIteration
+
+
+class _BoomChunks:
+    async def aclose(self):
+        return None
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        raise RuntimeError("boom")
+
+
+@pytest.mark.asyncio
 async def test_grpc_sdk_create_and_upload(service: SessionService) -> None:
     """GrpcClient can create a session and upload an image."""
     server, port = await start_grpc_server(service, "127.0.0.1", 0)

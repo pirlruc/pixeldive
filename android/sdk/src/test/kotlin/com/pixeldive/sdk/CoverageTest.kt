@@ -1,6 +1,8 @@
 package com.pixeldive.sdk
 
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -79,6 +81,16 @@ class CoverageTest {
         assertTrue(defaultHttp(5).connectTimeoutMillis > 0)
         pageQuery(1, null)
         pageQuery(1, "")
+        assertEquals(mapOf("metadata" to "{}"), metadataFields("{}"))
+        assertTrue(metadataFields(null).isEmpty())
+        val fromBody =
+            multipart(
+                "file",
+                "a.png",
+                TestPng.BYTES.toRequestBody("image/png".toMediaType()),
+                emptyMap(),
+            )
+        assertEquals(MultipartBody.FORM, fromBody.type)
     }
 
     @Test
@@ -87,10 +99,12 @@ class CoverageTest {
         val status = PixeldiveException.HttpStatus(500, "nope")
         val decoding = PixeldiveException.Decoding("bad", IllegalStateException("root"))
         val transport = PixeldiveException.Transport("down", IllegalStateException("root"))
+        val grpc = PixeldiveException.GrpcStatus(16, "denied")
         assertTrue(invalid.message!!.contains("x"))
         assertTrue(status.message!!.contains("500"))
         assertTrue(decoding.cause is IllegalStateException)
         assertTrue(transport.cause is IllegalStateException)
+        assertTrue(grpc.message!!.contains("16"))
         JsonCodec.json.encodeToString(UuidSerializer, sessionId)
         JsonCodec.json.encodeToString(InstantSerializer, stamp)
         DeviceSnapshot.current()

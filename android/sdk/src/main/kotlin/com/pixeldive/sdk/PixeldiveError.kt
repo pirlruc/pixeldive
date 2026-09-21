@@ -18,6 +18,10 @@ sealed class PixeldiveException(
     /** The OkHttp transport failed. */
     class Transport(detail: String, cause: Throwable? = null) :
         PixeldiveException("Transport failed: $detail", cause)
+
+    /** A gRPC status other than OK. */
+    class GrpcStatus(val code: Int, val detail: String) :
+        PixeldiveException("grpc-status $code: $detail")
 }
 
 /** Validate identifiers used in HTTP paths (Python SDK `resource_id`). */

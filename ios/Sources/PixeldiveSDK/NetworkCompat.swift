@@ -8,6 +8,15 @@ import FoundationNetworking
 /// does not depend on URLProtocol (libcurl URLSession ignores it).
 protocol HTTPPerforming: Sendable {
     func data(for request: URLRequest) async throws -> (Data, URLResponse)
+    func data(for request: URLRequest, fromFile fileURL: URL) async throws -> (Data, URLResponse)
+}
+
+extension HTTPPerforming {
+    func data(for request: URLRequest, fromFile fileURL: URL) async throws -> (Data, URLResponse) {
+        var copy = request
+        copy.httpBody = try Data(contentsOf: fileURL)
+        return try await data(for: copy)
+    }
 }
 
 struct URLSessionPerformer: HTTPPerforming, @unchecked Sendable {
@@ -15,6 +24,10 @@ struct URLSessionPerformer: HTTPPerforming, @unchecked Sendable {
 
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
         try await loadURL(session, request)
+    }
+
+    func data(for request: URLRequest, fromFile fileURL: URL) async throws -> (Data, URLResponse) {
+        try await uploadURL(session, request, fileURL)
     }
 }
 
@@ -29,14 +42,36 @@ func completeLoad(data: Data?, response: URLResponse?, error: Error?) throws -> 
 }
 
 func loadURL(_ session: URLSession, _ request: URLRequest) async throws -> (Data, URLResponse) {
+    try await runTask(session, request, fileURL: nil)
+}
+
+func uploadURL(_ session: URLSession, _ request: URLRequest, _ fileURL: URL) async throws -> (Data, URLResponse) {
+    #if canImport(FoundationNetworking)
+    // libcurl URLSession's uploadTask(fromFile:) traps in _BodyFileSource on Linux.
+    var copy = request
+    copy.httpBody = try Data(contentsOf: fileURL)
+    return try await loadURL(session, copy)
+    #else
+    try await runTask(session, request, fileURL: fileURL)
+    #endif
+}
+
+func runTask(
+    _ session: URLSession,
+    _ request: URLRequest,
+    fileURL: URL?
+) async throws -> (Data, URLResponse) {
     let box = TaskBox()
     return try await withTaskCancellationHandler {
         try await withCheckedThrowingContinuation { continuation in
-            let task = session.dataTask(with: request) { data, response, error in
-                do {
-                    continuation.resume(returning: try completeLoad(data: data, response: response, error: error))
-                } catch {
-                    continuation.resume(throwing: error)
+            let task: URLSessionTask
+            if let fileURL {
+                task = session.uploadTask(with: request, fromFile: fileURL) { data, response, error in
+                    finish(continuation, data: data, response: response, error: error)
+                }
+            } else {
+                task = session.dataTask(with: request) { data, response, error in
+                    finish(continuation, data: data, response: response, error: error)
                 }
             }
             box.task = task
@@ -44,6 +79,19 @@ func loadURL(_ session: URLSession, _ request: URLRequest) async throws -> (Data
         }
     } onCancel: {
         box.task?.cancel()
+    }
+}
+
+func finish(
+    _ continuation: CheckedContinuation<(Data, URLResponse), Error>,
+    data: Data?,
+    response: URLResponse?,
+    error: Error?
+) {
+    do {
+        continuation.resume(returning: try completeLoad(data: data, response: response, error: error))
+    } catch {
+        continuation.resume(throwing: error)
     }
 }
 
@@ -63,7 +111,7 @@ func redirectSafeSession(existing: URLSession?, timeout: TimeInterval) -> URLSes
 }
 
 private final class TaskBox: @unchecked Sendable {
-    var task: URLSessionDataTask?
+    var task: URLSessionTask?
 }
 
 func makeEphemeralSession(timeout: TimeInterval) -> URLSession {

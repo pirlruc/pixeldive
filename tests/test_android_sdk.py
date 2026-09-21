@@ -90,6 +90,8 @@ def test_android_demo_uses_sdk_only() -> None:
     assert sources
     joined = "\n".join(path.read_text(encoding="utf-8") for path in sources)
     assert "PixeldiveClient" in joined
+    assert "PixeldiveGrpcClient" in joined
+    assert "ImageCapture" in joined
     assert "DeviceSnapshot" in joined
     assert "AndroidDeviceProbe" in joined
     assert "OkHttpClient(" not in joined

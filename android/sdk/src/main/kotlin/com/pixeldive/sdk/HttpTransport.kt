@@ -1,12 +1,9 @@
 package com.pixeldive.sdk
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationStrategy
-import okhttp3.Call
-import okhttp3.Callback
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -15,11 +12,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
-import java.io.IOException
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 internal class HttpTransport(
     baseUrl: String,
@@ -88,7 +81,7 @@ internal class HttpTransport(
         withContext(Dispatchers.IO) {
             val call = http.newCall(request)
             try {
-                awaitResponse(call).use { response ->
+                call.awaitResponse().use { response ->
                     val bytes = checkNotNull(response.body).bytes()
                     if (response.code !in 200..299) {
                         throw PixeldiveException.HttpStatus(response.code, clippedUtf8(bytes))
@@ -100,28 +93,6 @@ internal class HttpTransport(
             } catch (exc: Exception) {
                 throw PixeldiveException.Transport(exc.toString(), exc)
             }
-        }
-
-    private suspend fun awaitResponse(call: Call): Response =
-        suspendCancellableCoroutine { continuation ->
-            continuation.invokeOnCancellation { call.cancel() }
-            call.enqueue(
-                object : Callback {
-                    override fun onFailure(
-                        call: Call,
-                        e: IOException,
-                    ) {
-                        continuation.resumeWithException(e)
-                    }
-
-                    override fun onResponse(
-                        call: Call,
-                        response: Response,
-                    ) {
-                        continuation.resume(response) { _, value, _ -> value.close() }
-                    }
-                },
-            )
         }
 
     private fun <T> decode(
@@ -183,22 +154,42 @@ internal fun clippedUtf8(bytes: ByteArray): String {
     return slice.toString(Charsets.UTF_8)
 }
 
+internal fun metadataFields(metadata: String?): Map<String, String> {
+    return if (metadata != null) mapOf("metadata" to metadata) else emptyMap()
+}
+
+internal fun appendFields(
+    builder: MultipartBody.Builder,
+    fields: Map<String, String>,
+) {
+    fields.toSortedMap().forEach { (name, value) -> builder.addFormDataPart(name, value) }
+}
+
+internal fun multipart(
+    fileField: String,
+    filename: String,
+    body: RequestBody,
+    fields: Map<String, String>,
+): MultipartBody {
+    val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
+    builder.addFormDataPart(fileField, sanitizeMultipartFilename(filename), body)
+    appendFields(builder, fields)
+    return builder.build()
+}
+
 internal fun multipart(
     fileField: String,
     filename: String,
     payload: ByteArray,
     contentType: String,
     fields: Map<String, String>,
-): MultipartBody {
-    val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
-    builder.addFormDataPart(
+): MultipartBody =
+    multipart(
         fileField,
-        sanitizeMultipartFilename(filename),
+        filename,
         payload.toRequestBody(sanitizeMultipartType(contentType).toMediaType()),
+        fields,
     )
-    fields.toSortedMap().forEach { (name, value) -> builder.addFormDataPart(name, value) }
-    return builder.build()
-}
 
 internal fun multipartBatch(
     items: List<Triple<String, ByteArray, String>>,
@@ -212,6 +203,6 @@ internal fun multipartBatch(
             payload.toRequestBody(sanitizeMultipartType(contentType).toMediaType()),
         )
     }
-    fields.toSortedMap().forEach { (name, value) -> builder.addFormDataPart(name, value) }
+    appendFields(builder, fields)
     return builder.build()
 }

@@ -16,6 +16,7 @@ targets:
       - ContentView.swift
       - DemoModel.swift
       - LibraryPicker.swift
+      - CameraFeed.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pirlruc.pixeldive.demo

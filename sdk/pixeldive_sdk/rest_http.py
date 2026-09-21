@@ -26,6 +26,12 @@ class RestHttpMixin:
             params["cursor"] = cursor
         return params
 
+    def _form_fields(self, metadata: str | None) -> dict[str, str]:
+        """Optional multipart metadata field used by image uploads."""
+        if metadata is None:
+            return {}
+        return {"metadata": metadata}
+
     async def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         """Issue an HTTP request, merging bearer auth onto a shared client."""
         headers = dict(kwargs.pop("headers", None) or {})

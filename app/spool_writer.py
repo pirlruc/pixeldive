@@ -11,6 +11,7 @@ import aiofiles
 
 from app.exceptions import EmptyImageError, ImageTooLargeError
 from app.fs_async import unlink_missing
+from app.magic import HEADER_SIZE
 from app.spool_file import Spool
 
 
@@ -24,6 +25,7 @@ class SpoolWriter:
         self.max_bytes = max_bytes
         self.size = 0
         self.hasher = hashlib.sha256()
+        self.header = bytearray()
         self._handle: Any = None
 
     async def start(self) -> None:
@@ -46,6 +48,8 @@ class SpoolWriter:
             await self.abort()
             raise ImageTooLargeError(f"image exceeds max_image_bytes={self.max_bytes}")
         self.hasher.update(chunk)
+        if len(self.header) < HEADER_SIZE:
+            self.header.extend(chunk[: HEADER_SIZE - len(self.header)])
         if self._handle is None:
             await self.start()
         await cast(Any, self._handle).write(chunk)
@@ -56,7 +60,7 @@ class SpoolWriter:
         if self.size == 0:
             await self.abort()
             raise EmptyImageError("image payload is empty")
-        return Spool(self.path, self.hasher.hexdigest(), self.size)
+        return Spool(self.path, self.hasher.hexdigest(), self.size, bytes(self.header))
 
     async def abort(self) -> None:
         """Close and delete a partial spool."""

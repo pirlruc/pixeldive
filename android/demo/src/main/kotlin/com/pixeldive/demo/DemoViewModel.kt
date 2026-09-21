@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.pixeldive.sdk.DeviceSnapshot
 import com.pixeldive.sdk.PixeldiveClient
+import com.pixeldive.sdk.PixeldiveGrpcClient
 import com.pixeldive.sdk.SessionImage
 import com.pixeldive.sdk.SessionRead
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,19 +15,45 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** UI state for the capture demo. All service calls go through [PixeldiveClient]. */
+/** UI state for the capture demo. Sessions use REST; image bytes use gRPC. */
 class DemoViewModel(
     private val application: Application,
 ) : ViewModel() {
     private val _state = MutableStateFlow(DemoState())
     val state: StateFlow<DemoState> = _state
+    private var grpc: PixeldiveGrpcClient? = null
+    private var grpcKey: String? = null
 
     fun onBaseUrl(value: String) {
         _state.update { it.copy(baseUrl = value) }
     }
 
+    fun onGrpcHost(value: String) {
+        _state.update { it.copy(grpcHost = value) }
+    }
+
+    fun onGrpcPort(value: String) {
+        _state.update { it.copy(grpcPort = value) }
+    }
+
     fun onToken(value: String) {
         _state.update { it.copy(token = value) }
+    }
+
+    fun needSession() {
+        _state.update { it.copy(log = "Create or select a session first.") }
+    }
+
+    fun onCameraDenied() {
+        _state.update { it.copy(capturing = false, log = "Camera permission denied.") }
+    }
+
+    fun onFrameError(exc: Exception) {
+        _state.update { it.copy(log = "frame failed: ${exc.message}") }
+    }
+
+    fun setCapturing(value: Boolean) {
+        _state.update { it.copy(capturing = value) }
     }
 
     fun createSession() {
@@ -55,15 +82,18 @@ class DemoViewModel(
             _state.update { it.copy(log = "Create or select a session first.") }
             return
         }
-        run("upload") { client ->
+        viewModelScope.launch {
             val bytes = application.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 ?: error("unable to read picked image")
             val type = application.contentResolver.getType(uri) ?: "image/jpeg"
             val name = if (type == "image/png") "frame.png" else "frame.jpg"
-            val image = client.uploadImage(session.id.toString(), name, bytes, type)
-            _state.update { it.copy(log = "Uploaded ${image.filename} (${image.sizeBytes} bytes)") }
-            refresh(client)
+            sendFrame(session, name, bytes, type)
         }
+    }
+
+    suspend fun uploadFrame(jpeg: ByteArray) {
+        val session = _state.value.selected ?: return
+        sendFrame(session, "frame.jpg", jpeg, "image/jpeg")
     }
 
     fun downloadFirst() {
@@ -73,9 +103,13 @@ class DemoViewModel(
             _state.update { it.copy(log = "No image to download.") }
             return
         }
-        run("download") { client ->
-            val bytes = client.downloadImage(session.id.toString(), image.id.toString())
-            _state.update { it.copy(log = "Downloaded ${bytes.size} bytes") }
+        viewModelScope.launch {
+            try {
+                val bytes = grpcClient().downloadImage(session.id.toString(), image.id.toString())
+                _state.update { it.copy(log = "Downloaded ${bytes.size} bytes via gRPC") }
+            } catch (exc: Exception) {
+                _state.update { it.copy(log = "download failed: ${exc.message}") }
+            }
         }
     }
 
@@ -89,6 +123,29 @@ class DemoViewModel(
             client.deleteSession(session.id.toString())
             _state.update { it.copy(selected = null, images = emptyList(), log = "Deleted session") }
             refresh(client)
+        }
+    }
+
+    private suspend fun sendFrame(
+        session: SessionRead,
+        filename: String,
+        payload: ByteArray,
+        contentType: String,
+    ) {
+        _state.update { it.copy(uploading = true) }
+        try {
+            val image =
+                grpcClient().uploadImage(session.id.toString(), filename, payload, contentType)
+            _state.update {
+                it.copy(
+                    log = "Uploaded ${image.filename} (${image.sizeBytes} bytes) via gRPC",
+                    images = listOf(image) + it.images.filter { item -> item.id != image.id },
+                )
+            }
+        } catch (exc: Exception) {
+            _state.update { it.copy(log = "upload failed: ${exc.message}") }
+        } finally {
+            _state.update { it.copy(uploading = false) }
         }
     }
 
@@ -130,6 +187,27 @@ class DemoViewModel(
         )
     }
 
+    private fun grpcClient(): PixeldiveGrpcClient {
+        val trimmed = _state.value.token.trim()
+        val key = "${_state.value.grpcHost}|${_state.value.grpcPort}|$trimmed"
+        val cached = grpc
+        if (cached != null && grpcKey == key) {
+            return cached
+        }
+        cached?.close()
+        val port = _state.value.grpcPort.toIntOrNull() ?: 50051
+        val created = PixeldiveGrpcClient.insecure(_state.value.grpcHost, port, trimmed.ifEmpty { null })
+        grpc = created
+        grpcKey = key
+        return created
+    }
+
+    override fun onCleared() {
+        grpc?.close()
+        grpc = null
+        super.onCleared()
+    }
+
     companion object {
         fun factory(application: Application): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
@@ -142,12 +220,16 @@ class DemoViewModel(
 
 data class DemoState(
     val baseUrl: String = "http://10.0.2.2:8000",
+    val grpcHost: String = "10.0.2.2",
+    val grpcPort: String = "50051",
     val token: String = "",
     val log: String = "Ready.",
     val sessions: List<SessionRead> = emptyList(),
     val images: List<SessionImage> = emptyList(),
     val selected: SessionRead? = null,
     val busy: Boolean = false,
+    val capturing: Boolean = false,
+    val uploading: Boolean = false,
 ) {
     val selectedLabel: String
         get() {

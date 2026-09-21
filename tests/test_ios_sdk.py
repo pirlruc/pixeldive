@@ -79,6 +79,8 @@ def test_ios_demo_uses_sdk_only() -> None:
     assert sources
     joined = "\n".join(path.read_text(encoding="utf-8") for path in sources)
     assert "PixeldiveClient" in joined
+    assert "PixeldiveGrpcClient" in joined
+    assert "CameraFeed" in joined
     assert "DeviceSnapshot" in joined
     assert "URLSession.shared.data" not in joined
     assert "UserDefaults" not in joined
@@ -134,6 +136,11 @@ def test_swift_coverage_parser() -> None:
     assert module.parse_line_cover(report) == 98.0
     source = path.read_text(encoding="utf-8")
     assert 'parent / "usr" / "bin" / "llvm-cov"' in source
+    assert 'PACKAGE = ROOT / "ios"' in source
+    assert "xcrun" in source
+    assert "subprocess.run(" in source
+    assert "--package" not in source
     script = (root / "scripts" / "check-ios-sdk.sh").read_text(encoding="utf-8")
     assert "--enable-code-coverage" in script
     assert "check-swift-coverage.py" in script
+    assert "--threshold" in script
