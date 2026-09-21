@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ssl
 from typing import Self
 
 import httpx
@@ -9,6 +10,13 @@ import httpx
 from pixeldive_sdk.rest_images import RestImageMixin
 from pixeldive_sdk.rest_sessions import RestSessionMixin
 from pixeldive_sdk.rest_upload import RestPathUploadMixin
+
+
+def as_ssl_verify(verify: bool | str | ssl.SSLContext) -> bool | ssl.SSLContext:
+    """Accept a CA path string; httpx wants bool or SSLContext."""
+    if isinstance(verify, str):
+        return ssl.create_default_context(cafile=verify)
+    return verify
 
 
 class RestClient(RestSessionMixin, RestImageMixin, RestPathUploadMixin):
@@ -22,7 +30,7 @@ class RestClient(RestSessionMixin, RestImageMixin, RestPathUploadMixin):
         client: httpx.AsyncClient | None = None,
         timeout: float = 60.0,
         owns_client: bool | None = None,
-        verify: bool | str = True,
+        verify: bool | str | ssl.SSLContext = True,
         cert: str | tuple[str, str] | tuple[str, str, str] | None = None,
     ) -> None:
         """Bind a base URL, optional bearer token, and optional TLS verify/cert."""
@@ -32,7 +40,7 @@ class RestClient(RestSessionMixin, RestImageMixin, RestPathUploadMixin):
         self._http = client or httpx.AsyncClient(
             base_url=self._base,
             timeout=timeout,
-            verify=verify,
+            verify=as_ssl_verify(verify),
             cert=cert,
         )
 

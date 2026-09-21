@@ -17,9 +17,6 @@ def build_grpc_server_credentials(settings: Settings) -> grpc.ServerCredentials 
     Returns:
         grpc.ServerCredentials | None: Server credentials when cert and key
         resolve; otherwise None.
-
-    Raises:
-        RuntimeError: production-style bind requested without cert/key files.
     """
     files = grpc_tls_files(settings)
     if files is None:

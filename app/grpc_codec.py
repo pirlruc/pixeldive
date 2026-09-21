@@ -1,7 +1,7 @@
 """Protobuf mapping helpers for the gRPC transport."""
 
 import uuid
-from typing import Any
+from typing import Any, Protocol, cast
 
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.struct_pb2 import Struct
@@ -25,6 +25,15 @@ _PROTO_JSON = {
 }
 
 
+class _Validatable(Protocol):
+    """Pydantic model with ``model_validate`` (device payloads)."""
+
+    @classmethod
+    def model_validate(cls, obj: Any) -> Any:
+        """Rehydrate from a dict."""
+        ...
+
+
 def as_uuid(value: str, context: ServicerContext) -> uuid.UUID:
     """Parse a UUID or raise InvalidIdError."""
     del context
@@ -34,9 +43,9 @@ def as_uuid(value: str, context: ServicerContext) -> uuid.UUID:
         raise InvalidIdError(f"invalid uuid: {value}") from exc
 
 
-def _from_pb[T](model_cls: type[T], message: object) -> T:
+def _from_pb[T: _Validatable](model_cls: type[T], message: object) -> T:
     """Validate a protobuf message as a Pydantic device model."""
-    return model_cls.model_validate(MessageToDict(message, **_PROTO_JSON))
+    return cast(T, model_cls.model_validate(MessageToDict(message, **_PROTO_JSON)))
 
 
 def phone_info(message: pb.PhoneInfo) -> PhoneInfo:

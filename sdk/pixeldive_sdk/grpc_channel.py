@@ -24,6 +24,9 @@ def open_channel(
         root_certificates: PEM CA bundle used to verify the server.
         private_key: Optional client key PEM for mTLS.
         certificate_chain: Optional client cert PEM for mTLS.
+
+    Returns:
+        grpc.aio.Channel: An aio channel using CHANNEL_OPTIONS.
     """
     if insecure:
         return grpc.aio.insecure_channel(target, options=CHANNEL_OPTIONS)

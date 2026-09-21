@@ -21,9 +21,6 @@ def build_http_ssl_context(settings: Settings) -> ssl.SSLContext | None:
     Returns:
         ssl.SSLContext | None: Server context when cert and key resolve;
         otherwise None.
-
-    Raises:
-        RuntimeError: TLS is required but cert/key files are unset.
     """
     files = http_tls_files(settings)
     if files is None:

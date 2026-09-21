@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import http.client
 import os
 import ssl
 import sys
-import urllib.error
-import urllib.request
 
 _TRUE = frozenset({"1", "true", "yes", "on"})
 
@@ -15,21 +14,36 @@ def main() -> None:
     """Exit 0 when ``/ready`` succeeds; exit 1 on connection or HTTP errors."""
     try:
         probe()
-    except (OSError, urllib.error.URLError):
+    except OSError:
         sys.exit(1)
 
 
 def probe() -> None:
     """GET ``/ready`` on the loopback HTTP or HTTPS port."""
-    port = os.environ.get("HTTP_PORT", "8000")
+    port = int(os.environ.get("HTTP_PORT", "8000"))
     if env_flag("HTTP_INSECURE", default=True):
-        urllib.request.urlopen(f"http://127.0.0.1:{port}/ready", timeout=4)
+        get_ready(http.client.HTTPConnection("127.0.0.1", port, timeout=4))
         return
-    urllib.request.urlopen(
-        f"https://127.0.0.1:{port}/ready",
-        context=https_context(),
-        timeout=4,
+    get_ready(
+        http.client.HTTPSConnection(
+            "127.0.0.1",
+            port,
+            timeout=4,
+            context=https_context(),
+        ),
     )
+
+
+def get_ready(conn: http.client.HTTPConnection) -> None:
+    """Issue GET /ready and raise OSError on a non-success status."""
+    try:
+        conn.request("GET", "/ready")
+        response = conn.getresponse()
+        if response.status >= 400:
+            msg = f"ready {response.status}"
+            raise OSError(msg)
+    finally:
+        conn.close()
 
 
 def env_flag(name: str, *, default: bool) -> bool:

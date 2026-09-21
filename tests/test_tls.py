@@ -63,6 +63,39 @@ def test_shared_tls_files_serve_both_transports(tmp_path: Path) -> None:
     assert ctx.verify_mode == ssl.CERT_REQUIRED
 
 
+def test_http_server_mtls_uses_client_ca(tmp_path: Path) -> None:
+    """HTTP mTLS sets CERT_REQUIRED and the client CA on uvicorn.Config."""
+    from fastapi import FastAPI
+
+    cert, key = write_self_signed(tmp_path)
+    settings = Settings(
+        http_insecure=False,
+        http_tls_cert_file=cert,
+        http_tls_key_file=key,
+        http_tls_client_ca_file=cert,
+        http_host="127.0.0.1",
+        http_port=0,
+    )
+    ctx = build_http_ssl_context(
+        Settings(http_insecure=False, http_tls_cert_file=cert, http_tls_key_file=key),
+    )
+    assert ctx is not None
+    assert ctx.verify_mode != ssl.CERT_REQUIRED
+    server = build_http_server(FastAPI(), settings)
+    assert server.config.ssl_cert_reqs == ssl.CERT_REQUIRED
+    assert server.config.ssl_ca_certs == str(cert)
+
+
+def test_rest_client_verify_accepts_ca_path(tmp_path: Path) -> None:
+    """CA file paths are turned into an SSLContext for httpx."""
+    from pixeldive_sdk.client import as_ssl_verify
+
+    cert, _key = write_self_signed(tmp_path)
+    ctx = as_ssl_verify(str(cert))
+    assert isinstance(ctx, ssl.SSLContext)
+    assert as_ssl_verify(True) is True
+
+
 def test_http_tls_requires_files_when_secure() -> None:
     """HTTP_INSECURE=false without PEMs fails closed."""
     assert build_http_ssl_context(Settings(http_insecure=True)) is None
@@ -202,7 +235,7 @@ async def test_https_rejects_missing_bearer(tmp_path: Path) -> None:
     task = asyncio.create_task(http.serve())
     try:
         await _wait_http(http)
-        async with httpx.AsyncClient(verify=str(cert)) as client:
+        async with httpx.AsyncClient(verify=ssl.create_default_context(cafile=str(cert))) as client:
             response = await client.post(
                 f"https://127.0.0.1:{http_port}/api/v1/sessions",
                 json=sample_session_payload("no-token"),
@@ -215,22 +248,59 @@ async def test_https_rejects_missing_bearer(tmp_path: Path) -> None:
 
 
 def test_ready_probe_http(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Plaintext probe uses HTTP when HTTP_INSECURE is true."""
-    calls: list[str] = []
+    """Plaintext probe uses HTTPConnection; TLS uses HTTPSConnection."""
+    created: list[str] = []
 
-    def fake_open(url: str, timeout: object = None, context: object = None) -> object:
-        del timeout, context
-        calls.append(url)
-        return object()
+    class FakeConn:
+        def __init__(
+            self, host: str, port: int, timeout: object = None, context: object = None
+        ) -> None:
+            del host, timeout, context
+            self.port = port
+            created.append(self.__class__.__name__)
 
-    monkeypatch.setattr("app.ready_probe.urllib.request.urlopen", fake_open)
+        def request(self, method: str, path: str) -> None:
+            del method, path
+
+        def getresponse(self) -> object:
+            return type("Resp", (), {"status": 200})()
+
+        def close(self) -> None:
+            return None
+
+    class FakeHTTP(FakeConn):
+        pass
+
+    class FakeHTTPS(FakeConn):
+        pass
+
+    monkeypatch.setattr("app.ready_probe.http.client.HTTPConnection", FakeHTTP)
+    monkeypatch.setattr("app.ready_probe.http.client.HTTPSConnection", FakeHTTPS)
     monkeypatch.setenv("HTTP_INSECURE", "true")
     monkeypatch.setenv("HTTP_PORT", "8000")
     probe()
-    assert calls == ["http://127.0.0.1:8000/ready"]
+    assert created == ["FakeHTTP"]
     monkeypatch.setenv("HTTP_INSECURE", "false")
     probe()
-    assert calls[-1] == "https://127.0.0.1:8000/ready"
+    assert created[-1] == "FakeHTTPS"
+
+
+def test_ready_probe_rejects_http_error() -> None:
+    """Non-success /ready status fails the HEALTHCHECK."""
+    from app.ready_probe import get_ready
+
+    class FakeConn:
+        def request(self, method: str, path: str) -> None:
+            del method, path
+
+        def getresponse(self) -> object:
+            return type("Resp", (), {"status": 503})()
+
+        def close(self) -> None:
+            return None
+
+    with pytest.raises(OSError, match="503"):
+        get_ready(FakeConn())  # type: ignore[arg-type]
 
 
 def test_ready_probe_main_exits_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
