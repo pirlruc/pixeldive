@@ -52,8 +52,12 @@
 # (merged 2026-09-21, commit 78b0baa):
 #   done  SEC-007 (HTTP TLS + shared PEM; production fail-closed for HTTP and gRPC)
 #   open  SDK-008 (iOS/Android custom trust stores for private CAs)
+#
+# Shipped on main via https://github.com/pirlruc/pixeldive/pull/15
+# (merged 2026-09-21, commit 03e3280):
 #   done  SEC-008 (measured upload size, batch cap before spool, metadata cap,
-#          production quotas, process-local S3 put skip, demo temp-file upload)
+#          production quotas, S3 put skip confirmed by HEAD)
+#   done  PERF-006 (gRPC demo streams a capped chunk list; REST fallback keeps a temp file)
 
 milestones:
   - name: Tooling — Analog & methodology
