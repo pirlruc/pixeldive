@@ -5,18 +5,18 @@ from __future__ import annotations
 import asyncio
 import logging
 
-import uvicorn
-
 from app.api import create_app
 from app.config import Settings, get_settings
 from app.database import create_engine, init_db, session_factory
 from app.grpc_server import start_grpc_server
+from app.http_tls import build_http_server
 from app.lifecycle import close_storage, orphan_sweep_loop, serve_until_stopped
 from app.metrics import Metrics
 from app.migrate import upgrade_head
 from app.observability import configure_logging
 from app.service import SessionService
 from app.storage import build_storage
+from app.tls_files import grpc_tls_files, http_tls_files
 
 logger = logging.getLogger("pixeldive")
 
@@ -31,15 +31,25 @@ def is_production(settings: Settings) -> bool:
 def validate_auth_settings(settings: Settings) -> None:
     """Fail fast when auth is required without tokens, or production is open."""
     if is_production(settings):
-        if not settings.auth_required:
-            msg = "ENVIRONMENT=production requires AUTH_REQUIRED=true"
-            raise RuntimeError(msg)
-        if settings.grpc_insecure:
-            msg = "ENVIRONMENT=production requires GRPC_INSECURE=false"
-            raise RuntimeError(msg)
+        require_production_transports(settings)
     if settings.auth_required and not settings.api_key_map():
         msg = "AUTH_REQUIRED is true but API_KEYS is empty"
         raise RuntimeError(msg)
+
+
+def require_production_transports(settings: Settings) -> None:
+    """Production must authenticate and encrypt both HTTP and gRPC."""
+    if not settings.auth_required:
+        msg = "ENVIRONMENT=production requires AUTH_REQUIRED=true"
+        raise RuntimeError(msg)
+    if settings.http_insecure:
+        msg = "ENVIRONMENT=production requires HTTP_INSECURE=false"
+        raise RuntimeError(msg)
+    if settings.grpc_insecure:
+        msg = "ENVIRONMENT=production requires GRPC_INSECURE=false"
+        raise RuntimeError(msg)
+    http_tls_files(settings)
+    grpc_tls_files(settings)
 
 
 async def run(settings: Settings | None = None) -> None:
@@ -77,19 +87,15 @@ async def _bind(settings: Settings, engine: object) -> tuple[SessionService, obj
         settings.grpc_port,
     )
     app = create_app(service, metrics)
-    http = uvicorn.Server(
-        uvicorn.Config(
-            app,
-            host=settings.http_host,
-            port=settings.http_port,
-            log_level="info",
-            lifespan="on",
-        ),
-    )
+    http = build_http_server(app, settings)
+    http_scheme = "https" if http_tls_files(settings) else "http"
+    grpc_scheme = "grpcs" if grpc_tls_files(settings) else "grpc"
     logger.info(
-        "listening http://%s:%s grpc://%s:%s",
+        "listening %s://%s:%s %s://%s:%s",
+        http_scheme,
         settings.http_host,
         settings.http_port,
+        grpc_scheme,
         settings.grpc_host,
         settings.grpc_port,
     )

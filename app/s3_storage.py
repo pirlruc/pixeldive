@@ -7,7 +7,7 @@ from pathlib import Path
 
 from app.hash_keys import object_key, sha256_hex
 from app.s3_client import default_s3_client
-from app.s3_listing import age_from_head, contents, is_missing, mtime
+from app.s3_listing import age_from_head, contents, is_missing, missing_or_raise, mtime
 from app.s3_multipart import put_file_multipart
 from app.s3_pages import iter_list_pages
 from app.s3_stream import iter_body
@@ -75,9 +75,8 @@ class S3CompatibleStorage:
         try:
             response = await self._client.get_object(Bucket=self._bucket, Key=storage_path)
         except Exception as exc:  # noqa: BLE001 — botocore ClientError is optional
-            if is_missing(exc):
-                raise FileNotFoundError(storage_path) from exc
-            raise
+            missing_or_raise(exc)
+            raise FileNotFoundError(storage_path) from exc
         async for chunk in iter_body(response["Body"], chunk_size):
             yield chunk
 
@@ -90,9 +89,8 @@ class S3CompatibleStorage:
         try:
             return await self._client.head_object(Bucket=self._bucket, Key=storage_path)
         except Exception as exc:  # noqa: BLE001 — botocore ClientError is optional
-            if is_missing(exc):
-                return None
-            raise
+            missing_or_raise(exc)
+            return None
 
     async def exists(self, storage_path: str) -> bool:
         """HEAD the object; treat 404 as missing."""

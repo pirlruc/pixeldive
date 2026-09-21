@@ -7,36 +7,18 @@ from pathlib import Path
 import grpc
 import pytest
 
-from app.config import Settings
-from app.database import create_engine, init_db, session_factory
 from app.grpc_server import start_grpc_server
 from app.pb import session_service_pb2 as pb
 from app.pb import session_service_pb2_grpc as pb_grpc
-from app.service import SessionService
-from app.storage import LocalFilesystemStorage
+from tests.factories import auth_settings, make_service
 from tests.test_grpc import _create_request
 
 
 @pytest.mark.asyncio
 async def test_grpc_unauthenticated_and_forbidden(tmp_path: Path) -> None:
     """Missing metadata is UNAUTHENTICATED; the other tenant is NOT_FOUND."""
-    settings = Settings(
-        database_url=f"sqlite+aiosqlite:///{tmp_path / 'grpc-auth.db'}",
-        storage_backend="local",
-        storage_root=tmp_path / "images",
-        auth_required=True,
-        api_keys="alpha:tenant-a,beta:tenant-b",
-        grpc_insecure=True,
-        log_json=False,
-    )
-    engine = create_engine(settings)
-    await init_db(engine)
-    settings.storage_root.mkdir(parents=True, exist_ok=True)
-    service = SessionService(
-        session_factory(engine),
-        LocalFilesystemStorage(settings.storage_root),
-        settings,
-    )
+    settings = auth_settings(tmp_path, grpc_insecure=True)
+    service, engine = await make_service(settings)
     server, port = await start_grpc_server(service, "127.0.0.1", 0)
     channel = grpc.aio.insecure_channel(f"127.0.0.1:{port}")
     stub = pb_grpc.SessionServiceStub(channel)

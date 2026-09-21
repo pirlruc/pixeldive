@@ -1,7 +1,7 @@
 """Protobuf mapping helpers for the gRPC transport."""
 
 import uuid
-from typing import Any
+from typing import Any, Protocol, cast
 
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.struct_pb2 import Struct
@@ -25,6 +25,15 @@ _PROTO_JSON = {
 }
 
 
+class _Validatable(Protocol):
+    """Pydantic model with ``model_validate`` (device payloads)."""
+
+    @classmethod
+    def model_validate(cls, obj: Any) -> Any:
+        """Rehydrate from a dict."""
+        ...
+
+
 def as_uuid(value: str, context: ServicerContext) -> uuid.UUID:
     """Parse a UUID or raise InvalidIdError."""
     del context
@@ -34,21 +43,24 @@ def as_uuid(value: str, context: ServicerContext) -> uuid.UUID:
         raise InvalidIdError(f"invalid uuid: {value}") from exc
 
 
+def _from_pb[T: _Validatable](model_cls: type[T], message: object) -> T:
+    """Validate a protobuf message as a Pydantic device model."""
+    return cast(T, model_cls.model_validate(MessageToDict(message, **_PROTO_JSON)))
+
+
 def phone_info(message: pb.PhoneInfo) -> PhoneInfo:
     """Map protobuf PhoneInfo to the SQLModel schema."""
-    return PhoneInfo.model_validate(MessageToDict(message, **_PROTO_JSON))
+    return _from_pb(PhoneInfo, message)
 
 
 def phone_caps(message: pb.PhoneCapabilities) -> PhoneCapabilities:
     """Map protobuf PhoneCapabilities to the SQLModel schema."""
-    return PhoneCapabilities.model_validate(MessageToDict(message, **_PROTO_JSON))
+    return _from_pb(PhoneCapabilities, message)
 
 
 def camera_caps(message: pb.CameraCapabilities) -> CameraCapabilities:
     """Map protobuf CameraCapabilities, including the repeated cameras list."""
-    cameras = [
-        CameraInfo.model_validate(MessageToDict(item, **_PROTO_JSON)) for item in message.cameras
-    ]
+    cameras = [_from_pb(CameraInfo, item) for item in message.cameras]
     return CameraCapabilities(camera_count=message.camera_count, cameras=cameras)
 
 

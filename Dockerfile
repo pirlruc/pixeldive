@@ -59,7 +59,8 @@ EXPOSE 8000 50051
 VOLUME ["/data/images"]
 
 # HEALTHCHECK uses stdlib so the runtime image needs no curl (DOCKER-RUN-006).
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+# ready_probe selects HTTP or HTTPS from HTTP_INSECURE / TLS_* env.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD ["python", "-c", "from app.ready_probe import main; main()"]
 
 # Run as non-root numeric UID; config is env-only (DOCKER-RUN-001/004/005).
 # Harden with: --read-only --cap-drop ALL --security-opt no-new-privileges

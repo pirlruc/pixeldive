@@ -40,6 +40,13 @@ def is_missing(exc: BaseException) -> bool:
     return type(exc).__name__ in {"NoSuchKey", "NotFound"}
 
 
+def missing_or_raise(exc: BaseException) -> None:
+    """No-op for missing-key errors; re-raise anything else."""
+    if is_missing(exc):
+        return
+    raise exc
+
+
 def age_from_head(response: object) -> float:
     """Compute object age from a HEAD response; missing LastModified is 0."""
     last = response.get("LastModified") if isinstance(response, dict) else None

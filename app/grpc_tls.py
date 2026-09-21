@@ -1,10 +1,11 @@
-"""gRPC TLS credential construction (SEC-001)."""
+"""gRPC TLS credential construction (SEC-001, SEC-007)."""
 
 from __future__ import annotations
 
 import grpc
 
 from app.config import Settings
+from app.tls_files import grpc_tls_files
 
 
 def build_grpc_server_credentials(settings: Settings) -> grpc.ServerCredentials | None:
@@ -15,25 +16,14 @@ def build_grpc_server_credentials(settings: Settings) -> grpc.ServerCredentials 
 
     Returns:
         grpc.ServerCredentials | None: Server credentials when cert and key
-        are set; otherwise None.
-
-    Raises:
-        RuntimeError: production-style bind requested without cert/key files.
+        resolve; otherwise None.
     """
-    cert = settings.grpc_tls_cert_file
-    key = settings.grpc_tls_key_file
-    if cert is not None and key is not None:
-        client_ca = (
-            settings.grpc_tls_client_ca_file.read_bytes()
-            if settings.grpc_tls_client_ca_file is not None
-            else None
-        )
-        return grpc.ssl_server_credentials(
-            [(key.read_bytes(), cert.read_bytes())],
-            root_certificates=client_ca,
-            require_client_auth=client_ca is not None,
-        )
-    if settings.grpc_insecure:
+    files = grpc_tls_files(settings)
+    if files is None:
         return None
-    msg = "GRPC_INSECURE is false but GRPC_TLS_CERT_FILE / GRPC_TLS_KEY_FILE are unset"
-    raise RuntimeError(msg)
+    client_ca = files.client_ca_file.read_bytes() if files.client_ca_file is not None else None
+    return grpc.ssl_server_credentials(
+        [(files.key_file.read_bytes(), files.cert_file.read_bytes())],
+        root_certificates=client_ca,
+        require_client_auth=client_ca is not None,
+    )

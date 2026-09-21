@@ -11,15 +11,14 @@ from pixeldive_sdk import RestClient, sample_session_payload
 from app.api import create_app
 from app.auth import Principal, lookup_owner
 from app.config import Settings
-from app.database import create_engine, init_db, session_factory
 from app.error_map import ERROR_STATUS
 from app.exceptions import ImageNotFoundError, SessionServiceError
 from app.magic import header_bytes, matches_declared_type
 from app.models import ImageUpload
 from app.runtime import validate_auth_settings
 from app.service import SessionService
-from app.storage import LocalFilesystemStorage
 from tests.conftest import JPEG_MIN, PNG_1X1, sample_create
+from tests.factories import auth_settings, make_service
 
 
 def test_error_map_covers_every_domain_error() -> None:
@@ -83,15 +82,26 @@ def test_magic_bytes_match_declared_types(tmp_path: Path) -> None:
 
 
 def test_production_requires_auth_and_tls() -> None:
-    """ENVIRONMENT=production fails closed when auth or gRPC TLS is off."""
+    """ENVIRONMENT=production fails closed when auth or transport TLS is off."""
     with pytest.raises(RuntimeError, match="AUTH_REQUIRED"):
         validate_auth_settings(Settings(environment="production", auth_required=False))
+    with pytest.raises(RuntimeError, match="HTTP_INSECURE"):
+        validate_auth_settings(
+            Settings(
+                environment="prod",
+                auth_required=True,
+                api_keys="alpha:tenant-a",
+                http_insecure=True,
+                grpc_insecure=False,
+            ),
+        )
     with pytest.raises(RuntimeError, match="GRPC_INSECURE"):
         validate_auth_settings(
             Settings(
                 environment="prod",
                 auth_required=True,
                 api_keys="alpha:tenant-a",
+                http_insecure=False,
                 grpc_insecure=True,
             ),
         )
@@ -100,9 +110,10 @@ def test_production_requires_auth_and_tls() -> None:
             environment="production",
             auth_required=True,
             api_keys="alpha:tenant-a",
+            http_insecure=False,
             grpc_insecure=False,
-            grpc_tls_cert_file=Path("/certs/server.crt"),
-            grpc_tls_key_file=Path("/certs/server.key"),
+            tls_cert_file=Path("/certs/server.crt"),
+            tls_key_file=Path("/certs/server.key"),
         ),
     )
 
@@ -170,22 +181,8 @@ async def test_stream_image_rejects_mismatched_row(service: SessionService) -> N
 @pytest.mark.asyncio
 async def test_rest_sdk_applies_token_to_shared_client(tmp_path: Path) -> None:
     """Bearer token is sent even when RestClient wraps an unauthenticated client."""
-    settings = Settings(
-        database_url=f"sqlite+aiosqlite:///{tmp_path / 'sdk.db'}",
-        storage_backend="local",
-        storage_root=tmp_path / "images",
-        auth_required=True,
-        api_keys="alpha:tenant-a",
-        log_json=False,
-    )
-    engine = create_engine(settings)
-    await init_db(engine)
-    settings.storage_root.mkdir(parents=True, exist_ok=True)
-    service = SessionService(
-        session_factory(engine),
-        LocalFilesystemStorage(settings.storage_root),
-        settings,
-    )
+    settings = auth_settings(tmp_path, api_keys="alpha:tenant-a")
+    service, engine = await make_service(settings)
     app = create_app(service)
     http = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
     async with RestClient("http://test", token="alpha", client=http) as client:

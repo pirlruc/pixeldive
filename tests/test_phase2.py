@@ -100,6 +100,8 @@ def test_grpc_tls_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     )
     assert build_grpc_server_credentials(settings) == "creds"
     assert captured["mtls"] is True
+    shared = Settings(grpc_insecure=False, tls_cert_file=cert, tls_key_file=key)
+    assert build_grpc_server_credentials(shared) == "creds"
 
 
 def test_cursor_and_json_logs() -> None:

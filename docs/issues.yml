@@ -47,6 +47,11 @@
 #   open  SDK-007 (TLS gRPC + mobile protobuf Struct metadata)
 #   done  QUAL-002 (CPython 3.13 per PY-RUN-003; boto3 stays out)
 #   done  SEC-006 (production fail-closed, magic-byte uploads, HMAC keys)
+#
+# Shipped on main via https://github.com/pirlruc/pixeldive/pull/14
+# (merged 2026-09-21):
+#   done  SEC-007 (HTTP TLS + shared PEM; production fail-closed for HTTP and gRPC)
+#   open  SDK-008 (iOS/Android custom trust stores for private CAs)
 
 milestones:
   - name: Tooling — Analog & methodology
@@ -1305,6 +1310,57 @@ milestones:
             verification:
               - bash scripts/ci-local.sh
 
+      - id: SEC-007
+        status: done
+        title: Terminate TLS for HTTP; share PEM files with gRPC
+        overview:
+          problem: >-
+            SEC-001 and SEC-006 encrypt gRPC and fail-closed when
+            GRPC_INSECURE is true in production, but uvicorn still binds
+            plaintext HTTP. Bearer tokens and image bytes then travel in the
+            clear on the REST port even when ENVIRONMENT=production.
+          goal: >-
+            Give HTTP the same TLS (and optional mTLS) bind as gRPC. One
+            TLS_CERT_FILE / TLS_KEY_FILE pair can serve both transports.
+            Production refuses HTTP_INSECURE=true. SDKs accept a custom CA
+            (httpx verify, gRPC root_certificates) so self-signed lab certs
+            work without disabling verification.
+        architecture:
+          target: >-
+            In the context of dual-transport ingest on untrusted networks,
+            facing REST still on plaintext after gRPC TLS shipped, we decided
+            on shared PEM resolution plus uvicorn SSLContext rather than a
+            reverse proxy in-process, so both listeners encrypt with the same
+            operator-supplied files and SessionService stays the authz point.
+          modules:
+            - app/tls_files.py
+            - app/http_tls.py
+            - app/grpc_tls.py
+            - app/runtime.py
+            - app/ready_probe.py
+            - sdk/pixeldive_sdk
+        acceptance_criteria:
+          - ENVIRONMENT=production with HTTP_INSECURE=true raises at startup
+          - HTTPS RestClient with verify=server.pem can health-check and upload
+          - TLS GrpcClient with root_certificates can create a session
+          - Empty Compose TLS_* strings do not become Path('')
+          - Docker HEALTHCHECK uses ready_probe (HTTP or HTTPS)
+        guardrail_refs:
+          - PY-SEC-002
+          - PY-TEST-002
+        tasks:
+          - id: SEC-007-T1
+            status: done
+            title: Add HTTP TLS, shared PEM resolution, and SDK custom CA
+            instructions:
+              files:
+                - app/tls_files.py
+                - app/http_tls.py
+                - app/runtime.py
+                - sdk/pixeldive_sdk
+            verification:
+              - bash scripts/ci-local.sh
+
       - id: SEC-005
         status: open
         title: Move the quota hot path to Redis when Postgres contends
@@ -1617,6 +1673,50 @@ milestones:
             verification:
               - bash scripts/ci-local.sh
 
+      - id: SDK-008
+        status: open
+        title: Custom CA / private PKI trust for iOS and Android clients
+        overview:
+          problem: >-
+            Python RestClient and GrpcClient now accept a custom CA so lab
+            self-signed HTTPS/gRPC TLS works without disabling verification.
+            iOS URLSession and Android OkHttp still use the platform trust
+            store only. Private CAs used with SEC-007 will fail on device
+            unless operators install a system profile.
+          goal: >-
+            Let PixeldiveClient load an optional PEM CA (or pinned server
+            cert) on iOS and Android without turning TLS verification off.
+            Keep redirect and bearer-header hardening.
+        architecture:
+          target: >-
+            In the context of mobile clients talking to a privately minted
+            HTTPS service, facing platform trust stores that do not include
+            lab CAs, we decided to add an explicit CA/pin option on each
+            PixeldiveClient rather than documenting "disable ATS / trust
+            user certs", so verification stays on.
+          modules:
+            - ios
+            - android/sdk
+        acceptance_criteria:
+          - iOS PixeldiveClient can trust a PEM CA passed at init
+          - Android PixeldiveClient can trust a PEM CA passed at init
+          - HTTP (not HTTPS) base URLs remain valid for local demos
+          - Verification is never disabled as the default
+        guardrail_refs:
+          - SWIFT-SEC-005
+          - KT-SEC-005
+        tasks:
+          - id: SDK-008-T1
+            status: open
+            title: Add optional PEM CA trust to iOS and Android PixeldiveClient
+            instructions:
+              files:
+                - ios/Sources/PixeldiveSDK
+                - android/sdk/src/main/kotlin/com/pixeldive/sdk
+            verification:
+              - bash scripts/check-ios-sdk.sh
+              - bash scripts/check-android-sdk.sh
+
   - name: Camera ingest
     epics:
       - id: PERF-005
@@ -1759,7 +1859,3 @@ milestones:
             verification:
               - bash scripts/check-ios-sdk.sh
               - bash scripts/check-android-sdk.sh
-
-
-
-

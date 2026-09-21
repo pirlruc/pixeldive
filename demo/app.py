@@ -16,20 +16,22 @@ from demo.clients import DemoClients
 from demo.routes import register_demo_routes
 
 
-def _settings() -> tuple[str, str | None, str]:
-    """Read REST URL, optional token, and gRPC target from the environment."""
+def _settings() -> tuple[str, str | None, bool | str, str]:
+    """Read REST URL, token, TLS CA, and gRPC target from the environment."""
+    ca = os.environ.get("PIXELDIVE_TLS_CA", "").strip()
     return (
         os.environ.get("PIXELDIVE_BASE_URL", "http://127.0.0.1:8000"),
         os.environ.get("PIXELDIVE_TOKEN"),
+        ca if ca else True,
         os.environ.get("PIXELDIVE_GRPC_TARGET", "127.0.0.1:50051"),
     )
 
 
 def open_demo_clients() -> DemoClients:
     """Open REST plus gRPC clients for a live demo process."""
-    base, token, target = _settings()
+    base, token, verify, target = _settings()
     grpc = GrpcClient(target, token=token) if target.strip() else None
-    return DemoClients(RestClient(base, token=token), grpc)
+    return DemoClients(RestClient(base, token=token, verify=verify), grpc)
 
 
 def wrap_demo_client(client: RestClient | DemoClients | None) -> DemoClients | None:

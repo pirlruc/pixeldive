@@ -74,14 +74,23 @@ curl -F 'file=@frame.png;type=image/png' http://127.0.0.1:8000/api/v1/sessions/<
 - gRPC: `127.0.0.1:50051`
 
 Production-shaped auth: set `ENVIRONMENT=production` (refuses to start without
-`AUTH_REQUIRED=true` and `GRPC_INSECURE=false`), plus `API_KEYS=token:owner-id`
-(see `.env.example`). Local tests keep auth off. Optional per-tenant quotas:
+`AUTH_REQUIRED=true`, `HTTP_INSECURE=false`, and `GRPC_INSECURE=false`), plus
+`API_KEYS=token:owner-id` and a PEM pair (`TLS_CERT_FILE` / `TLS_KEY_FILE`, or
+the per-transport `HTTP_TLS_*` / `GRPC_TLS_*` files — see `.env.example`). Local
+tests keep auth and TLS off. Optional per-tenant quotas:
 `RATE_LIMIT_PER_MINUTE`, `TENANT_MAX_UPLOAD_BYTES`, `SESSION_MAX_UPLOAD_BYTES`
 (0 = unlimited). Set `GC_MIN_AGE_SECONDS` and `ORPHAN_SWEEP_INTERVAL_SECONDS` to
 positive values in production so concurrent same-hash uploads are not collected early.
 Process defaults bind HTTP/gRPC to `127.0.0.1`; the Docker image and Compose set
 `HTTP_HOST`/`GRPC_HOST` to `0.0.0.0` so the published loopback ports reach the
 container.
+
+Python SDK TLS: `RestClient("https://…", token=…, verify="/path/ca.pem")` and
+`GrpcClient("host:port", token=…, insecure=False, root_certificates=pem_bytes)`.
+Passing PEMs with `insecure=True` raises. IP targets can set
+`ssl_target_name_override` to the certificate's DNS name.
+iOS/Android clients use platform TLS when the base URL is `https://`; custom CA
+loading is [SDK-008](docs/issues.yml).
 
 Compose host ports bind to `127.0.0.1`. Named volumes `pgdata`, `images`, and
 `minio` hold state — back them up with `docker compose run --rm` / volume snapshots

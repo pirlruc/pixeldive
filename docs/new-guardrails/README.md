@@ -26,8 +26,9 @@ to start when authentication is off or when a plaintext gRPC/HTTP listener is th
 only bind. Local/dev defaults may stay open; production must not. Distinct from
 language SAST ([PY-SEC-002](https://github.com/pirlruc/guardrails/blob/1.6.0/python/guardrails.md)).
 
-**Why here:** `AUTH_REQUIRED=false` and `GRPC_INSECURE=true` are correct for tests
-and Compose, and are a production footgun without a fail-closed profile.
+**Why here:** `AUTH_REQUIRED=false`, `HTTP_INSECURE=true`, and `GRPC_INSECURE=true`
+are correct for tests and Compose, and are a production footgun without a fail-closed
+profile. pixeldive now requires all three to be hardened when `ENVIRONMENT=production`.
 
 ### PY-SEC-007 — Sniff declared Content-Type for untrusted uploads
 
