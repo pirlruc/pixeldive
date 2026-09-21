@@ -105,7 +105,7 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Host-native HTTP/gRPC defaults are `127.0.0.1`; image/Compose set `0.0.0.0` in-container.
 - `GrpcClient` TLS PEMs require `insecure=False`; IP targets may need `ssl_target_name_override`.
 - HTTP mTLS HEALTHCHECK needs `HTTP_TLS_CLIENT_CERT_FILE` / `HTTP_TLS_CLIENT_KEY_FILE` (compose comment documents a read-only `/certs` mount).
-- Draft PRs do not run `ready_for_review` unless workflows list that activity type; quality.yml and security.yml include it.
+- Draft Cursor PRs may not start Actions until a later `synchronize` push; GitHub also holds runs when a PR edits workflow files until a maintainer approves them.
 - Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001) and skips Gradle unless Java is on PATH (KT-ENV-001). When those tools are present, coverage is fail-closed (llvm-cov / Kover). `check-swift-coverage.py` finds `llvm-cov` next to `swift`. `ios-sdk` on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1`; `android-sdk` sets `PIXELDIVE_REQUIRE_JAVA=1`. Linux URLSession ignores `URLProtocol`; tests use `HTTPPerforming` plus a loopback server. FoundationNetworking has no `URLResponse()`. Do not include the Compose demo from `ANDROID_HOME`. Apple Swift treats CRLF as one `Character`; sanitizers walk `unicodeScalars`. PNG multipart bodies are not UTF-8.
 - Android `HttpUrl.resolve` dropped a base path prefix — concatenate like iOS/httpx. Multipart `Content-Type` parameters (`charset=`) must be stripped, not glued onto the subtype. iOS must trim bearer tokens, reject non-file upload URLs, refuse off-origin followed redirects, and must not fabricate sample cameras when discovery is empty.
 
@@ -128,6 +128,6 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Review pass: 3xx/redirect + multipart filename hardening; llvm-cov/Kover/ktlint/detekt fail-closed in CI
 - Follow-up pass: Android base-path join, media-type parameters, cancellable OkHttp; iOS token trim, file URL, off-origin redirect refuse, empty camera discovery
 - SEC-007: HTTP TLS + shared `TLS_*` PEM files; production fail-closed for HTTP and gRPC; Python SDK custom CA; Docker HEALTHCHECK `ready_probe`
-- Follow-up: production resolves HTTP and gRPC PEMs (not flags only); `GrpcClient` refuses PEMs on insecure channels; HEALTHCHECK loads mTLS client identity; quality/security workflows include `ready_for_review`
+- Follow-up: production resolves HTTP and gRPC PEMs (not flags only); `GrpcClient` refuses PEMs on insecure channels; HEALTHCHECK loads mTLS client identity
 
 *Last updated: 2026-09-21*
