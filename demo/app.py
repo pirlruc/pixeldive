@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import os
 from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import asynccontextmanager, suppress
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient, HTTPStatusError
 from pixeldive_sdk import GrpcClient, RestClient
@@ -45,7 +45,7 @@ def create_demo_app(client: RestClient | DemoClients | None = None) -> FastAPI:
     app = FastAPI(title="pixeldive demo", version="0.3.0", lifespan=_lifespan(owns_client))
     app.state.client = wrap_demo_client(client)
     register_demo_routes(app, _sdk_factory(app))
-    app.add_exception_handler(HTTPStatusError, _upstream_handler)
+    app.add_exception_handler(HTTPStatusError, _upstream_handler)  # type: ignore[arg-type]
     return app
 
 
@@ -63,7 +63,7 @@ def _sdk_factory(app: FastAPI) -> Callable[[], Awaitable[DemoClients]]:
     return sdk
 
 
-def _lifespan(owns_client: bool):
+def _lifespan(owns_client: bool) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
     """Open SDK clients when the process did not receive one."""
 
     @asynccontextmanager
@@ -79,7 +79,7 @@ def _lifespan(owns_client: bool):
     return lifespan
 
 
-async def _upstream_handler(_request: object, exc: HTTPStatusError) -> JSONResponse:
+async def _upstream_handler(_request: Request, exc: HTTPStatusError) -> JSONResponse:
     """Surface upstream HTTP errors as JSON."""
     with suppress(Exception):
         await exc.response.aread()

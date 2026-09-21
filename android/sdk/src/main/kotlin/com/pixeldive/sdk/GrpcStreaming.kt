@@ -15,4 +15,7 @@ interface GrpcStreaming {
         request: ByteArray,
         token: String?,
     ): List<ByteArray>
+
+    /** Release the underlying HTTP/2 client. Default is a no-op for test stubs. */
+    fun close() {}
 }

@@ -21,6 +21,11 @@ public struct PixeldiveGrpcClient: Sendable {
         self.chunkSize = max(chunkSize, 1)
     }
 
+    /// Close the streaming transport (NIO channel / event-loop group).
+    public func close() {
+        stream.close()
+    }
+
     /// Client-stream `UploadImage` from an in-memory frame without a second full copy
     /// of the JPEG/PNG into a multipart body.
     public func uploadImage(

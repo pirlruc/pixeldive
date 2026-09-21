@@ -166,6 +166,12 @@ class GrpcCodecTest {
         assertEquals(2 to "", grpcStatus(Headers.headersOf(), Headers.headersOf()))
         val denied = Headers.headersOf("grpc-status", "7", "grpc-message", "denied")
         assertEquals(7 to "denied", grpcStatus(denied, Headers.headersOf()))
+        val encoded = Headers.headersOf("grpc-status", "16", "grpc-message", "no%20access")
+        assertEquals(16 to "no access", grpcStatus(encoded, Headers.headersOf()))
+        assertEquals("ok", percentDecode("ok"))
+        assertEquals("a%", percentDecode("a%"))
+        assertEquals("a%ZZ", percentDecode("a%ZZ"))
+        assertEquals(null, percentByte("ab", 0))
     }
 
     @Test
@@ -192,6 +198,7 @@ class GrpcCodecTest {
             assertThrows<PixeldiveException.InvalidResourceId> {
                 runBlocking { client.uploadImage("bad", "f.png", ByteArray(0)) }
             }
+            client.close()
         }
     }
 
@@ -211,6 +218,7 @@ class GrpcCodecTest {
             assertTrue(stub.clientMessages.size >= 2)
             client.uploadImage(sessionId, "f.png", ByteArray(0))
             PixeldiveGrpcClient(stub, chunkSize = 0).uploadImage(sessionId, "f.png", "x".toByteArray())
+            client.close()
         }
     }
 
@@ -241,14 +249,19 @@ class GrpcCodecTest {
                 assertThrows<PixeldiveException.GrpcStatus> {
                     runBlocking { stream.clientStreaming(GrpcPath.UPLOAD_IMAGE, listOf(ByteArray(0)), null) }
                 }
-                val closed = OkHttpGrpcStreaming("127.0.0.1", 1, h2cClient(1))
+                val port = server.port
+                PixeldiveGrpcClient.insecure("127.0.0.1", port).close()
+                stream.close()
+                server.shutdown()
+                val closed = OkHttpGrpcStreaming("127.0.0.1", port, h2cClient(1))
                 assertThrows<PixeldiveException.Transport> {
                     runBlocking { closed.clientStreaming(GrpcPath.UPLOAD_IMAGE, emptyList(), null) }
                 }
-                PixeldiveGrpcClient.insecure("127.0.0.1", server.port)
+                closed.close()
+                OkHttpGrpcStreaming("127.0.0.1", port, h2cClient(5), ownsHttp = false).close()
                 h2cClient(5)
             } finally {
-                server.shutdown()
+                runCatching { server.shutdown() }
             }
         }
     }

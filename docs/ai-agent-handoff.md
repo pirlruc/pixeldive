@@ -103,12 +103,14 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - `ENVIRONMENT=production` requires `AUTH_REQUIRED=true` and `GRPC_INSECURE=false`.
 - Host-native HTTP/gRPC defaults are `127.0.0.1`; image/Compose set `0.0.0.0` in-container.
 - Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001) and skips Gradle unless Java is on PATH (KT-ENV-001). When those tools are present, coverage is fail-closed (llvm-cov / Kover). `check-swift-coverage.py` puts `llvm-cov` next to `swift` on PATH and invokes `xcrun`/`llvm-cov` as literal argv (Semgrep `dangerous-subprocess-use-tainted-env-args`). `ios-sdk` on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1`; `android-sdk` sets `PIXELDIVE_REQUIRE_JAVA=1`. Linux URLSession ignores `URLProtocol`; tests use `HTTPPerforming` plus a loopback server. FoundationNetworking has no `URLResponse()` and `uploadTask(fromFile:)` traps in `_BodyFileSource` — Linux loads the file into `httpBody`. Do not include the Compose demo from `ANDROID_HOME`. Apple Swift treats CRLF as one `Character`; sanitizers walk `unicodeScalars`. PNG multipart bodies are not UTF-8.
-- Camera sessions should reuse one `PixeldiveClient` / gRPC channel, send in-memory frames (already in RAM from the camera), and use file/path helpers for gallery or on-disk bursts. Local storage hardlinks spools; S3 still streams multipart. Do not bump session rows after the first frame. Mobile gRPC is h2c: Android OkHttp `H2_PRIOR_KNOWLEDGE`, iOS grpc-swift NIO (Apple-only SPM product). URLSession does not speak h2c. Demos capture live camera (AVCapture / CameraX / getUserMedia) and upload on gRPC; session CRUD stays REST (`PIXELDIVE_GRPC_TARGET`, default `127.0.0.1:50051`).
+- Camera sessions should reuse one `PixeldiveClient` / gRPC channel, send in-memory frames (already in RAM from the camera), and use file/path helpers for gallery or on-disk bursts. Local storage hardlinks spools; S3 still streams multipart. Do not bump session rows after the first frame. Close `PixeldiveGrpcClient` when the host/token changes (`NioGrpcStreaming.close` / OkHttp dispatcher shutdown). Mobile gRPC is h2c: Android OkHttp `H2_PRIOR_KNOWLEDGE`, iOS grpc-swift NIO (Apple-only SPM product). URLSession does not speak h2c. Demos capture live camera (AVCapture / CameraX / getUserMedia) and upload on gRPC; session CRUD stays REST (`PIXELDIVE_GRPC_TARGET`, default `127.0.0.1:50051`). Native demos must not `listSessions` after every JPEG. The Python demo still POSTs the JPEG through FastAPI ([PERF-006](issues.yml)). TLS gRPC and Struct metadata are [SDK-007](issues.yml).
 - Android `HttpUrl.resolve` dropped a base path prefix — concatenate like iOS/httpx. Multipart `Content-Type` parameters (`charset=`) must be stripped, not glued onto the subtype. iOS must trim bearer tokens, reject non-file upload URLs, refuse off-origin followed redirects, and must not fabricate sample cameras when discovery is empty.
 
 ## Suggested next work
 
 - [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
+- [PERF-006](issues.yml) stream browser camera bytes into GrpcClient (no second full JPEG)
+- [SDK-007](issues.yml) TLS gRPC constructors + protobuf Struct metadata on mobile
 - [SEC-004](issues.yml) shared quota store on PostgreSQL (first multi-replica tests)
 - [SEC-005](issues.yml) optional Redis quota hot path if Postgres contends
 - First image/GitHub Release publish: SC-SIGN-001, SC-PROV-001, DOCKER-TEST-001
@@ -125,6 +127,6 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Follow-up pass: Android base-path join, media-type parameters, cancellable OkHttp; iOS token trim, file URL, off-origin redirect refuse, empty camera discovery
 - Camera ingest: unified `add_image`/`add_images_batch`, local spool hardlink, parallel REST spool, quota release on delete, streaming mobile file uploads ([PERF-005](issues.yml), [SDK-004](issues.yml))
 - Mobile gRPC image clients + camera-feed demos ([SDK-005](issues.yml), [SDK-006](issues.yml)): hand-rolled protobuf, iOS grpc-swift NIO, Android OkHttp h2c, AVCapture/CameraX/getUserMedia → `UploadImage`
-- CI follow-up: Semgrep-safe llvm-cov argv, Linux FoundationNetworking file-upload fallback, PNG multipart assertion as bytes ([PR #13](https://github.com/pirlruc/pixeldive/pull/13))
+- Follow-up: ruff format on `tests/test_sdk.py`; close gRPC channels on cache replace; skip REST list and JPEG encode while a frame is in flight; NIO call timeout; percent-decode `grpc-message`; Python Struct metadata ([PR #13](https://github.com/pirlruc/pixeldive/pull/13))
 
 *Last updated: 2026-09-20*

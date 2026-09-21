@@ -16,6 +16,7 @@ class OkHttpGrpcStreaming(
     host: String,
     port: Int,
     private val http: OkHttpClient = h2cClient(),
+    private val ownsHttp: Boolean = true,
 ) : GrpcStreaming {
     private val root: HttpUrl =
         HttpUrl.Builder().scheme("http").host(host).port(port).build()
@@ -34,6 +35,13 @@ class OkHttpGrpcStreaming(
         request: ByteArray,
         token: String?,
     ): List<ByteArray> = GrpcFrames.messages(execute(path, token, GrpcFrames.body(listOf(request))))
+
+    override fun close() {
+        http.connectionPool.evictAll()
+        if (ownsHttp) {
+            http.dispatcher.executorService.shutdown()
+        }
+    }
 
     private suspend fun execute(
         path: String,
@@ -108,6 +116,36 @@ internal fun grpcStatus(
         headers["grpc-status"]?.toIntOrNull()
             ?: trailers["grpc-status"]?.toIntOrNull()
             ?: 2
-    val message = headers["grpc-message"] ?: trailers["grpc-message"] ?: ""
+    val message = percentDecode(headers["grpc-message"] ?: trailers["grpc-message"] ?: "")
     return code to message
+}
+
+internal fun percentDecode(raw: String): String {
+    if ('%' !in raw) {
+        return raw
+    }
+    val bytes = ArrayList<Byte>(raw.length)
+    var index = 0
+    while (index < raw.length) {
+        val encoded = percentByte(raw, index)
+        if (encoded != null) {
+            bytes.add(encoded.first)
+            index = encoded.second
+        } else {
+            raw[index].toString().toByteArray(Charsets.UTF_8).forEach { bytes.add(it) }
+            index += 1
+        }
+    }
+    return ByteArray(bytes.size) { bytes[it] }.toString(Charsets.UTF_8)
+}
+
+internal fun percentByte(
+    raw: String,
+    index: Int,
+): Pair<Byte, Int>? {
+    if (raw[index] != '%' || index + 2 >= raw.length) {
+        return null
+    }
+    val value = raw.substring(index + 1, index + 3).toIntOrNull(16) ?: return null
+    return value.toByte() to index + 3
 }

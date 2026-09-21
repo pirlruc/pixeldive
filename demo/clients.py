@@ -7,23 +7,7 @@ from typing import Any
 
 from pixeldive_sdk import GrpcClient, RestClient
 
-from app.pb import session_service_pb2 as pb
-
-
-def session_image_json(image: pb.SessionImage) -> dict[str, Any]:
-    """Map a protobuf SessionImage onto the REST JSON shape."""
-    uploaded = ""
-    if image.HasField("uploaded_at"):
-        uploaded = image.uploaded_at.ToJsonString()
-    return {
-        "id": image.id,
-        "session_id": image.session_id,
-        "filename": image.filename,
-        "content_type": image.content_type,
-        "size_bytes": int(image.size_bytes),
-        "uploaded_at": uploaded,
-        "metadata": {},
-    }
+from demo.image_json import session_image_json
 
 
 class DemoClients:

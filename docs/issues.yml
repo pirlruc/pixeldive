@@ -43,6 +43,8 @@
 #   open  TOOL-002 (GitHub issue objects still unpublished)
 #   done  SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
 #   open  SEC-004 (Postgres shared quotas), SEC-005 (Redis quota hot path later)
+#   open  PERF-006 (browser camera still buffers through demo HTTP)
+#   open  SDK-007 (TLS gRPC + mobile protobuf Struct metadata)
 #   done  QUAL-002 (CPython 3.13 per PY-RUN-003; boto3 stays out)
 #   done  SEC-006 (production fail-closed, magic-byte uploads, HMAC keys)
 
@@ -1670,6 +1672,93 @@ milestones:
                 - app/auth.py
             verification:
               - bash scripts/ci-local.sh
+
+      - id: PERF-006
+        status: open
+        title: Stream browser camera frames without a second full-body hop
+        overview:
+          problem: >-
+            Native demos now client-stream JPEG frames on gRPC and record the
+            upload response locally. The Python capture page still encodes a
+            JPEG, POSTs it as multipart to the demo process, and the demo
+            buffers the whole file before GrpcClient.upload_image. Browsers
+            cannot speak h2c, so every getUserMedia frame pays a second copy.
+          goal: >-
+            Keep session CRUD on REST. For the browser demo, stream the
+            capture body into GrpcClient (chunked upload or WebSocket) so a
+            live feed does not hold two full JPEGs. Leave native apps on
+            direct PixeldiveGrpcClient. Optionally queue one in-flight frame
+            instead of dropping while a slower upload finishes.
+        architecture:
+          target: >-
+            In the context of a browser camera feed that cannot speak h2c,
+            facing a full multipart POST into the demo before gRPC, we decided
+            to keep the demo as the gRPC hop and stream the request body
+            rather than add grpc-web or expose h2c to the browser.
+          modules:
+            - demo
+            - sdk/pixeldive_sdk
+        acceptance_criteria:
+          - Browser camera upload does not read the whole JPEG into memory twice
+          - Native iOS/Android demos stay on PixeldiveGrpcClient (no demo HTTP hop)
+          - Session list/refresh is not called per frame
+        guardrail_refs:
+          - PY-CPLX-001
+          - PY-TEST-002
+        tasks:
+          - id: PERF-006-T1
+            status: open
+            title: Stream the demo upload body into GrpcClient
+            instructions:
+              files:
+                - demo/routes.py
+                - demo/clients.py
+                - sdk/pixeldive_sdk
+            verification:
+              - bash scripts/ci-local.sh
+
+      - id: SDK-007
+        status: open
+        title: Production TLS gRPC and protobuf Struct metadata on mobile
+        overview:
+          problem: >-
+            Mobile PixeldiveGrpcClient speaks prior-knowledge h2c and decodes
+            SessionImage.metadata as an empty map. Hand-rolled codecs skip
+            google.protobuf.Struct (field 8). Production ENVIRONMENT requires
+            GRPC_INSECURE=false; phones cannot pin the local 127.0.0.1:50051
+            channel.
+          goal: >-
+            TLS + ALPN h2 clients on iOS (NIO SSL) and Android (HTTPS HTTP/2),
+            decode Struct metadata into the existing JSON map, and keep h2c
+            as the explicit insecure() helper for local grpc.aio.
+        architecture:
+          target: >-
+            In the context of shipping camera ingest past local demos, facing
+            h2c-only mobile clients and dropped Struct metadata, we decided to
+            add TLS constructors beside insecure() and decode field 8 as JSON
+            rather than generating stubs on Linux CI.
+          modules:
+            - ios/Sources/PixeldiveSDK
+            - android/sdk
+        acceptance_criteria:
+          - PixeldiveGrpcClient can open a TLS HTTP/2 channel with a bearer token
+          - insecure() remains the h2c helper for local grpc.aio
+          - SessionImage.metadata is populated from protobuf Struct field 8
+        guardrail_refs:
+          - SWIFT-TEST-002
+          - KT-TEST-002
+          - PY-SEC-002
+        tasks:
+          - id: SDK-007-T1
+            status: open
+            title: Add TLS gRPC constructors and Struct metadata decoding
+            instructions:
+              files:
+                - ios/Sources/PixeldiveSDK
+                - android/sdk
+            verification:
+              - bash scripts/check-ios-sdk.sh
+              - bash scripts/check-android-sdk.sh
 
 
 

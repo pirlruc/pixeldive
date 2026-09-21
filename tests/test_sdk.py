@@ -98,7 +98,8 @@ async def test_demo_grpc_camera_upload(service: SessionService) -> None:
     """Demo image routes client-stream over gRPC when a GrpcClient is bound."""
     from app.pb import session_service_pb2 as pb
     from demo.app import create_demo_app
-    from demo.clients import DemoClients, session_image_json
+    from demo.clients import DemoClients
+    from demo.image_json import session_image_json
     from demo.ui import PAGE
 
     assert "getUserMedia" in PAGE
@@ -106,6 +107,10 @@ async def test_demo_grpc_camera_upload(service: SessionService) -> None:
     empty = session_image_json(pb.SessionImage(id="x", session_id="y", filename="f.png"))
     assert empty["uploaded_at"] == ""
     assert empty["size_bytes"] == 0
+    assert empty["metadata"] == {}
+    with_meta = pb.SessionImage(id="x", session_id="y", filename="f.png")
+    with_meta.metadata["source"] = "camera"
+    assert session_image_json(with_meta)["metadata"]["source"] == "camera"
 
     backend = create_app(service)
     rest = asgi_client_for(backend)
@@ -147,7 +152,9 @@ async def test_demo_clients_rest_fallback(service: SessionService, monkeypatch) 
         __import__("pixeldive_sdk", fromlist=["sample_session_payload"]).sample_session_payload("d")
     )
     image = await wrapped.upload_image(created["id"], "frame.png", PNG_1X1, "image/png")
-    payload = b"".join([chunk async for chunk in wrapped.download_image(created["id"], image["id"])])
+    payload = b"".join(
+        [chunk async for chunk in wrapped.download_image(created["id"], image["id"])]
+    )
     assert payload == PNG_1X1
     await wrapped.aclose()
 

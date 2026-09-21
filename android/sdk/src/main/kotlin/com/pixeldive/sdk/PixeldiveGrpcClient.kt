@@ -8,6 +8,11 @@ class PixeldiveGrpcClient(
 ) {
     private val chunkSize = chunkSize.coerceAtLeast(1)
 
+    /** Close the streaming transport (OkHttp h2c client). */
+    fun close() {
+        stream.close()
+    }
+
     /** Client-stream `UploadImage` from an in-memory camera frame. */
     suspend fun uploadImage(
         sessionId: String,

@@ -52,11 +52,11 @@ final class DemoModel: ObservableObject {
             log = "Create or select a session first."
             return
         }
-        capturing = true
         camera.onJPEG = { [weak self] data in
             Task { await self?.upload(data: data, filename: "frame.jpg", contentType: "image/jpeg") }
         }
         camera.requestAndStart()
+        capturing = true
         log = "Camera feed → gRPC UploadImage"
     }
 
@@ -109,7 +109,11 @@ final class DemoModel: ObservableObject {
             return
         }
         uploading = true
-        defer { uploading = false }
+        camera.setBusy(true)
+        defer {
+            uploading = false
+            camera.setBusy(false)
+        }
         do {
             let image = try await grpcClient().uploadImage(
                 sessionID: session.id.uuidString,
@@ -118,7 +122,7 @@ final class DemoModel: ObservableObject {
                 contentType: contentType
             )
             log = "Uploaded \(image.filename) (\(image.sizeBytes) bytes) via gRPC"
-            try await refresh(makeClient())
+            record(image)
         } catch {
             log = "upload failed: \(error.localizedDescription)"
         }
@@ -136,6 +140,13 @@ final class DemoModel: ObservableObject {
         }
         let listed = try await client.listImages(sessionID: session.id.uuidString)
         images = listed.items
+    }
+
+    private func record(_ image: SessionImage) {
+        if images.contains(where: { $0.id == image.id }) {
+            return
+        }
+        images.insert(image, at: 0)
     }
 
     private func run(_ label: String, body: (PixeldiveClient) async throws -> Void) async {
@@ -162,6 +173,7 @@ final class DemoModel: ObservableObject {
         if let grpc, grpcKey == key {
             return grpc
         }
+        grpc?.close()
         #if canImport(GRPC)
         let port = Int(grpcPort) ?? 50051
         let created = PixeldiveGrpcClient.insecure(

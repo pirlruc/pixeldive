@@ -48,6 +48,10 @@ class DemoViewModel(
         _state.update { it.copy(capturing = false, log = "Camera permission denied.") }
     }
 
+    fun onFrameError(exc: Exception) {
+        _state.update { it.copy(log = "frame failed: ${exc.message}") }
+    }
+
     fun setCapturing(value: Boolean) {
         _state.update { it.copy(capturing = value) }
     }
@@ -87,12 +91,9 @@ class DemoViewModel(
         }
     }
 
-    fun uploadFrame(jpeg: ByteArray) {
+    suspend fun uploadFrame(jpeg: ByteArray) {
         val session = _state.value.selected ?: return
-        if (_state.value.uploading) {
-            return
-        }
-        viewModelScope.launch { sendFrame(session, "frame.jpg", jpeg, "image/jpeg") }
+        sendFrame(session, "frame.jpg", jpeg, "image/jpeg")
     }
 
     fun downloadFirst() {
@@ -136,9 +137,11 @@ class DemoViewModel(
             val image =
                 grpcClient().uploadImage(session.id.toString(), filename, payload, contentType)
             _state.update {
-                it.copy(log = "Uploaded ${image.filename} (${image.sizeBytes} bytes) via gRPC")
+                it.copy(
+                    log = "Uploaded ${image.filename} (${image.sizeBytes} bytes) via gRPC",
+                    images = listOf(image) + it.images.filter { item -> item.id != image.id },
+                )
             }
-            refresh(makeClient())
         } catch (exc: Exception) {
             _state.update { it.copy(log = "upload failed: ${exc.message}") }
         } finally {
@@ -191,11 +194,18 @@ class DemoViewModel(
         if (cached != null && grpcKey == key) {
             return cached
         }
+        cached?.close()
         val port = _state.value.grpcPort.toIntOrNull() ?: 50051
         val created = PixeldiveGrpcClient.insecure(_state.value.grpcHost, port, trimmed.ifEmpty { null })
         grpc = created
         grpcKey = key
         return created
+    }
+
+    override fun onCleared() {
+        grpc?.close()
+        grpc = null
+        super.onCleared()
     }
 
     companion object {

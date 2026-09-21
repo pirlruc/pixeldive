@@ -173,11 +173,13 @@ private fun cameraBlock(
             onDispose { camera.unbind() }
         }
         LaunchedEffect(state.capturing) {
-            while (state.capturing) {
-                try {
-                    model.uploadFrame(camera.takeJpeg())
-                } catch (_: Exception) {
-                    // keep the loop alive across a dropped frame
+            while (model.state.value.capturing) {
+                if (!model.state.value.uploading) {
+                    try {
+                        model.uploadFrame(camera.takeJpeg())
+                    } catch (exc: Exception) {
+                        model.onFrameError(exc)
+                    }
                 }
                 delay(450)
             }

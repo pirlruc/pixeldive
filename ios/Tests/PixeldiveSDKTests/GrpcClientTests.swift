@@ -85,6 +85,7 @@ final class GrpcClientTests: XCTestCase {
         )
         XCTAssertGreaterThanOrEqual(stub.clientMessages.count, 2)
         _ = try await client.uploadImage(sessionID: sessionID, filename: "f.png", payload: Data())
+        client.close()
     }
 
     func testStatusMapping() {
@@ -96,7 +97,7 @@ final class GrpcClientTests: XCTestCase {
 
     func testNioCloseAndFailedCall() async {
         #if canImport(GRPC)
-        let stream = NioGrpcStreaming(host: "127.0.0.1", port: 1)
+        let stream = NioGrpcStreaming(host: "127.0.0.1", port: 1, timeoutMillis: 250)
         let client = PixeldiveGrpcClient(stream: stream)
         do {
             _ = try await client.uploadImage(
@@ -116,7 +117,8 @@ final class GrpcClientTests: XCTestCase {
         }
         stream.close()
         stream.close()
-        _ = PixeldiveGrpcClient.insecure(host: "127.0.0.1", port: 1, token: "tok")
+        let insecure = PixeldiveGrpcClient.insecure(host: "127.0.0.1", port: 1, token: "tok")
+        insecure.close()
         #endif
     }
 }

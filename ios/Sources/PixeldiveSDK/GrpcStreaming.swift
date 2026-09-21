@@ -7,6 +7,13 @@ public protocol GrpcStreaming: Sendable {
     func clientStreaming(path: String, messages: [Data], token: String?) async throws -> Data
     /// Unary request then server-stream protobuf payloads.
     func serverStreaming(path: String, request: Data, token: String?) async throws -> [Data]
+    /// Release the underlying channel. Default is a no-op for test stubs.
+    func close()
+}
+
+public extension GrpcStreaming {
+    /// Default no-op so test stubs do not manage a channel.
+    func close() {}
 }
 
 /// gRPC status from trailers or the NIO status future.

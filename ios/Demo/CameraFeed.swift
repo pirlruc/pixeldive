@@ -1,4 +1,6 @@
 import AVFoundation
+import CoreImage
+import ImageIO
 import SwiftUI
 import UIKit
 
@@ -12,8 +14,23 @@ final class CameraFeed: NSObject, ObservableObject {
 
     private let output = AVCaptureVideoDataOutput()
     private let queue = DispatchQueue(label: "pixeldive.camera")
+    private let ciContext = CIContext()
+    private let busyLock = NSLock()
+    private var busy = false
     private var lastEmit = Date.distantPast
     private let minInterval: TimeInterval = 0.45
+
+    func setBusy(_ value: Bool) {
+        busyLock.lock()
+        busy = value
+        busyLock.unlock()
+    }
+
+    private func isBusy() -> Bool {
+        busyLock.lock()
+        defer { busyLock.unlock() }
+        return busy
+    }
 
     func requestAndStart() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -48,6 +65,10 @@ final class CameraFeed: NSObject, ObservableObject {
     }
 
     private func configureAndRun() {
+        if session.isRunning {
+            DispatchQueue.main.async { self.running = true }
+            return
+        }
         do {
             try configure()
             session.startRunning()
@@ -58,10 +79,11 @@ final class CameraFeed: NSObject, ObservableObject {
     }
 
     private func configure() throws {
+        if !session.inputs.isEmpty {
+            return
+        }
         session.beginConfiguration()
         defer { session.commitConfiguration() }
-        session.inputs.forEach { session.removeInput($0) }
-        session.outputs.forEach { session.removeOutput($0) }
         guard let device = AVCaptureDevice.default(for: .video) else {
             throw PixeldiveCameraError.unavailable
         }
@@ -84,12 +106,26 @@ extension CameraFeed: AVCaptureVideoDataOutputSampleBufferDelegate {
         from connection: AVCaptureConnection
     ) {
         let now = Date()
-        if now.timeIntervalSince(lastEmit) < minInterval {
+        if now.timeIntervalSince(lastEmit) < minInterval || isBusy() {
             return
         }
         lastEmit = now
         guard let jpeg = jpegData(sampleBuffer) else { return }
         DispatchQueue.main.async { self.onJPEG?(jpeg) }
+    }
+
+    private func jpegData(_ sampleBuffer: CMSampleBuffer) -> Data? {
+        guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            return nil
+        }
+        let image = CIImage(cvImageBuffer: imageBuffer)
+        guard let space = CGColorSpace(name: CGColorSpace.sRGB) else {
+            return nil
+        }
+        let quality: [CIImageRepresentationOption: Any] = [
+            kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.55,
+        ]
+        return ciContext.jpegRepresentation(of: image, colorSpace: space, options: quality)
     }
 }
 
@@ -99,17 +135,6 @@ enum PixeldiveCameraError: Error, LocalizedError {
     var errorDescription: String? {
         "No camera available."
     }
-}
-
-func jpegData(_ sampleBuffer: CMSampleBuffer) -> Data? {
-    guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-        return nil
-    }
-    let image = CIImage(cvImageBuffer: imageBuffer)
-    guard let cg = CIContext().createCGImage(image, from: image.extent) else {
-        return nil
-    }
-    return UIImage(cgImage: cg).jpegData(compressionQuality: 0.55)
 }
 
 struct CameraPreview: UIViewRepresentable {
