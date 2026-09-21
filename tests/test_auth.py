@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.api import create_app
+from app.rest.api import create_app
 from tests.conftest import PNG_1X1, sample_create
 from tests.factories import auth_settings, make_service
 

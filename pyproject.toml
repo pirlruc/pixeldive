@@ -130,9 +130,9 @@ docstring-code-format = true
 select = ["B", "C4", "D", "E", "F", "I", "SIM", "UP", "W"]
 
 [tool.ruff.lint.per-file-ignores]
-"app/api.py" = ["B008"]
-"app/api_images.py" = ["B008"]
-"app/api_deps.py" = ["B008"]
+"app/rest/api.py" = ["B008"]
+"app/rest/api_images.py" = ["B008"]
+"app/rest/api_deps.py" = ["B008"]
 "app/models.py" = ["UP037", "UP007"]
 "demo/app.py" = ["B008"]
 "demo/routes.py" = ["B008"]

@@ -43,7 +43,7 @@
 #   open  TOOL-002 (GitHub issue objects still unpublished)
 #   done  SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
 #   open  SEC-004 (Postgres shared quotas), SEC-005 (Redis quota hot path later)
-#   open  PERF-006 (browser camera still buffers through demo HTTP)
+#   done  PERF-006 (gRPC demo streams capped chunks; REST fallback keeps a temp file)
 #   open  SDK-007 (TLS gRPC + mobile protobuf Struct metadata)
 #   done  QUAL-002 (CPython 3.13 per PY-RUN-003; boto3 stays out)
 #   done  SEC-006 (production fail-closed, magic-byte uploads, HMAC keys)
@@ -1117,8 +1117,8 @@ milestones:
             than adding Redis or a proxy-only limiter, to share one cap
             without a new failure domain.
           modules:
-            - app/quotas.py
-            - app/service.py
+            - app/sessions/quotas.py
+            - app/sessions/service.py
             - migrations
         acceptance_criteria:
           - Two processes with the same API_KEYS share one rate/byte budget
@@ -1132,7 +1132,8 @@ milestones:
             title: Replace in-process TenantQuota with a PostgreSQL backend
             instructions:
               files:
-                - app/quotas.py
+                - app/sessions/quotas.py
+                - app/sessions/service.py
             verification:
               - bash scripts/ci-local.sh
 
@@ -1443,7 +1444,7 @@ milestones:
             path contends, rather than introducing Redis for the first test
             of shared quotas.
           modules:
-            - app/quotas.py
+            - app/sessions/quotas.py
             - docker-compose.yml
         acceptance_criteria:
           - Redis is optional; default shared backend remains PostgreSQL (SEC-004)
@@ -1458,7 +1459,7 @@ milestones:
             title: Add an optional Redis TenantQuota backend behind the existing API
             instructions:
               files:
-                - app/quotas.py
+                - app/sessions/quotas.py
                 - docker-compose.yml
             verification:
               - bash scripts/ci-local.sh
@@ -1832,16 +1833,16 @@ milestones:
               - bash scripts/ci-local.sh
 
       - id: PERF-006
-        status: open
+        status: done
         title: Stream browser camera frames without a second full-body hop
         overview:
           problem: >-
             Native demos now client-stream JPEG frames on gRPC and record the
             upload response locally. The Python capture page still encodes a
-            JPEG and POSTs it as multipart. The demo now spills that body to a
-            capped temp file and streams it with upload_image_from_path, but
-            Starlette may still spool the multipart body and the browser still
-            cannot speak h2c.
+            JPEG and POSTs it as multipart.             The gRPC demo reads that body once into a capped chunk list and
+            streams those chunks. The REST-only fallback still uses a temp
+            file. Starlette may still spool the multipart body, and the
+            browser still cannot speak h2c.
           goal: >-
             Keep session CRUD on REST. For the browser demo, stream the
             capture body into GrpcClient (chunked upload or WebSocket) so a
@@ -1866,7 +1867,7 @@ milestones:
           - PY-TEST-002
         tasks:
           - id: PERF-006-T1
-            status: open
+            status: done
             title: Stream the demo upload body into GrpcClient
             instructions:
               files:

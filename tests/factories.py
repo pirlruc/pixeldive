@@ -4,10 +4,10 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from app.blobs.storage import LocalFilesystemStorage
 from app.config import Settings
 from app.database import create_engine, init_db, session_factory
-from app.service import SessionService
-from app.storage import LocalFilesystemStorage
+from app.sessions.service import SessionService
 
 
 def isolated_settings(tmp_path: Path, **overrides: object) -> Settings:

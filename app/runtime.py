@@ -5,18 +5,18 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from app.api import create_app
+from app.blobs.storage import build_storage
 from app.config import Settings, get_settings
 from app.database import create_engine, init_db, session_factory
-from app.grpc_server import start_grpc_server
-from app.http_tls import build_http_server
 from app.lifecycle import close_storage, orphan_sweep_loop, serve_until_stopped
 from app.metrics import Metrics
 from app.migrate import upgrade_head
 from app.observability import configure_logging
 from app.production_limits import require_production_quotas
-from app.service import SessionService
-from app.storage import build_storage
+from app.rest.api import create_app
+from app.rest.http_tls import build_http_server
+from app.rpc.grpc_server import start_grpc_server
+from app.sessions.service import SessionService
 from app.tls_files import grpc_tls_files, http_tls_files
 
 logger = logging.getLogger("pixeldive")

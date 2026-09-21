@@ -14,9 +14,9 @@ from app.exceptions import (
     SessionNotFoundError,
     UnsupportedContentTypeError,
 )
-from app.metadata import parse_metadata_json
 from app.models import ImageUpload, SessionStatus, SessionUpdate
-from app.service import SessionService
+from app.sessions.metadata import parse_metadata_json
+from app.sessions.service import SessionService
 from tests.conftest import PNG_1X1, sample_create
 
 

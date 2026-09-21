@@ -50,7 +50,7 @@ def test_camera_count_must_match_list() -> None:
 
 def test_promote_metadata_leaves_explicit_extra_alone() -> None:
     """When extra_metadata is already set, the helper does not rewrite the dict."""
-    from app.metadata import promote_metadata
+    from app.sessions.metadata import promote_metadata
 
     original = {"metadata": {"a": 1}, "extra_metadata": {"b": 2}}
     assert promote_metadata(original)["extra_metadata"] == {"b": 2}
@@ -59,7 +59,7 @@ def test_promote_metadata_leaves_explicit_extra_alone() -> None:
 
 def test_sanitize_filename_strips_paths_and_header_metacharacters() -> None:
     """Download names cannot smuggle paths, quotes, or CR/LF."""
-    from app.filenames import sanitize_filename
+    from app.blobs.filenames import sanitize_filename
 
     assert sanitize_filename('../../evil\r\nX: 1".png') == "evilX: 1.png"
     assert sanitize_filename(None) == "upload.bin"

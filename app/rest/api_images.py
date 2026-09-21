@@ -1,0 +1,174 @@
+"""REST image upload, list, and download routes."""
+
+from __future__ import annotations
+
+import asyncio
+import uuid
+from collections.abc import AsyncIterator, Sequence
+from typing import Any
+
+from fastapi import APIRouter, File, Form, Query, UploadFile
+from fastapi.responses import StreamingResponse
+
+from app.blobs.filenames import sanitize_filename
+from app.blobs.spool import spool_chunks
+from app.blobs.uploads import discard_spool, upload_from_spool
+from app.io_sizes import IO_CHUNK_BYTES
+from app.models import ImagePage, ImageUpload, SessionImage, SessionImageRead
+from app.rest.api_deps import PrincipalDep, ServiceDep
+from app.rest.disposition import attachment_disposition
+from app.sessions.metadata import parse_metadata_json
+from app.sessions.service import SessionService
+from app.sessions.session_batch import reject_batch_count
+
+image_router = APIRouter(prefix="/api/v1")
+
+
+@image_router.post(
+    "/sessions/{session_id}/images",
+    status_code=201,
+    response_model=SessionImageRead,
+)
+async def upload_image(
+    session_id: uuid.UUID,
+    service: ServiceDep,
+    principal: PrincipalDep,
+    file: UploadFile = File(...),
+    metadata: str | None = Form(default=None),
+) -> SessionImage:
+    """Upload a single image via multipart/form-data."""
+    upload = await to_upload(file, metadata, service)
+    return await service.add_image(session_id, upload, principal)
+
+
+@image_router.post(
+    "/sessions/{session_id}/images/batch",
+    status_code=201,
+    response_model=list[SessionImageRead],
+)
+async def upload_images_batch(
+    session_id: uuid.UUID,
+    service: ServiceDep,
+    principal: PrincipalDep,
+    files: list[UploadFile] = File(...),
+    metadata: str | None = Form(default=None),
+) -> list[SessionImage]:
+    """Upload multiple files in one multipart request."""
+    extra = parse_metadata_json(metadata)
+    uploads = await collect_uploads(files, extra, service)
+    return await service.add_images_batch(session_id, uploads, principal)
+
+
+@image_router.get("/sessions/{session_id}/images", response_model=ImagePage)
+async def list_images(
+    session_id: uuid.UUID,
+    service: ServiceDep,
+    principal: PrincipalDep,
+    limit: int = Query(default=50, ge=1),
+    cursor: str | None = None,
+) -> ImagePage:
+    """List image metadata for a session."""
+    page = await service.list_images(
+        session_id,
+        limit=limit,
+        cursor=cursor,
+        principal=principal,
+    )
+    return ImagePage(
+        items=[SessionImageRead.model_validate(item) for item in page.items],
+        next_cursor=page.next_cursor,
+    )
+
+
+@image_router.get("/sessions/{session_id}/images/{image_id}")
+async def download_image(
+    session_id: uuid.UUID,
+    image_id: uuid.UUID,
+    service: ServiceDep,
+    principal: PrincipalDep,
+) -> StreamingResponse:
+    """Stream the raw image binary."""
+    image = await service.get_image(session_id, image_id, principal)
+
+    async def chunks() -> AsyncIterator[bytes]:
+        async for chunk in service.stream_image(
+            session_id,
+            image_id,
+            principal,
+            image=image,
+        ):
+            yield chunk
+
+    return StreamingResponse(
+        chunks(),
+        media_type=image.content_type,
+        headers={"Content-Disposition": attachment_disposition(image.filename)},
+    )
+
+
+async def file_chunks(file: UploadFile) -> AsyncIterator[bytes]:
+    """Yield multipart chunks from an UploadFile."""
+    while True:
+        chunk = await file.read(IO_CHUNK_BYTES)
+        if not chunk:
+            break
+        yield chunk
+
+
+async def to_upload(
+    file: UploadFile,
+    metadata: str | None,
+    service: SessionService,
+    extra: dict[str, Any] | None = None,
+) -> ImageUpload:
+    """Spool an UploadFile to disk while hashing incrementally."""
+    spool = await spool_chunks(
+        file_chunks(file),
+        service._settings.spool_dir(),
+        service._settings.max_image_bytes,
+    )
+    return upload_from_spool(
+        sanitize_filename(file.filename),
+        file.content_type or "application/octet-stream",
+        spool,
+        extra if extra is not None else parse_metadata_json(metadata),
+    )
+
+
+async def collect_uploads(
+    files: Sequence[UploadFile],
+    extra: dict[str, Any],
+    service: SessionService,
+) -> list[ImageUpload]:
+    """Spool batch files with bounded concurrency and discard finished spools on failure."""
+    reject_batch_count(len(files), service._settings.max_batch_images)
+    results = await _spool_all(files, extra, service)
+    return await _raise_spool_errors(results)
+
+
+async def _spool_all(
+    files: Sequence[UploadFile],
+    extra: dict[str, Any],
+    service: SessionService,
+) -> list[ImageUpload | BaseException]:
+    """Spool every file, limiting in-flight writes to ``max_concurrent_saves``."""
+    sem = asyncio.Semaphore(service._settings.max_concurrent_saves)
+
+    async def one(item: UploadFile) -> ImageUpload:
+        async with sem:
+            return await to_upload(item, None, service, extra=extra)
+
+    return await asyncio.gather(*[one(item) for item in files], return_exceptions=True)
+
+
+async def _raise_spool_errors(
+    results: Sequence[ImageUpload | BaseException],
+) -> list[ImageUpload]:
+    """Return uploads, or delete the ones that finished and raise the first error."""
+    uploads = [item for item in results if not isinstance(item, BaseException)]
+    errors = [item for item in results if isinstance(item, BaseException)]
+    if not errors:
+        return uploads
+    for upload in uploads:
+        await discard_spool(upload)
+    raise errors[0]

@@ -8,10 +8,10 @@ import grpc
 import pytest
 import pytest_asyncio
 
-from app.grpc_server import SessionServicer, start_grpc_server
 from app.pb import session_service_pb2 as pb
 from app.pb import session_service_pb2_grpc as pb_grpc
-from app.service import SessionService
+from app.rpc.grpc_server import SessionServicer, start_grpc_server
+from app.sessions.service import SessionService
 from tests.conftest import PNG_1X1, sample_cameras, sample_phone_caps, sample_phone_info
 
 
@@ -334,9 +334,9 @@ async def test_struct_and_abort_helpers() -> None:
     from google.protobuf.struct_pb2 import Struct
     from pydantic import ValidationError
 
-    from app.grpc_codec import _struct_to_dict
-    from app.grpc_server import _abort
     from app.models import PhoneInfo
+    from app.rpc.grpc_codec import _struct_to_dict
+    from app.rpc.grpc_server import _abort
 
     assert _struct_to_dict(None) == {}  # type: ignore[arg-type]
     assert _struct_to_dict(Struct()) == {}
@@ -353,8 +353,8 @@ async def test_struct_and_abort_helpers() -> None:
 async def test_abort_unknown_service_error() -> None:
     """Unmapped SessionServiceError subclasses become INTERNAL."""
     from app.exceptions import SessionServiceError
-    from app.grpc_codec import dict_to_struct
-    from app.grpc_server import _abort
+    from app.rpc.grpc_codec import dict_to_struct
+    from app.rpc.grpc_server import _abort
 
     class Mystery(SessionServiceError):
         """Synthetic error used only for mapping coverage."""

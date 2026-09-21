@@ -7,16 +7,16 @@ from pathlib import Path
 import pytest
 from sqlalchemy import inspect, text
 
-from app.auth import authenticate, parse_api_keys
 from app.config import Settings
 from app.database import create_engine
 from app.exceptions import InvalidIdError, UnauthenticatedError
-from app.grpc_tls import build_grpc_server_credentials
 from app.migrate import upgrade_head
 from app.models import SessionUpdate
 from app.observability import JsonLogFormatter, configure_logging
-from app.pagination import decode_cursor, encode_cursor
-from app.service import SessionService
+from app.rpc.grpc_tls import build_grpc_server_credentials
+from app.sessions.auth import authenticate, parse_api_keys
+from app.sessions.pagination import decode_cursor, encode_cursor
+from app.sessions.service import SessionService
 from tests.conftest import JPEG_MIN, PNG_1X1, sample_create
 
 
@@ -91,7 +91,7 @@ def test_grpc_tls_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
         captured["mtls"] = require_client_auth
         return "creds"
 
-    monkeypatch.setattr("app.grpc_tls.grpc.ssl_server_credentials", fake_creds)
+    monkeypatch.setattr("app.rpc.grpc_tls.grpc.ssl_server_credentials", fake_creds)
     settings = Settings(
         grpc_insecure=False,
         grpc_tls_cert_file=cert,
@@ -131,7 +131,7 @@ async def test_ready_503_when_db_down(service: SessionService) -> None:
     """/ready returns 503 when ping_db fails."""
     from httpx import ASGITransport, AsyncClient
 
-    from app.api import create_app
+    from app.rest.api import create_app
 
     async def boom() -> None:
         raise RuntimeError("db down")

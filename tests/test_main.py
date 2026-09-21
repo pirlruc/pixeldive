@@ -7,12 +7,12 @@ from pathlib import Path
 import pytest
 
 import main as main_mod
+from app.blobs.storage import build_storage
 from app.config import Settings, get_settings
 from app.exceptions import EmptyImageError, InvalidStatusError
-from app.metadata import parse_metadata_json
 from app.models import ImageUpload, PhoneInfo, PydanticJSON, SessionUpdate
-from app.service import SessionService
-from app.storage import build_storage
+from app.sessions.metadata import parse_metadata_json
+from app.sessions.service import SessionService
 from tests.conftest import sample_create, sample_phone_info
 
 

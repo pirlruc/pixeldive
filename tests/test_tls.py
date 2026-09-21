@@ -13,13 +13,13 @@ import pytest
 import uvicorn
 from pixeldive_sdk import GrpcClient, RestClient, sample_session_payload
 
-from app.api import create_app
 from app.config import Settings
-from app.grpc_server import start_grpc_server
-from app.http_tls import build_http_server, build_http_ssl_context
 from app.pb import session_service_pb2 as pb
 from app.pb import session_service_pb2_grpc as pb_grpc
 from app.ready_probe import env_flag, first_env, https_context, probe
+from app.rest.api import create_app
+from app.rest.http_tls import build_http_server, build_http_ssl_context
+from app.rpc.grpc_server import start_grpc_server
 from app.runtime import validate_auth_settings
 from app.tls_files import grpc_tls_files, http_tls_files
 from tests.certs import write_self_signed

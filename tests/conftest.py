@@ -12,12 +12,12 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from app.api import create_app
+from app.blobs.storage import LocalFilesystemStorage
 from app.config import Settings
 from app.database import create_engine, init_db, session_factory
 from app.models import CameraCapabilities, PhoneCapabilities, PhoneInfo, SessionCreate
-from app.service import SessionService
-from app.storage import LocalFilesystemStorage
+from app.rest.api import create_app
+from app.sessions.service import SessionService
 
 PNG_1X1 = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"

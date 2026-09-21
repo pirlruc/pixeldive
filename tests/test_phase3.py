@@ -11,17 +11,17 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from pixeldive_sdk import GrpcClient, RestClient, sample_session_payload
 
-from app.api import create_app
-from app.auth import Principal
+from app.blobs.hash_keys import sha256_hex
+from app.blobs.storage import LocalFilesystemStorage, S3CompatibleStorage
 from app.config import Settings
 from app.exceptions import QuotaExceededError, SessionNotFoundError
-from app.grpc_server import start_grpc_server
-from app.hash_keys import sha256_hex
 from app.models import ImageUpload
 from app.pb import session_service_pb2 as pb
 from app.pb import session_service_pb2_grpc as pb_grpc
-from app.service import SessionService
-from app.storage import LocalFilesystemStorage, S3CompatibleStorage
+from app.rest.api import create_app
+from app.rpc.grpc_server import start_grpc_server
+from app.sessions.auth import Principal
+from app.sessions.service import SessionService
 from tests.conftest import PNG_1X1, sample_create
 from tests.factories import auth_settings, make_service
 from tests.test_grpc import _create_request
@@ -289,21 +289,21 @@ async def test_single_image_chunks_empty_stream() -> None:
 
 def test_rate_window_expires(monkeypatch: pytest.MonkeyPatch) -> None:
     """Hits older than the window are dropped before counting (SEC-002)."""
-    from app.quotas import TenantQuota
+    from app.sessions.quotas import TenantQuota
 
     quota = TenantQuota(
         requests_per_window=1, window_seconds=1.0, tenant_max_bytes=0, session_max_bytes=0
     )
     principal = Principal(owner_id="tenant-a")
     times = iter([0.0, 2.0])
-    monkeypatch.setattr("app.quotas.time.monotonic", lambda: next(times))
+    monkeypatch.setattr("app.sessions.quotas.time.monotonic", lambda: next(times))
     quota.hit(principal)
     quota.hit(principal)
 
 
 def test_quota_release_allows_retry() -> None:
     """Failed persists must not keep reserved bytes (SEC-002)."""
-    from app.quotas import TenantQuota
+    from app.sessions.quotas import TenantQuota
 
     quota = TenantQuota(
         requests_per_window=0,
