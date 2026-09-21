@@ -152,7 +152,7 @@ struct CameraPreview: UIViewRepresentable {
     }
 }
 
-final class PreviewSurface: UIView {
+class PreviewSurface: UIView {
     override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
 
     var previewLayer: AVCaptureVideoPreviewLayer {

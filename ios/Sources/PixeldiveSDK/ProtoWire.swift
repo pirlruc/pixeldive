@@ -41,11 +41,17 @@ enum ProtoWire {
     }
 }
 
+struct ProtoField {
+    var number: Int
+    var wire: UInt8
+    var value: Data
+}
+
 struct ProtoReader {
     let bytes: Data
     var offset = 0
 
-    mutating func next() throws -> (Int, UInt8, Data)? {
+    mutating func next() throws -> ProtoField? {
         if offset >= bytes.count {
             return nil
         }
@@ -56,14 +62,14 @@ struct ProtoReader {
         case 0:
             let start = offset
             _ = try readVarint()
-            return (field, wire, bytes.subdata(in: start..<offset))
+            return ProtoField(number: field, wire: wire, value: bytes.subdata(in: start..<offset))
         case 1:
-            return (field, wire, try read(8))
+            return ProtoField(number: field, wire: wire, value: try read(8))
         case 2:
             let length = Int(try readVarint())
-            return (field, wire, try read(length))
+            return ProtoField(number: field, wire: wire, value: try read(length))
         case 5:
-            return (field, wire, try read(4))
+            return ProtoField(number: field, wire: wire, value: try read(4))
         default:
             throw PixeldiveError.decoding("unsupported protobuf wire type \(wire)")
         }

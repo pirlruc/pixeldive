@@ -86,9 +86,9 @@ enum ImageProto {
 
     static func decodeUpload(_ body: Data) throws -> SessionImage {
         var reader = ProtoReader(bytes: body)
-        while let (field, wire, value) = try reader.next() {
-            if field == 1, wire == 2 {
-                return try decodeSessionImage(value)
+        while let next = try reader.next() {
+            if next.number == 1, next.wire == 2 {
+                return try decodeSessionImage(next.value)
             }
         }
         throw PixeldiveError.decoding("gRPC upload response missing image")
@@ -97,9 +97,9 @@ enum ImageProto {
     static func decodeBatch(_ body: Data) throws -> [SessionImage] {
         var reader = ProtoReader(bytes: body)
         var images: [SessionImage] = []
-        while let (field, wire, value) = try reader.next() {
-            if field == 1, wire == 2 {
-                images.append(try decodeSessionImage(value))
+        while let next = try reader.next() {
+            if next.number == 1, next.wire == 2 {
+                images.append(try decodeSessionImage(next.value))
             }
         }
         return images
@@ -108,9 +108,9 @@ enum ImageProto {
     static func decodeChunkData(_ body: Data) throws -> Data {
         var reader = ProtoReader(bytes: body)
         var payload = Data()
-        while let (field, wire, value) = try reader.next() {
-            if field == 5, wire == 2 {
-                payload = value
+        while let next = try reader.next() {
+            if next.number == 5, next.wire == 2 {
+                payload = next.value
             }
         }
         return payload
@@ -124,20 +124,20 @@ enum ImageProto {
         var contentType = ""
         var sizeBytes: Int64 = 0
         var uploaded = Date(timeIntervalSince1970: 0)
-        while let (field, wire, value) = try reader.next() {
-            switch (field, wire) {
+        while let next = try reader.next() {
+            switch (next.number, next.wire) {
             case (1, 2):
-                id = string(value)
+                id = string(next.value)
             case (2, 2):
-                sessionID = string(value)
+                sessionID = string(next.value)
             case (3, 2):
-                filename = string(value)
+                filename = string(next.value)
             case (4, 2):
-                contentType = string(value)
+                contentType = string(next.value)
             case (5, 0):
-                sizeBytes = Int64(try decodeVarint(value))
+                sizeBytes = Int64(try decodeVarint(next.value))
             case (7, 2):
-                uploaded = try decodeTimestamp(value)
+                uploaded = try decodeTimestamp(next.value)
             default:
                 continue
             }
@@ -169,9 +169,9 @@ private func parseUUID(_ raw: String) throws -> UUID {
 private func decodeTimestamp(_ body: Data) throws -> Date {
     var reader = ProtoReader(bytes: body)
     var seconds: Int64 = 0
-    while let (field, wire, value) = try reader.next() {
-        if field == 1, wire == 0 {
-            seconds = Int64(try decodeVarint(value))
+    while let next = try reader.next() {
+        if next.number == 1, next.wire == 0 {
+            seconds = Int64(try decodeVarint(next.value))
         }
     }
     return Date(timeIntervalSince1970: TimeInterval(seconds))
