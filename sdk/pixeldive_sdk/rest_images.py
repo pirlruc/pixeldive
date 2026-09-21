@@ -21,9 +21,7 @@ class RestImageMixin(RestHttpMixin):
         metadata: str | None = None,
     ) -> dict[str, Any]:
         """POST multipart /api/v1/sessions/{id}/images."""
-        data: dict[str, str] = {}
-        if metadata is not None:
-            data["metadata"] = metadata
+        data = self._form_metadata(metadata)
         result: dict[str, Any] = await self._json(
             "POST",
             f"/api/v1/sessions/{resource_id(session_id)}/images",
@@ -39,9 +37,7 @@ class RestImageMixin(RestHttpMixin):
         metadata: str | None = None,
     ) -> list[dict[str, Any]]:
         """POST multipart /api/v1/sessions/{id}/images/batch."""
-        data: dict[str, str] = {}
-        if metadata is not None:
-            data["metadata"] = metadata
+        data = self._form_metadata(metadata)
         files = [("files", (name, blob, content_type)) for name, blob, content_type in items]
         result: list[dict[str, Any]] = await self._json(
             "POST",

@@ -20,11 +20,17 @@ class GrpcClient(GrpcCallsMixin):
         *,
         token: str | None = None,
         insecure: bool = True,
+        root_certificates: bytes | None = None,
+        private_key: bytes | None = None,
+        certificate_chain: bytes | None = None,
     ) -> None:
-        """Connect to ``host:port`` with optional bearer metadata."""
+        """Connect to ``host:port`` with optional bearer metadata and TLS PEMs."""
         self._target = target
         self._token = token
         self._insecure = insecure
+        self._root_certificates = root_certificates
+        self._private_key = private_key
+        self._certificate_chain = certificate_chain
         self._channel: grpc.aio.Channel | None = None
         self._stub: pb_grpc.SessionServiceStub | None = None
 
@@ -38,7 +44,13 @@ class GrpcClient(GrpcCallsMixin):
         """Open the aio channel if needed."""
         if self._channel is not None:
             return
-        self._channel = open_channel(self._target, insecure=self._insecure)
+        self._channel = open_channel(
+            self._target,
+            insecure=self._insecure,
+            root_certificates=self._root_certificates,
+            private_key=self._private_key,
+            certificate_chain=self._certificate_chain,
+        )
         self._stub = stub_for(self._channel)
 
     async def aclose(self) -> None:

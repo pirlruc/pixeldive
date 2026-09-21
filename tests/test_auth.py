@@ -8,11 +8,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.api import create_app
-from app.config import Settings
-from app.database import create_engine, init_db, session_factory
-from app.service import SessionService
-from app.storage import LocalFilesystemStorage
 from tests.conftest import PNG_1X1, sample_create
+from tests.factories import auth_settings, make_service
 
 
 def _session_json() -> dict:
@@ -23,19 +20,8 @@ def _session_json() -> dict:
 @pytest.mark.asyncio
 async def test_rest_auth_and_tenant_isolation(tmp_path: Path) -> None:
     """Missing tokens are 401; another tenant is 404 (SEC-003)."""
-    settings = Settings(
-        database_url=f"sqlite+aiosqlite:///{tmp_path / 'auth.db'}",
-        storage_backend="local",
-        storage_root=tmp_path / "images",
-        auth_required=True,
-        api_keys="alpha:tenant-a,beta:tenant-b",
-        log_json=False,
-    )
-    engine = create_engine(settings)
-    await init_db(engine)
-    storage = LocalFilesystemStorage(settings.storage_root)
-    settings.storage_root.mkdir(parents=True, exist_ok=True)
-    service = SessionService(session_factory(engine), storage, settings)
+    settings = auth_settings(tmp_path)
+    service, engine = await make_service(settings)
     app = create_app(service)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as http:

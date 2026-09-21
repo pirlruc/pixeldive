@@ -60,6 +60,11 @@ def test_s3_missing_helper() -> None:
     assert _is_missing(RuntimeError("boom")) is False
     assert _is_missing(ClientError()) is True
     assert _is_missing(Timeout("An error occurred (404) when calling HeadObject")) is False
+    from app.s3_listing import missing_or_raise
+
+    missing_or_raise(Err())
+    with pytest.raises(RuntimeError):
+        missing_or_raise(RuntimeError("boom"))
 
 
 def test_postgres_engine_skips_sqlite_pragma() -> None:

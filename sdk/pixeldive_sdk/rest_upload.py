@@ -23,9 +23,7 @@ class RestPathUploadMixin(RestHttpMixin):
     ) -> dict[str, Any]:
         """POST multipart from a file path without buffering the whole file."""
         source = Path(path)
-        data: dict[str, str] = {}
-        if metadata is not None:
-            data["metadata"] = metadata
+        data = self._form_metadata(metadata)
         with source.open("rb") as handle:
             result: dict[str, Any] = await self._json(
                 "POST",

@@ -20,7 +20,14 @@ class RuntimeSettingsMixin:
     list_max_limit: int = 200
     auth_required: bool = False
     api_keys: str = ""
+    http_insecure: bool = True
     grpc_insecure: bool = True
+    tls_cert_file: Path | None = None
+    tls_key_file: Path | None = None
+    tls_client_ca_file: Path | None = None
+    http_tls_cert_file: Path | None = None
+    http_tls_key_file: Path | None = None
+    http_tls_client_ca_file: Path | None = None
     grpc_tls_cert_file: Path | None = None
     grpc_tls_key_file: Path | None = None
     grpc_tls_client_ca_file: Path | None = None

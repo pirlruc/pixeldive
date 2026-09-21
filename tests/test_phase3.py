@@ -10,12 +10,10 @@ import grpc
 import pytest
 from httpx import ASGITransport, AsyncClient
 from pixeldive_sdk import GrpcClient, RestClient, sample_session_payload
-from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.api import create_app
 from app.auth import Principal
 from app.config import Settings
-from app.database import create_engine, init_db, session_factory
 from app.exceptions import QuotaExceededError, SessionNotFoundError
 from app.grpc_server import start_grpc_server
 from app.hash_keys import sha256_hex
@@ -25,42 +23,16 @@ from app.pb import session_service_pb2_grpc as pb_grpc
 from app.service import SessionService
 from app.storage import LocalFilesystemStorage, S3CompatibleStorage
 from tests.conftest import PNG_1X1, sample_create
+from tests.factories import auth_settings, make_service
 from tests.test_grpc import _create_request
 from tests.test_storage import FakeS3
-
-
-def _auth_settings(tmp_path: Path, **overrides: object) -> Settings:
-    """Build authenticated test settings with optional quota overrides."""
-    values: dict[str, object] = {
-        "database_url": f"sqlite+aiosqlite:///{tmp_path / 'quota.db'}",
-        "storage_backend": "local",
-        "storage_root": tmp_path / "images",
-        "auth_required": True,
-        "api_keys": "alpha:tenant-a,beta:tenant-b",
-        "log_json": False,
-    }
-    values.update(overrides)
-    return Settings(**values)  # type: ignore[arg-type]
-
-
-async def _service(settings: Settings) -> tuple[SessionService, AsyncEngine]:
-    """Create an isolated SessionService and engine."""
-    engine = create_engine(settings)
-    await init_db(engine)
-    settings.storage_root.mkdir(parents=True, exist_ok=True)
-    service = SessionService(
-        session_factory(engine),
-        LocalFilesystemStorage(settings.storage_root),
-        settings,
-    )
-    return service, engine
 
 
 @pytest.mark.asyncio
 async def test_cross_tenant_is_not_found(tmp_path: Path) -> None:
     """Wrong-owner access uses the same error as a missing session (SEC-003)."""
-    settings = _auth_settings(tmp_path)
-    service, engine = await _service(settings)
+    settings = auth_settings(tmp_path)
+    service, engine = await make_service(settings)
     owner = Principal(owner_id="tenant-a")
     other = Principal(owner_id="tenant-b")
     created = await service.create_session(sample_create(session_name="owned"), owner)
@@ -74,8 +46,8 @@ async def test_cross_tenant_is_not_found(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_rate_limit_returns_http_429(tmp_path: Path) -> None:
     """The second authenticated request is 429 when the rate cap is 1 (SEC-002)."""
-    settings = _auth_settings(tmp_path, rate_limit_per_minute=1)
-    service, engine = await _service(settings)
+    settings = auth_settings(tmp_path, rate_limit_per_minute=1)
+    service, engine = await make_service(settings)
     principal = Principal(owner_id="tenant-a")
     session = await service.create_session(sample_create(), principal)
     app = create_app(service)
@@ -93,12 +65,12 @@ async def test_rate_limit_returns_http_429(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_upload_byte_quotas_and_auth_off(tmp_path: Path) -> None:
     """Session/tenant byte caps apply only when a principal is present (SEC-002)."""
-    settings = _auth_settings(
+    settings = auth_settings(
         tmp_path,
         session_max_upload_bytes=len(PNG_1X1),
         tenant_max_upload_bytes=0,
     )
-    service, engine = await _service(settings)
+    service, engine = await make_service(settings)
     principal = Principal(owner_id="tenant-a")
     session = await service.create_session(sample_create(), principal)
     image = await service.add_image(
@@ -122,7 +94,7 @@ async def test_upload_byte_quotas_and_auth_off(tmp_path: Path) -> None:
         session_max_upload_bytes=1,
         log_json=False,
     )
-    open_service, open_engine = await _service(open_settings)
+    open_service, open_engine = await make_service(open_settings)
     first = await open_service.create_session(sample_create(session_name="a"))
     second = await open_service.create_session(sample_create(session_name="b"))
     uploaded = await open_service.add_image(
@@ -131,13 +103,13 @@ async def test_upload_byte_quotas_and_auth_off(tmp_path: Path) -> None:
     )
     assert uploaded.size_bytes == len(PNG_1X1)
     assert first.id != second.id
-    tenant_settings = _auth_settings(
+    tenant_settings = auth_settings(
         tmp_path / "tenant",
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'tenant.db'}",
         tenant_max_upload_bytes=len(PNG_1X1),
         session_max_upload_bytes=0,
     )
-    tenant_service, tenant_engine = await _service(tenant_settings)
+    tenant_service, tenant_engine = await make_service(tenant_settings)
     one = await tenant_service.create_session(sample_create(session_name="t1"), principal)
     two = await tenant_service.create_session(sample_create(session_name="t2"), principal)
     await tenant_service.add_image(
@@ -187,7 +159,7 @@ async def test_run_closes_storage_and_sweeper(
         return FakeGrpc(), 9
 
     monkeypatch.setattr(runtime, "start_grpc_server", fake_start)
-    monkeypatch.setattr(runtime.uvicorn, "Server", lambda config: FakeHttp())
+    monkeypatch.setattr(runtime, "build_http_server", lambda app, settings: FakeHttp())
     settings = Settings(
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'run.db'}",
         storage_root=tmp_path / "img",
@@ -338,12 +310,12 @@ def test_quota_release_allows_retry() -> None:
 @pytest.mark.asyncio
 async def test_failed_persist_releases_quota(tmp_path: Path) -> None:
     """A storage failure must not consume the session byte budget."""
-    settings = _auth_settings(
+    settings = auth_settings(
         tmp_path,
         session_max_upload_bytes=len(PNG_1X1),
         tenant_max_upload_bytes=0,
     )
-    service, engine = await _service(settings)
+    service, engine = await make_service(settings)
     principal = Principal(owner_id="tenant-a")
     session = await service.create_session(sample_create(), principal)
     real_save = service._storage.save
@@ -375,8 +347,8 @@ async def test_failed_persist_releases_quota(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_grpc_quota_is_resource_exhausted(tmp_path: Path) -> None:
     """Authenticated gRPC maps quota failures to RESOURCE_EXHAUSTED (SEC-002)."""
-    settings = _auth_settings(tmp_path, rate_limit_per_minute=1, grpc_insecure=True)
-    service, engine = await _service(settings)
+    settings = auth_settings(tmp_path, rate_limit_per_minute=1, grpc_insecure=True)
+    service, engine = await make_service(settings)
     server, port = await start_grpc_server(service, "127.0.0.1", 0)
     channel = grpc.aio.insecure_channel(f"127.0.0.1:{port}")
     stub = pb_grpc.SessionServiceStub(channel)

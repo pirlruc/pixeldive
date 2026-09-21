@@ -69,7 +69,9 @@ magic-byte upload sniff, production `ENVIRONMENT` fail-closed, download no longe
 double-hits quotas, S3 “missing” no longer treats any `ClientError` whose message
 contains `404` as not-found. Host-native HTTP/gRPC defaults are `127.0.0.1` so
 bandit B104 is not suppressed; the image and Compose still set `0.0.0.0` inside
-the container network.
+the container network. HTTP TLS (SEC-007) closes the remaining plaintext REST
+gap: production also requires `HTTP_INSECURE=false` and a PEM pair shared with
+gRPC when per-transport files are unset.
 
 ## Swift pack (SDK-002)
 

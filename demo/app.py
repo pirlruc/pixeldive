@@ -15,11 +15,13 @@ from pixeldive_sdk import RestClient
 from demo.routes import register_demo_routes
 
 
-def _settings() -> tuple[str, str | None]:
-    """Read demo target URL and optional bearer token from the environment."""
+def _settings() -> tuple[str, str | None, bool | str]:
+    """Read demo target URL, optional bearer token, and TLS CA path."""
+    ca = os.environ.get("PIXELDIVE_TLS_CA", "").strip()
     return (
         os.environ.get("PIXELDIVE_BASE_URL", "http://127.0.0.1:8000"),
         os.environ.get("PIXELDIVE_TOKEN"),
+        ca if ca else True,
     )
 
 
@@ -31,8 +33,8 @@ def create_demo_app(client: RestClient | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         """Open an SDK client when the process did not receive one."""
         if app.state.client is None:
-            base, token = _settings()
-            app.state.client = RestClient(base, token=token)
+            base, token, verify = _settings()
+            app.state.client = RestClient(base, token=token, verify=verify)
         try:
             yield
         finally:
@@ -46,8 +48,8 @@ def create_demo_app(client: RestClient | None = None) -> FastAPI:
         existing = getattr(app.state, "client", None)
         if isinstance(existing, RestClient):
             return existing
-        base, token = _settings()
-        opened = RestClient(base, token=token)
+        base, token, verify = _settings()
+        opened = RestClient(base, token=token, verify=verify)
         app.state.client = opened
         return opened
 

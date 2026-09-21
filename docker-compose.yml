@@ -56,7 +56,17 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
       API_KEYS: ${API_KEYS:-}
+      HTTP_INSECURE: ${HTTP_INSECURE:-true}
       GRPC_INSECURE: ${GRPC_INSECURE:-true}
+      TLS_CERT_FILE: ${TLS_CERT_FILE:-}
+      TLS_KEY_FILE: ${TLS_KEY_FILE:-}
+      TLS_CLIENT_CA_FILE: ${TLS_CLIENT_CA_FILE:-}
+      HTTP_TLS_CERT_FILE: ${HTTP_TLS_CERT_FILE:-}
+      HTTP_TLS_KEY_FILE: ${HTTP_TLS_KEY_FILE:-}
+      HTTP_TLS_CLIENT_CA_FILE: ${HTTP_TLS_CLIENT_CA_FILE:-}
+      GRPC_TLS_CERT_FILE: ${GRPC_TLS_CERT_FILE:-}
+      GRPC_TLS_KEY_FILE: ${GRPC_TLS_KEY_FILE:-}
+      GRPC_TLS_CLIENT_CA_FILE: ${GRPC_TLS_CLIENT_CA_FILE:-}
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
       S3_BUCKET: ${S3_BUCKET:-pixeldive}
       S3_REGION: ${S3_REGION:-us-east-1}
@@ -79,7 +89,7 @@ services:
       - /tmp
     mem_limit: 512m
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+      test: ["CMD", "python", "-c", "from app.ready_probe import main; main()"]
       interval: 30s
       timeout: 5s
       retries: 3

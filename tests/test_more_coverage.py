@@ -141,6 +141,9 @@ async def test_sdk_cursors_owned_client_and_demo_settings(
     monkeypatch.setenv("PIXELDIVE_BASE_URL", "http://example.invalid")
     monkeypatch.setenv("PIXELDIVE_TOKEN", "tok")
     assert demo_app._settings()[1] == "tok"
+    monkeypatch.setenv("PIXELDIVE_TLS_CA", "/certs/ca.pem")
+    assert demo_app._settings()[2] == "/certs/ca.pem"
+    monkeypatch.delenv("PIXELDIVE_TLS_CA", raising=False)
     app = create_app(service)
     transport = ASGITransport(app=app)
     http = AsyncClient(transport=transport, base_url="http://test")
@@ -184,6 +187,27 @@ async def test_sdk_cursors_owned_client_and_demo_settings(
     options = captured["options"]
     assert isinstance(options, list)
     assert options[0][1] == MAX_MESSAGE_BYTES
+
+    secure: dict[str, object] = {}
+
+    def fake_creds(**kwargs: object) -> str:
+        secure["creds"] = kwargs
+        return "tls"
+
+    def fake_secure(target: str, credentials: object, options: object = None) -> str:
+        secure["target"] = target
+        secure["credentials"] = credentials
+        secure["options"] = options
+        return "secure-channel"
+
+    monkeypatch.setattr("grpc.ssl_channel_credentials", fake_creds)
+    monkeypatch.setattr("grpc.aio.secure_channel", fake_secure)
+    assert open_channel("localhost:9", insecure=False, root_certificates=b"ca") == "secure-channel"
+    assert secure["creds"] == {
+        "root_certificates": b"ca",
+        "private_key": None,
+        "certificate_chain": None,
+    }
 
     req = Request("GET", "http://x")
     text_err = HTTPStatusError(
