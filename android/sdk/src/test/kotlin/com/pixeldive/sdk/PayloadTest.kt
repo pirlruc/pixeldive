@@ -69,6 +69,10 @@ class PayloadTest {
         )
         assertEquals("CAPABILITY_9", Camera2Labels.capability(9))
         assertEquals(listOf("BACKWARD_COMPATIBLE"), Camera2Labels.capabilities(null))
+        assertEquals(
+            listOf("RAW"),
+            Camera2Labels.capabilities(intArrayOf(Camera2Labels.CAPABILITY_RAW)),
+        )
         assertEquals("12x8", Camera2Labels.maxResolution(12, 8))
     }
 

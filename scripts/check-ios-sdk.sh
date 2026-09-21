@@ -25,7 +25,7 @@ echo "swift gates: statement_coverage=${STMT} doc_coverage=${DOC} max_cc=${MAX_C
 swift --version
 "$PYTHON" "$ROOT/scripts/check-swift-docs.py" --threshold "$DOC"
 swift test --package-path "$ROOT/ios" --enable-code-coverage
-"$PYTHON" "$ROOT/scripts/check-swift-coverage.py" --package "$ROOT/ios" --threshold "$STMT"
+"$PYTHON" "$ROOT/scripts/check-swift-coverage.py" --threshold "$STMT"
 
 SWIFTLINT=""
 if command -v swiftlint >/dev/null 2>&1; then

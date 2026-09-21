@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 from collections.abc import Awaitable, Callable
 from pathlib import Path
@@ -56,20 +57,39 @@ async def save_payload(
     return await save_atomic(contained, object_key(sha256_hex(payload), content_type), write_tmp)
 
 
+async def try_link(source: Path, destination: Path) -> bool:
+    """Hard-link ``source`` onto ``destination`` when the filesystem allows it."""
+    try:
+        os.link(source, destination)
+        return True
+    except FileExistsError:
+        return True
+    except OSError:
+        return False
+
+
+async def copy_spool(source: Path, tmp_path: Path) -> None:
+    """Copy ``source`` to ``tmp_path`` in ``IO_CHUNK_BYTES`` windows."""
+    async with aiofiles.open(source, "rb") as src, aiofiles.open(tmp_path, "wb") as dst:
+        while True:
+            chunk = await src.read(IO_CHUNK_BYTES)
+            if not chunk:
+                break
+            await dst.write(chunk)
+
+
 async def save_spool_file(
     contained: Callable[[str], Path],
     source: Path,
     digest_hex: str,
     content_type: str,
 ) -> str:
-    """Copy a spool file into the content-addressed layout."""
-
-    async def write_tmp(tmp_path: Path) -> None:
-        async with aiofiles.open(source, "rb") as src, aiofiles.open(tmp_path, "wb") as dst:
-            while True:
-                chunk = await src.read(IO_CHUNK_BYTES)
-                if not chunk:
-                    break
-                await dst.write(chunk)
-
-    return await save_atomic(contained, object_key(digest_hex, content_type), write_tmp)
+    """Place a spool file into the content-addressed layout without a full copy."""
+    key = object_key(digest_hex, content_type)
+    destination = contained(key)
+    await aiofiles.os.makedirs(destination.parent, exist_ok=True)
+    if await aiofiles.os.path.isfile(destination):
+        return key
+    if await try_link(source, destination):
+        return key
+    return await save_atomic(contained, key, lambda tmp: copy_spool(source, tmp))

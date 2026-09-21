@@ -29,6 +29,10 @@ struct HTTPTransport: @unchecked Sendable {
     }
 
     func upload<Result: Decodable>(_ path: String, form: MultipartForm) async throws -> Result {
+        if let fileURL = form.fileURL {
+            let response = try await fileRequest(path, fileURL: fileURL, contentType: form.contentType)
+            return try decode(Result.self, from: response)
+        }
         let response = try await dataRequest(
             "POST",
             path: path,
@@ -49,18 +53,29 @@ struct HTTPTransport: @unchecked Sendable {
         payload: Data?,
         contentType: String?
     ) async throws -> Data {
-        let url = try makeURL(path: path, query: query)
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: try makeURL(path: path, query: query))
         request.httpMethod = method
         request.httpBody = payload
         if let contentType {
             request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         }
+        applyBearer(&request)
+        return try await send(request)
+    }
+
+    private func fileRequest(_ path: String, fileURL: URL, contentType: String) async throws -> Data {
+        var request = URLRequest(url: try makeURL(path: path, query: [:]))
+        request.httpMethod = "POST"
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        applyBearer(&request)
+        return try await send(request, fromFile: fileURL)
+    }
+
+    private func applyBearer(_ request: inout URLRequest) {
         let trimmed = token?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !trimmed.isEmpty {
             request.setValue("Bearer \(trimmed)", forHTTPHeaderField: "Authorization")
         }
-        return try await send(request)
     }
 
     private func makeURL(path: String, query: [String: String]) throws -> URL {
@@ -78,13 +93,21 @@ struct HTTPTransport: @unchecked Sendable {
         return url
     }
 
-    private func send(_ request: URLRequest) async throws -> Data {
+    private func send(_ request: URLRequest, fromFile fileURL: URL? = nil) async throws -> Data {
         let pair: (Data, URLResponse)
         do {
-            pair = try await performer.data(for: request)
+            if let fileURL {
+                pair = try await performer.data(for: request, fromFile: fileURL)
+            } else {
+                pair = try await performer.data(for: request)
+            }
         } catch {
             throw PixeldiveError.transport(error.localizedDescription)
         }
+        return try accept(pair, request: request)
+    }
+
+    private func accept(_ pair: (Data, URLResponse), request: URLRequest) throws -> Data {
         guard let http = pair.1 as? HTTPURLResponse else {
             throw PixeldiveError.transport("non-HTTP response")
         }

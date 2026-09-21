@@ -10,14 +10,31 @@ let package = Package(
     products: [
         .library(name: "PixeldiveSDK", targets: ["PixeldiveSDK"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/grpc/grpc-swift.git", exact: "1.24.2"),
+    ],
     targets: [
         .target(
             name: "PixeldiveSDK",
+            dependencies: [
+                .product(
+                    name: "GRPC",
+                    package: "grpc-swift",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS])
+                ),
+            ],
             resources: [.copy("Fixtures/sample_ios_session.json")]
         ),
         .testTarget(
             name: "PixeldiveSDKTests",
-            dependencies: ["PixeldiveSDK"]
+            dependencies: [
+                "PixeldiveSDK",
+                .product(
+                    name: "GRPC",
+                    package: "grpc-swift",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS])
+                ),
+            ]
         ),
     ],
     swiftLanguageModes: [.v6]

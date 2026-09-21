@@ -129,6 +129,7 @@ class ImageUpload(SQLModel):
     spool_path: str | None = None
     digest_hex: str | None = None
     size_bytes: int = 0
+    header_prefix: bytes = b""
 
     @model_validator(mode="before")
     @classmethod

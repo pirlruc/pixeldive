@@ -59,25 +59,27 @@ class GrpcImageCallsMixin(GrpcHostMixin):
         chunk_size: int = DEFAULT_CHUNK_BYTES,
     ) -> list[pb.SessionImage]:
         """Client-stream a batch of in-memory images."""
-        await self.connect()
-
-        async def chunks() -> AsyncIterator[pb.BatchImageChunk]:
-            sid = resource_id(session_id)
-            for index, (filename, payload, content_type) in enumerate(items):
-                async for chunk in batch_image_chunks(
-                    sid,
-                    index,
-                    filename,
-                    content_type,
-                    iter_bytes(payload, chunk_size),
-                ):
-                    yield chunk
-
-        response = await self._require_stub().UploadImagesBatch(
-            chunks(),
-            metadata=self._metadata(),
+        return await self._upload_batch(
+            session_id,
+            [
+                (filename, iter_bytes(payload, chunk_size), content_type)
+                for filename, payload, content_type in items
+            ],
         )
-        return list(response.images)
+
+    async def upload_images_batch_from_paths(
+        self,
+        session_id: str,
+        items: Sequence[tuple[str | Path, str | None, str]],
+        *,
+        chunk_size: int = DEFAULT_CHUNK_BYTES,
+    ) -> list[pb.SessionImage]:
+        """Client-stream a batch of files without buffering whole payloads."""
+        prepared: list[tuple[str, Any, str]] = []
+        for path, filename, content_type in items:
+            source = Path(path)
+            prepared.append((filename or source.name, iter_path(source, chunk_size), content_type))
+        return await self._upload_batch(session_id, prepared)
 
     async def list_images(
         self,
@@ -105,6 +107,32 @@ class GrpcImageCallsMixin(GrpcHostMixin):
         )
         async for chunk in call:
             yield chunk.data
+
+    async def _upload_batch(
+        self,
+        session_id: str,
+        items: Sequence[tuple[str, Any, str]],
+    ) -> list[pb.SessionImage]:
+        """Client-stream prepared batch pieces."""
+        await self.connect()
+
+        async def chunks() -> AsyncIterator[pb.BatchImageChunk]:
+            sid = resource_id(session_id)
+            for index, (filename, pieces, content_type) in enumerate(items):
+                async for chunk in batch_image_chunks(
+                    sid,
+                    index,
+                    filename,
+                    content_type,
+                    pieces,
+                ):
+                    yield chunk
+
+        response = await self._require_stub().UploadImagesBatch(
+            chunks(),
+            metadata=self._metadata(),
+        )
+        return list(response.images)
 
     async def _upload_chunks(
         self,

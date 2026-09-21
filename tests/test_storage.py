@@ -459,6 +459,30 @@ async def test_local_save_file_and_list_blobs(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_local_save_file_hardlink_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Cross-device link failures fall back to a streamed copy."""
+    from app.local_write import try_link
+
+    backend = LocalFilesystemStorage(tmp_path)
+    source = tmp_path / "frame.png"
+    source.write_bytes(PNG_1X1)
+
+    def boom(_src: object, _dst: object) -> None:
+        raise OSError("cross-device")
+
+    monkeypatch.setattr("app.local_write.os.link", boom)
+    key = await backend.save_file(source, sha256_hex(PNG_1X1), "image/png")
+    assert await backend.exists(key)
+    monkeypatch.undo()
+    dest = tmp_path / "exists.bin"
+    dest.write_bytes(b"keep")
+    assert await try_link(source, dest) is True
+
+
+@pytest.mark.asyncio
 async def test_s3_stream_missing_is_file_not_found() -> None:
     """S3 404 on GET maps to FileNotFoundError like the local backend."""
     backend = S3CompatibleStorage(FakeS3(), bucket="pixeldive")

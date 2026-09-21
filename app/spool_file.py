@@ -15,6 +15,7 @@ class Spool:
     path: Path
     digest_hex: str
     size_bytes: int
+    header: bytes = b""
 
     async def delete(self) -> None:
         """Remove the spool file if it is still present."""

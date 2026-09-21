@@ -35,6 +35,13 @@ def test_lookup_owner_is_constant_time_membership() -> None:
     assert lookup_owner("alpha", keys) == "tenant-a"
     assert lookup_owner("missing", keys) is None
     assert lookup_owner("toolong", keys) is None
+    assert lookup_owner("alph", keys) is None
+
+
+def test_lookup_owner_rejects_null_padded_prefix() -> None:
+    """Length is part of the compare so a shorter token cannot match."""
+    keys = {"alpha": "tenant-a"}
+    assert lookup_owner("alpha\0", keys) is None
 
 
 def test_default_bind_is_loopback() -> None:
@@ -65,6 +72,13 @@ def test_magic_bytes_match_declared_types(tmp_path: Path) -> None:
         ImageUpload(filename="f.png", content_type="image/png", spool_path=str(spool)),
     ).startswith(b"\x89PNG")
     assert header_bytes(ImageUpload(filename="f.png", content_type="image/png")) == b""
+    assert header_bytes(
+        ImageUpload(
+            filename="f.png",
+            content_type="image/png",
+            header_prefix=PNG_1X1[:8],
+        ),
+    ).startswith(b"\x89PNG")
 
 
 def test_production_requires_auth_and_tls() -> None:

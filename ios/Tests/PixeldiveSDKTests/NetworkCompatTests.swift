@@ -57,6 +57,20 @@ final class NetworkCompatTests: XCTestCase {
         XCTAssertEqual(http.statusCode, 200)
     }
 
+    func testUploadURLRoundTrip() async throws {
+        let server = LoopbackHTTP()
+        try server.start(status: 200, body: Data("{\"id\":\"ok\"}".utf8))
+        defer { server.stop() }
+        let performer = URLSessionPerformer(session: makeEphemeralSession(timeout: 5))
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("up.bin")
+        try Data("frame".utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        var request = URLRequest(url: server.url.appendingPathComponent("images"))
+        request.httpMethod = "POST"
+        let pair = try await performer.data(for: request, fromFile: file)
+        XCTAssertEqual(pair.0, Data("{\"id\":\"ok\"}".utf8))
+    }
+
     #if canImport(ObjectiveC)
     func testRedirectDelegateDropsLocation() {
         let session = makeEphemeralSession(timeout: 1)

@@ -3,7 +3,15 @@ import Foundation
 struct MultipartForm: Sendable {
     let boundary: String
     let body: Data
+    let fileURL: URL?
+
     var contentType: String { "multipart/form-data; boundary=\(boundary)" }
+
+    init(boundary: String, body: Data, fileURL: URL? = nil) {
+        self.boundary = boundary
+        self.body = body
+        self.fileURL = fileURL
+    }
 
     static func make(
         fileField: String,
@@ -12,76 +20,112 @@ struct MultipartForm: Sendable {
         contentType: String,
         fields: [String: String]
     ) -> MultipartForm {
-        let boundary = "pixeldive-\(UUID().uuidString.lowercased())"
-        var body = Data()
-        appendFile(
-            &body,
-            boundary: boundary,
-            field: fileField,
-            part: UploadPart(filename: filename, payload: payload, contentType: contentType)
-        )
-        for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
-            appendField(&body, boundary: boundary, name: name, value: value)
-        }
-        appendCloser(&body, boundary: boundary)
-        return MultipartForm(boundary: boundary, body: body)
+        let part = UploadPart(filename: filename, payload: payload, contentType: contentType)
+        return assemble(files: [(fileField, part)], fields: fields)
     }
 
     static func makeBatch(
         items: [UploadPart],
         fields: [String: String]
     ) -> MultipartForm {
-        let boundary = "pixeldive-\(UUID().uuidString.lowercased())"
-        var body = Data()
-        for item in items {
-            appendFile(
-                &body,
-                boundary: boundary,
-                field: "files",
-                part: item
-            )
-        }
+        assemble(files: items.map { ("files", $0) }, fields: fields)
+    }
+
+    static func write(
+        to dest: URL,
+        filename: String,
+        source: URL,
+        contentType: String,
+        fields: [String: String]
+    ) throws -> MultipartForm {
+        let boundary = newBoundary()
+        FileManager.default.createFile(atPath: dest.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: dest)
+        defer { try? handle.close() }
+        handle.write(filePreamble(boundary, field: "file", filename: filename, contentType: contentType))
+        try copyFile(source, into: handle)
+        handle.write(Data("\r\n".utf8))
         for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
-            appendField(&body, boundary: boundary, name: name, value: value)
+            handle.write(fieldChunk(boundary, name: name, value: value))
         }
-        appendCloser(&body, boundary: boundary)
-        return MultipartForm(boundary: boundary, body: body)
+        handle.write(closer(boundary))
+        return MultipartForm(boundary: boundary, body: Data(), fileURL: dest)
     }
 }
 
-private func appendFile(
-    _ body: inout Data,
-    boundary: String,
+private func assemble(
+    files: [(String, UploadPart)],
+    fields: [String: String]
+) -> MultipartForm {
+    let boundary = newBoundary()
+    var body = Data()
+    let extra = files.reduce(0) { $0 + $1.1.payload.count } + 512
+    body.reserveCapacity(extra)
+    for (field, part) in files {
+        body.append(
+            filePreamble(boundary, field: field, filename: part.filename, contentType: part.contentType)
+        )
+        body.append(part.payload)
+        appendAscii(&body, "\r\n")
+    }
+    for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
+        body.append(fieldChunk(boundary, name: name, value: value))
+    }
+    body.append(closer(boundary))
+    return MultipartForm(boundary: boundary, body: body)
+}
+
+private func newBoundary() -> String {
+    "pixeldive-\(UUID().uuidString.lowercased())"
+}
+
+private func filePreamble(
+    _ boundary: String,
     field: String,
-    part: UploadPart
-) {
+    filename: String,
+    contentType: String
+) -> Data {
     let safeField = MultipartSanitizer.token(field, fallback: "file")
-    let safeName = MultipartSanitizer.filename(part.filename)
-    let safeType = MultipartSanitizer.mediaType(part.contentType)
-    appendAscii(&body, "--\(boundary)\r\n")
+    let safeName = MultipartSanitizer.filename(filename)
+    let safeType = MultipartSanitizer.mediaType(contentType)
+    var data = Data()
+    appendAscii(&data, "--\(boundary)\r\n")
     appendAscii(
-        &body,
+        &data,
         "Content-Disposition: form-data; name=\"\(safeField)\"; filename=\"\(safeName)\"\r\n"
     )
-    appendAscii(&body, "Content-Type: \(safeType)\r\n\r\n")
-    body.append(part.payload)
-    appendAscii(&body, "\r\n")
+    appendAscii(&data, "Content-Type: \(safeType)\r\n\r\n")
+    return data
 }
 
-private func appendField(_ body: inout Data, boundary: String, name: String, value: String) {
+private func fieldChunk(_ boundary: String, name: String, value: String) -> Data {
     let safeName = MultipartSanitizer.token(name, fallback: "field")
-    appendAscii(&body, "--\(boundary)\r\n")
-    appendAscii(&body, "Content-Disposition: form-data; name=\"\(safeName)\"\r\n\r\n")
-    appendAscii(&body, value)
-    appendAscii(&body, "\r\n")
+    var data = Data()
+    appendAscii(&data, "--\(boundary)\r\n")
+    appendAscii(&data, "Content-Disposition: form-data; name=\"\(safeName)\"\r\n\r\n")
+    appendAscii(&data, value)
+    appendAscii(&data, "\r\n")
+    return data
 }
 
-private func appendCloser(_ body: inout Data, boundary: String) {
-    appendAscii(&body, "--\(boundary)--\r\n")
+private func closer(_ boundary: String) -> Data {
+    Data("--\(boundary)--\r\n".utf8)
 }
 
 private func appendAscii(_ body: inout Data, _ text: String) {
     body.append(Data(text.utf8))
+}
+
+private func copyFile(_ source: URL, into handle: FileHandle) throws {
+    let reader = try FileHandle(forReadingFrom: source)
+    defer { try? reader.close() }
+    while true {
+        let chunk = reader.readData(ofLength: 64 * 1024)
+        if chunk.isEmpty {
+            return
+        }
+        handle.write(chunk)
+    }
 }
 
 enum MultipartSanitizer {

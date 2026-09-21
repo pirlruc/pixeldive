@@ -1,4 +1,4 @@
-"""Batch image ingest mixed into SessionService."""
+"""Image ingest mixed into SessionService (single frame and batch)."""
 
 from __future__ import annotations
 
@@ -10,21 +10,39 @@ from app.auth import Principal
 from app.exceptions import BatchLimitError
 from app.models import ImageUpload, SessionImage
 from app.session_host import SessionHost
-from app.session_ops import touch_in_progress
+from app.session_ops import apply_first_upload
 from app.uploads import discard_spool, new_image, persist_upload, upload_size, validate_upload
 
 
 class SessionBatchMixin(SessionHost):
-    """Bounded fan-out batch upload used by SessionService."""
+    """Bounded fan-out ingest used by SessionService."""
+
+    async def add_image(
+        self,
+        session_id: uuid.UUID,
+        upload: ImageUpload,
+        principal: Principal | None = None,
+    ) -> SessionImage:
+        """Validate, store, and attach a single image."""
+        images = await self.add_images_batch(
+            session_id,
+            (upload,),
+            principal,
+            bounded=False,
+        )
+        return images[0]
 
     async def add_images_batch(
         self,
         session_id: uuid.UUID,
         uploads: Sequence[ImageUpload],
         principal: Principal | None = None,
+        *,
+        bounded: bool = True,
     ) -> list[SessionImage]:
         """Save payloads with bounded fan-out, then insert rows in one transaction."""
-        reject_bad_batch(uploads, self._settings.max_batch_images)
+        if bounded:
+            reject_bad_batch(uploads, self._settings.max_batch_images)
         try:
             for upload in uploads:
                 validate_upload(upload, self._settings)
@@ -57,9 +75,9 @@ class SessionBatchMixin(SessionHost):
             images = [
                 new_image(session, item, path) for item, path in zip(uploads, paths, strict=True)
             ]
-            touch_in_progress(session)
             db.add_all(images)
-            db.add(session)
+            if apply_first_upload(session):
+                db.add(session)
             await db.commit()
             for image in images:
                 await db.refresh(image)

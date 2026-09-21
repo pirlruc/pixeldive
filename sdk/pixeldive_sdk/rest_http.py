@@ -26,8 +26,8 @@ class RestHttpMixin:
             params["cursor"] = cursor
         return params
 
-    def _form_metadata(self, metadata: str | None) -> dict[str, str]:
-        """Optional multipart ``metadata`` field."""
+    def _form_fields(self, metadata: str | None) -> dict[str, str]:
+        """Optional multipart metadata field used by image uploads."""
         if metadata is None:
             return {}
         return {"metadata": metadata}

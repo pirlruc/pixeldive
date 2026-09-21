@@ -10,6 +10,7 @@ struct ContentView: View {
             Form {
                 connectionSection
                 sessionSection
+                cameraSection
                 imageSection
                 logSection
             }
@@ -26,10 +27,15 @@ struct ContentView: View {
 
     private var connectionSection: some View {
         Section("Service") {
-            TextField("Base URL", text: $model.baseURLText)
+            TextField("REST URL", text: $model.baseURLText)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(.URL)
+            TextField("gRPC host", text: $model.grpcHost)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            TextField("gRPC port", text: $model.grpcPort)
+                .keyboardType(.numberPad)
             SecureField("Bearer token (optional)", text: $model.token)
             Button("Refresh sessions") {
                 Task { await model.refresh() }
@@ -57,6 +63,22 @@ struct ContentView: View {
             }
             Button("Delete selected", role: .destructive) {
                 Task { await model.deleteSelected() }
+            }
+        }
+    }
+
+    private var cameraSection: some View {
+        Section("Camera feed (gRPC)") {
+            CameraPreview(session: model.camera.session)
+                .frame(height: 180)
+                .listRowInsets(EdgeInsets())
+            if model.capturing {
+                Button("Stop camera") { model.stopCamera() }
+            } else {
+                Button("Start camera feed") { model.startCamera() }
+            }
+            if !model.camera.notice.isEmpty {
+                Text(model.camera.notice).font(.footnote)
             }
         }
     }

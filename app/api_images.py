@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
 from fastapi import APIRouter, File, Form, Query, UploadFile
@@ -17,7 +18,7 @@ from app.metadata import parse_metadata_json
 from app.models import ImagePage, ImageUpload, SessionImage, SessionImageRead
 from app.service import SessionService
 from app.spool import spool_chunks
-from app.uploads import upload_from_spool
+from app.uploads import discard_spool, upload_from_spool
 
 image_router = APIRouter(prefix="/api/v1")
 
@@ -53,7 +54,7 @@ async def upload_images_batch(
 ) -> list[SessionImage]:
     """Upload multiple files in one multipart request."""
     extra = parse_metadata_json(metadata)
-    uploads = [await to_upload(item, None, service, extra=extra) for item in files]
+    uploads = await collect_uploads(files, extra, service)
     return await service.add_images_batch(session_id, uploads, principal)
 
 
@@ -131,3 +132,22 @@ async def to_upload(
         spool,
         extra if extra is not None else parse_metadata_json(metadata),
     )
+
+
+async def collect_uploads(
+    files: Sequence[UploadFile],
+    extra: dict[str, Any],
+    service: SessionService,
+) -> list[ImageUpload]:
+    """Spool batch files concurrently and discard completed spools on failure."""
+    results = await asyncio.gather(
+        *[to_upload(item, None, service, extra=extra) for item in files],
+        return_exceptions=True,
+    )
+    uploads = [item for item in results if not isinstance(item, BaseException)]
+    errors = [item for item in results if isinstance(item, BaseException)]
+    if not errors:
+        return uploads
+    for upload in uploads:
+        await discard_spool(upload)
+    raise errors[0]

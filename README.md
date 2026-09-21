@@ -9,7 +9,7 @@ device/camera identity, then upload frames over REST (multipart) or gRPC (client
 | gRPC | `proto/session_service.proto` (`pixeldive.session.v1.SessionService`) |
 | Data | SQLModel + async PostgreSQL (`asyncpg`); Alembic when `AUTO_CREATE_TABLES=false` |
 | Blobs | SHA-256 local filesystem, or async S3-compatible adapter (aiobotocore) |
-| SDK | `sdk/pixeldive_sdk` (`RestClient`, `GrpcClient`), `ios/` (`PixeldiveSDK`), and `android/` (Kotlin `PixeldiveClient`) |
+| SDK | `sdk/pixeldive_sdk` (`RestClient`, `GrpcClient`), `ios/` (`PixeldiveClient` + `PixeldiveGrpcClient`), and `android/` (Kotlin twins) |
 | Demo | `python -m demo` (web), `ios/Demo` (SwiftUI), and `android/demo` (Compose) |
 | Runtime | CPython **3.13** ([QUAL-002](docs/issues.yml), PY-RUN-003) |
 
@@ -90,7 +90,7 @@ Python SDK TLS: `RestClient("https://…", token=…, verify="/path/ca.pem")` an
 Passing PEMs with `insecure=True` raises. IP targets can set
 `ssl_target_name_override` to the certificate's DNS name.
 iOS/Android clients use platform TLS when the base URL is `https://`; custom CA
-loading is [SDK-004](docs/issues.yml).
+loading is [SDK-008](docs/issues.yml).
 
 Compose host ports bind to `127.0.0.1`. Named volumes `pgdata`, `images`, and
 `minio` hold state — back them up with `docker compose run --rm` / volume snapshots
@@ -104,18 +104,20 @@ With the session service running:
 PYTHONPATH=sdk:. PIXELDIVE_BASE_URL=http://127.0.0.1:8000 python3 -m demo
 ```
 
-Open `http://127.0.0.1:8080`. The UI creates Android-shaped sessions, uploads images, and
-downloads them through `pixeldive_sdk.RestClient`.
+Open `http://127.0.0.1:8080`. The UI creates Android-shaped sessions over REST and
+uploads camera frames through `pixeldive_sdk.GrpcClient` (`PIXELDIVE_GRPC_TARGET`,
+default `127.0.0.1:50051`). Set that variable empty to keep image bytes on REST.
 
 iOS: open [`ios/README.md`](ios/README.md). `PixeldiveClient` is the Swift twin of
-`RestClient`. The SwiftUI demo (`ios/Demo/PixeldiveDemo.xcodeproj`) talks to the service
-only through that package. Session JSON keeps Android wire keys; iOS identity is mapped
-from `UIDevice` / `AVCaptureDevice` and tagged `metadata.platform=ios`.
+`RestClient`; `PixeldiveGrpcClient` is the twin of `GrpcClient` (client-streaming
+uploads). The SwiftUI demo talks to the service only through that package, captures
+an `AVCapture` feed, and streams JPEGs on gRPC. Session JSON keeps Android wire keys;
+iOS identity is mapped from `UIDevice` / `AVCaptureDevice` and tagged `metadata.platform=ios`.
 
-Android: open [`android/README.md`](android/README.md). The Kotlin `PixeldiveClient` is
-the JVM twin of `RestClient`. The Compose demo (`android/demo`) talks to the service
-only through that library and maps `Build` / Camera2 into the same keys, tagged
-`metadata.platform=android`.
+Android: open [`android/README.md`](android/README.md). The Kotlin `PixeldiveClient` /
+`PixeldiveGrpcClient` pair matches the Python REST/gRPC clients. The Compose demo
+talks to the service only through that library, captures CameraX JPEGs onto gRPC, and
+maps `Build` / Camera2 into the same keys, tagged `metadata.platform=android`.
 
 ## Quality gates
 
