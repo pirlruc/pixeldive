@@ -143,6 +143,18 @@ only). Wiring them without the secret fails the pull request.
 
 ## Suggested next work
 
+Sibling-repo follow-ups were authored but **not pushed**. The cloud token can read those private repos and can push pixeldive; push to the others returned 403. Apply these `docs/issues.yml` epics from a credential that can write:
+
+| Repo | Epic | Why |
+| --- | --- | --- |
+| github-scaffold | GS-PIN-LAG | 1.7.0 defaults still say scaffold 1.6.0 and guardrails 1.7.0; `ci-container.yml` pins containerdevops 5.0.2 |
+| guardrails | GR-PIN-MTH | 1.8.0 still cites methodologies 1.6.0; document KICS `698ed579` and `ce76b7d0` |
+| commondevops | CMN-PIN-002 | `check-submodule-pins.sh` on 5.1.2 still expects guardrails 1.6.0; tag 5.1.2 has no GitHub Release |
+| containerdevops | CDO-LOCAL-001 | scan path always pushes to GHCR; tag 5.0.4 has no GitHub Release |
+| pydevops | PDO-THRESH-002 | `python-quality` does not read `profile.thresholds.yml` |
+| cppdevops | CPPD-MOBILE-002 | `cpp-mobile-matrix` is C++/NDK; say so, do not add Kotlin/Swift here |
+| methodologies | MTH-PIN-SYNC | same-day releases left companion citations one tag behind |
+
 - [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
 - [SEC-004](issues.yml) shared quota store on PostgreSQL (`app/sessions/quotas.py`; first multi-replica tests). In-process `TenantQuota` is still sync
 - S3 put-skip is process-local. A cache hit still HEADs, so a missing object is uploaded again. Replicas still re-PUT until SEC-004
