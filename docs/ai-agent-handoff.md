@@ -7,7 +7,7 @@
 | **Service** | pixeldive |
 | **Type** | Async Python microservice (FastAPI REST + gRPC) for image-processing sessions |
 | **Docs** | `docs/ai-agent-handoff.md`, `docs/issues.yml`, `docs/limitations.md`, `docs/new-guardrails/` |
-| **Methodology** | [github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.5.0/github-issue-adr) (Epic = decision record, no ADR markdown files) |
+| **Methodology** | [github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.7.0/github-issue-adr) (Epic = decision record, Y-statement on new Epics, no ADR markdown files) |
 
 ## Current slice
 
@@ -69,15 +69,15 @@ CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`,
 
 | Companion | How it is pinned |
 | --- | --- |
-| `pirlruc/guardrails` | Git submodule at `docs/guardrails/` (tag **1.6.0**). Private; needs `GUARDRAILS_READ_TOKEN`. |
-| `pirlruc/github-scaffold` | Git submodule at `.github/scaffold/` (tag **1.5.0**). Templates are synced into `.github/` and `.cursor/rules/`. |
-| `pirlruc/methodologies` | Cited by tag in docs (`tree/1.5.0/github-issue-adr`). Not a submodule. |
+| `pirlruc/guardrails` | Git submodule `guardrails` at `docs/guardrails/` (tag **1.8.0**, `aa5184ce`). Private; needs `GUARDRAILS_READ_TOKEN`. |
+| `pirlruc/github-scaffold` | Git submodule `github-scaffold` at `.github/scaffold/` (tag **1.7.0**, `e76bb3fd`). Templates are synced into `.github/` and `.cursor/rules/`. |
+| `pirlruc/methodologies` | Cited by tag in consumer docs (`tree/1.7.0/github-issue-adr`). Not a submodule. Scaffold 1.7.0 files still say 1.6.0. |
 
 Android client analogs (payload shape, not Gradle layout): [pirlruc/finsilo](https://github.com/pirlruc/finsilo) (`:app` / `:domain`) and Heimdall (`app → kit → core`). Phone/camera JSON maps to Android `Build`, `ActivityManager`, `DisplayMetrics`, and Camera2 — see field descriptions on `app/device_models.py`. Do not copy Heimdall's native kit layout into this Python service.
 
 ## github-issue-adr
 
-Authored backlog: [`docs/issues.yml`](issues.yml). Targets: [`docs/issues-sync-targets.yml`](issues-sync-targets.yml). Deviations (none): [`docs/guardrail-deviations.yml`](guardrail-deviations.yml). Do not invent `approved_by`.
+Authored backlog: [`docs/issues.yml`](issues.yml). Targets: [`docs/issues-sync-targets.yml`](issues-sync-targets.yml). Deviations (none): [`docs/guardrail-deviations.yml`](guardrail-deviations.yml). Do not invent `approved_by`. Pin check without a clone: `bash scripts/check-submodule-pins.sh`.
 
 ```bash
 bash scripts/setup-issue-scaffold.sh
@@ -122,6 +122,25 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Camera sessions should reuse one `PixeldiveClient` / gRPC channel, send in-memory frames (already in RAM from the camera), and use file/path helpers for gallery or on-disk bursts. Local storage hardlinks spools; S3 still streams multipart. Do not bump session rows after the first frame. Close `PixeldiveGrpcClient` when the host/token changes (`NioGrpcStreaming.close` / OkHttp dispatcher shutdown). Mobile gRPC is h2c: Android OkHttp `H2_PRIOR_KNOWLEDGE`, iOS grpc-swift NIO (Apple-only SPM product). URLSession does not speak h2c. Demos capture live camera (AVCapture / CameraX / getUserMedia) and upload on gRPC; session CRUD stays REST (`PIXELDIVE_GRPC_TARGET`, default `127.0.0.1:50051`). Native demos must not `listSessions` after every JPEG. The Python gRPC demo reads the multipart body once into a capped chunk list and streams those chunks ([PERF-006](issues.yml)); the REST-only fallback still uses a temp file. Starlette may still spool the multipart body. Raising inside the gRPC request iterator cancels the RPC, so the cap is enforced before `UploadImage`. TLS gRPC and Struct metadata are [SDK-007](issues.yml). ios-sdk Trivy scans `ios/` but must skip `.build` — grpc-swift / swift-nio-ssl checkouts ship sample private keys that fail SWIFT-SEC-004.
 - Android `HttpUrl.resolve` dropped a base path prefix — concatenate like iOS/httpx. Multipart `Content-Type` parameters (`charset=`) must be stripped, not glued onto the subtype. iOS must trim bearer tokens, reject non-file upload URLs, refuse off-origin followed redirects, and must not fabricate sample cameras when discovery is empty.
 
+## Reusable workflows (not called)
+
+Product CI stays in this repo. Private `workflow_call` hosts need a caller PAT
+(`COMMONDEVOPS_READ_TOKEN`, `CONTAINERDEVOPS_READ_TOKEN`, `PYDEVOPS_READ_TOKEN`).
+Those secrets are not part of this repo's documented set (`GUARDRAILS_READ_TOKEN`
+only). Wiring them without the secret fails the pull request.
+
+| Repo / pin | Job | Reuse here |
+| --- | --- | --- |
+| commondevops `5.1.2` (`b3c462be`) | `common-infra-lint` | Same tools as `scripts/run-actionlint.sh`, `run-shellcheck.sh`, `run-hadolint.sh`, `run-zizmor.sh`. Call it once the read token exists. |
+| commondevops | `common-doc-verify`, `common-scaffold-verify` | Link lint and `issues-sync --validate-only` already run from vendored/local scripts. Scaffold is not cloned in CI. |
+| commondevops | `common-secrets-sast` | Overlaps gitleaks + semgrep. This repo also runs `p/swift` and `p/kotlin`, which that workflow's `--config auto` does not document. |
+| commondevops | `common-supply-chain` | Image SBOM/Trivy already run in `security.yml`. Filesystem license gate waits on a publish (SC-LIC). |
+| commondevops | `common-scorecard`, `common-release` | Scorecard is advisory. Release waits on the first publish. |
+| containerdevops `5.0.4` (`2dd60d34`) | `container-lint`, `container-iac` | Hadolint/KICS already run via `scripts/run-hadolint.sh` and `scripts/run-kics.sh`. |
+| containerdevops | `container-build` + `container-scan` | Those jobs push an ephemeral GHCR image (DOCKER-DELIV-004). This repo scans the local `pixeldive:ci` tag and does not publish. |
+| pydevops `2.1.1` (`19fa370f`) | `python-quality` | Strictness levels do not read `profile.thresholds.yml` (CI-022). No proto generation, Postgres service, or Swift/Kotlin jobs. |
+| cppdevops `3.1.2` (`9bfad661`) | `cpp-*` | No C++ sources. `cpp-mobile-matrix` is not the Kotlin/Swift SDK. |
+
 ## Suggested next work
 
 - [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
@@ -131,7 +150,7 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - [SEC-005](issues.yml) optional Redis quota hot path if Postgres contends
 - [SDK-008](issues.yml) iOS/Android custom CA trust for private PKI
 - First image/GitHub Release publish: SC-SIGN-001, SC-PROV-001, DOCKER-TEST-001
-- Propose [docs/new-guardrails](new-guardrails/README.md) IDs upstream to pirlruc/guardrails (including [swift.md](new-guardrails/swift.md) and [kotlin.md](new-guardrails/kotlin.md))
+- Propose the Python IDs that did not land (PY-SEC-005/006/007) from [docs/new-guardrails](new-guardrails/README.md). Swift/Kotlin/Android proposals in that folder landed in guardrails 1.7.0; do not re-file them. SWIFT-ENV-002 (SwiftFormat pre-commit) and SWIFT-IOS-001 (Xcode 26 assert) are still open here.
 
 ## Recent history
 
@@ -147,5 +166,6 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Camera ingest: unified `add_image`/`add_images_batch`, local spool hardlink, parallel REST spool, quota release on delete, streaming mobile file uploads ([PERF-005](issues.yml), [SDK-004](issues.yml))
 - Mobile gRPC image clients + camera-feed demos ([SDK-005](issues.yml), [SDK-006](issues.yml)): hand-rolled protobuf, iOS grpc-swift NIO, Android OkHttp h2c, AVCapture/CameraX/getUserMedia → `UploadImage`
 - Follow-up: ruff format on `tests/test_sdk.py`; close gRPC channels on cache replace; skip REST list and JPEG encode while a frame is in flight; NIO call timeout; percent-decode `grpc-message`; Python Struct metadata ([PR #13](https://github.com/pirlruc/pixeldive/pull/13))
+- TOOL-003: guardrails 1.8.0 and github-scaffold 1.7.0 gitlinks; commondevops submodule names; Kotlin overlay keys; `COPY --chown`; actionlint + zizmor; CodeQL/Semgrep no longer exclude analog pins
 
-*Last updated: 2026-09-21*
+*Last updated: 2026-09-29*

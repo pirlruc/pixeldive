@@ -53,22 +53,23 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Submodule pins (SC-DEP-004)
+        run: bash scripts/check-submodule-pins.sh
+
       - name: Hadolint
-        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
-        with:
-          dockerfile: Dockerfile
-          failure-threshold: warning
+        run: bash scripts/run-hadolint.sh
 
       - name: KICS
-        uses: Checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
-        with:
-          path: Dockerfile,docker-compose.yml
-          fail_on: high,medium
-          enable_comments: false
-          output_path: kics-results/
+        run: bash scripts/run-kics.sh
 
       - name: ShellCheck
-        run: shellcheck --severity=error scripts/*.sh
+        run: bash scripts/run-shellcheck.sh
+
+      - name: actionlint
+        run: bash scripts/run-actionlint.sh
+
+      - name: zizmor
+        run: bash scripts/run-zizmor.sh
 
       - name: Compose spec
         run: docker compose -f docker-compose.yml --profile s3 config --quiet

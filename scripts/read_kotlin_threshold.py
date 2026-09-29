@@ -10,11 +10,18 @@ ROOT = Path(__file__).resolve().parents[1]
 CONSUMER = ROOT / "config" / "kotlin.profile.thresholds.yml"
 ANALOG = ROOT / "docs" / "guardrails" / "kotlin" / "profile.thresholds.yml"
 
-HIGHER_IS_STRICTER = frozenset({"statement_coverage", "branch_coverage"})
+HIGHER_IS_STRICTER = frozenset(
+    {
+        "statement_coverage",
+        "branch_coverage",
+        "doc_coverage",
+    }
+)
 LOWER_IS_STRICTER = frozenset(
     {
         "pr_size_soft_limit_lines",
         "max_cyclomatic_complexity",
+        "lint_exception_max_days",
     }
 )
 

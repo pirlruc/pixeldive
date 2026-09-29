@@ -5,7 +5,7 @@ which has no entries).
 
 | Limit | Why |
 | --- | --- |
-| Analog submodules need a PAT to clone | `pirlruc/guardrails` @ 1.6.0 and `pirlruc/github-scaffold` @ 1.5.0 are private gitlinks. CI falls back to `config/python.profile.thresholds.yml` until `GUARDRAILS_READ_TOKEN` is set. |
+| Analog submodules need a PAT to clone | `pirlruc/guardrails` @ 1.8.0 and `pirlruc/github-scaffold` @ 1.7.0 are private gitlinks (`.gitmodules` names match commondevops). CI falls back to `config/python.profile.thresholds.yml` until `GUARDRAILS_READ_TOKEN` is set. `scripts/check-submodule-pins.sh` checks the gitlink without cloning. |
 | GitHub issues not published | Issue create is a publishing action. Tracked as [TOOL-002](issues.yml). |
 | Tests use SQLite locally | Production is PostgreSQL + asyncpg. SQLite stays the unit-test default; CI job `postgres` is [DATA-003](issues.yml). |
 | Auth is opt-in | `AUTH_REQUIRED` defaults to false so local tests and compose stay unauthenticated. Set `ENVIRONMENT=production` (requires `AUTH_REQUIRED`, `HTTP_INSECURE=false`, `GRPC_INSECURE=false`, resolvable TLS cert/key files, and positive rate/byte quotas) plus a PEM pair. Host-native HTTP/gRPC binds default to `127.0.0.1`; the image/Compose set `0.0.0.0` inside the container network. Docker HEALTHCHECK uses `127.0.0.1` and skips hostname checks; HTTP mTLS also needs `HTTP_TLS_CLIENT_CERT_FILE` / `HTTP_TLS_CLIENT_KEY_FILE` on the app container. |

@@ -1,8 +1,12 @@
-# Consumer copy of docs/guardrails/kotlin/profile.thresholds.yml (pin 1.6.0).
+# Consumer copy of docs/guardrails/kotlin/profile.thresholds.yml (pin 1.8.0).
 # Overlay rules match scripts/read_python_threshold.py: analog keys required;
 # stricter values allowed; looser values fail closed (CI-022).
+# doc_coverage is the org number. Dokka is not run: the JVM SDK does not publish
+# API docs (KT-DOC-001 — not applicable, not a lowered gate).
 
 statement_coverage: 95          # KT-TEST-002
 branch_coverage: 95             # KT-TEST-002
+doc_coverage: 95                # KT-DOC-001 (publishable modules; N/A until a publish)
 max_cyclomatic_complexity: 10   # KT-CPLX-001
 pr_size_soft_limit_lines: 500   # KT-DELIV-001
+lint_exception_max_days: 14     # KT-BUILD-002

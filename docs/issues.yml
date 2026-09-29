@@ -1,7 +1,7 @@
 # Authored backlog for pixeldive. Source of truth for GitHub Epic/Task issues.
 #
-# Schema: https://github.com/pirlruc/github-scaffold/blob/1.5.0/docs/issues-schema.md
-# Methodology: https://github.com/pirlruc/methodologies/tree/1.5.0/github-issue-adr
+# Schema: https://github.com/pirlruc/github-scaffold/blob/1.7.0/docs/issues-schema.md
+# Methodology: https://github.com/pirlruc/methodologies/tree/1.7.0/github-issue-adr
 #
 # The Epic is the decision record — there are no ADR markdown files.
 # Deviations from guardrails go in docs/guardrail-deviations.yml, not here.
@@ -132,6 +132,85 @@ milestones:
             verification:
               - test -f docs/issues.yml
               - test -x scripts/issues-sync.sh
+
+      - id: TOOL-003
+        status: done
+        title: Bump guardrails 1.8.0 and github-scaffold 1.7.0
+        overview:
+          problem: >-
+            The gitlinks still named guardrails 1.6.0 and github-scaffold 1.5.0.
+            Methodologies 1.7.0, guardrails 1.8.0, and scaffold 1.7.0 have since
+            shipped. Kotlin's analog gained doc_coverage and lint_exception_max_days,
+            so the overlay reader fail-closes on the old consumer copy.
+          goal: >-
+            Pin the two analog submodules at those annotated tags using the
+            commondevops .gitmodules names, sync scaffold 1.7.0 templates, and
+            keep numeric overlays at least as strict as guardrails 1.8.0.
+        decision: >-
+          In the context of a public Python service that also ships Swift and
+          Kotlin SDKs, facing private reusable workflows that need Actions PATs
+          this repo does not have, we decided to pin guardrails and
+          github-scaffold as submodules and to run actionlint and zizmor in-repo,
+          to achieve SC-DEP-004 and CI-023 without a red pull request, accepting
+          that common-infra-lint, container-lint, container-scan, and
+          python-quality stay unwired until those read tokens exist.
+        out_of_scope:
+          - Calling cppdevops quality, tests, or the mobile matrix (no C++ sources)
+          - Submoduling commondevops, containerdevops, pydevops, or methodologies
+          - Publishing a registry image (SC-SIGN-001 / SC-PROV-001 / DOCKER-DELIV-004)
+        architecture:
+          target: Analog gitlinks plus token-free workflow lint
+          modules:
+            - docs/guardrails
+            - .github/scaffold
+            - .gitmodules
+            - config
+            - scripts/check-submodule-pins.sh
+            - scripts/run-actionlint.sh
+            - scripts/run-zizmor.sh
+        acceptance_criteria:
+          - docs/guardrails gitlink is guardrails 1.8.0 (aa5184ce)
+          - .github/scaffold gitlink is github-scaffold 1.7.0 (e76bb3fd)
+          - .gitmodules submodule names are guardrails and github-scaffold
+          - Kotlin overlay includes doc_coverage and lint_exception_max_days
+          - actionlint and zizmor run from scripts/ci-local.sh
+          - docs/guardrail-deviations.yml stays empty
+        guardrail_refs:
+          - SC-DEP-004
+          - CI-022
+          - CI-023
+          - CI-024
+          - CI-008
+          - DOCKER-BUILD-007
+          - KT-DOC-001
+        tasks:
+          - id: TOOL-003-T1
+            status: done
+            title: Pin submodules and sync scaffold 1.7.0
+            instructions:
+              files:
+                - .gitmodules
+                - docs/guardrails
+                - .github/scaffold
+                - .cursor/rules
+                - AGENTS.md
+            verification:
+              - bash scripts/check-submodule-pins.sh
+              - test -f AGENTS.md
+          - id: TOOL-003-T2
+            status: done
+            title: Match 1.8.0 overlays and drop redundant scanner excludes
+            instructions:
+              files:
+                - config/kotlin.profile.thresholds.yml
+                - config/swift.profile.thresholds.yml
+                - config/python.profile.thresholds.yml
+                - .github/codeql/codeql-config.yml
+                - .github/workflows/security.yml
+                - Dockerfile
+            verification:
+              - python3 scripts/read_kotlin_threshold.py doc_coverage
+              - python3 scripts/read_swift_threshold.py max_cyclomatic_complexity
 
   - name: Phase 1 — Session platform
     epics:

@@ -1,7 +1,7 @@
-# Consumer copy of docs/guardrails/swift/profile.thresholds.yml (pin 1.6.0).
+# Consumer copy of docs/guardrails/swift/profile.thresholds.yml (pin 1.8.0).
 # Overlay rules match scripts/read_python_threshold.py: analog keys required;
 # stricter values allowed; looser values fail closed (CI-022).
-# Extra keys are local policy for proposed SWIFT-CPLX-001 (see docs/new-guardrails/swift.md).
+# statement_coverage 95 is stricter than the org floor of 90 (SWIFT-TEST-002).
 
 statement_coverage: 95          # SWIFT-TEST-002 (stricter than org 90; matches KT-TEST-002)
 doc_coverage: 90                # SWIFT-DOC-001
