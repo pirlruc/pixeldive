@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Create `/data/images` as root before `USER 65532`. The previous order
+  made the image build fail with permission denied.
+- Find Swift 6.4 Linux test bundles (`PixeldiveSDKTests.xctest` directories).
+- Dependabot fallbacks use `github.event.pull_request.user.login`.
+  `github.actor` is the spoofable check zizmor rejects.
+- `.shellcheckrc` sets ShellCheck severity to `error` (SHELL-LINT-001).
+  `common-infra-lint` otherwise defaults to style.
+
 ### Added
 
 - Dokka HTML for the Android SDK (`:sdk:dokkaGeneratePublicationHtml`).

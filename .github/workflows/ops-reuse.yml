@@ -17,8 +17,8 @@ permissions: {}
 jobs:
   infra:
     # CI-024: Dependabot cannot read COMMONDEVOPS_READ_TOKEN. docker-lint
-    # runs the in-repo scripts for that actor.
-    if: github.actor != 'dependabot[bot]'
+    # runs the in-repo scripts for that pull request author.
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       contents: read
     uses: pirlruc/commondevops/.github/workflows/common-infra-lint.yml@b3c462bed0de4f6475e6be7875c4ababd831acc6
@@ -32,7 +32,7 @@ jobs:
   iac:
     # CI-024: Dependabot cannot read CONTAINERDEVOPS_READ_TOKEN.
     # compose --profile s3 stays in docker-lint; this reusable omits the profile.
-    if: github.actor != 'dependabot[bot]'
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: write

@@ -53,8 +53,10 @@ COPY --chown=65532:65532 migrations /app/migrations
 COPY --chown=65532:65532 alembic.ini /app/alembic.ini
 COPY --chown=65532:65532 main.py /app/main.py
 
+# Empty volume mount point. Created as root because USER 65532 cannot
+# mkdir /data. This is not a COPY --chown of a tree (DOCKER-BUILD-007).
+RUN install -d -o 65532 -g 65532 /data/images
 USER 65532:65532
-RUN mkdir -p /data/images
 EXPOSE 8000 50051
 VOLUME ["/data/images"]
 

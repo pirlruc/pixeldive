@@ -1,2 +1,4 @@
-# SHELL-LINT-001: analog shellcheck_failure_threshold is error.
+# SHELL-LINT-001. common-infra-lint runs shellcheck with no --severity,
+# and ShellCheck's default is style. The org threshold is error.
 severity=error
+external-sources=true

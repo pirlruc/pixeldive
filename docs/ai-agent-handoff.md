@@ -113,6 +113,9 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Dependabot grouped PRs can be stale vs `aiobotocore` (they may still list `boto3`) and may jump the Docker image to CPython 3.14. Runtime is **3.13** per PY-RUN-003 ([QUAL-002](issues.yml)); 3.14 re-evaluation is 2027-04. boto3 is not a dependency.
 - Compose `depends_on.minio.required: false` needs Compose spec support for profiles; default `docker compose up` must stay local-disk.
 - Host ports are `127.0.0.1` (DOCKER-COMPOSE-006). MinIO server uses `mc ready local` (quay image includes `mc`). `minio-init` is a one-shot job.
+- The runtime image creates `/data/images` with `install -d -o 65532` before `USER`. A `RUN mkdir` after `USER 65532` cannot create `/data`.
+- Ubuntu runners that have Swift 6.4 emit `PixeldiveSDKTests.xctest` as a directory. `check-swift-coverage.py` must not look only for a file named `*PackageTests.xctest`.
+- `common-infra-lint` runs ShellCheck at its default severity (style). `.shellcheckrc` sets `severity=error` so the reusable matches SHELL-LINT-001. Dependabot detection uses `github.event.pull_request.user.login`; `github.actor` fails zizmor `bot-conditions`.
 - Compose secrets have no in-file defaults; `cp .env.example .env` before `docker compose up`.
 - `ENVIRONMENT=production` requires `AUTH_REQUIRED=true`, `HTTP_INSECURE=false`, `GRPC_INSECURE=false`, resolvable TLS cert/key files, and positive `RATE_LIMIT_PER_MINUTE`, `TENANT_MAX_UPLOAD_BYTES`, and `SESSION_MAX_UPLOAD_BYTES` (0 stays unlimited outside production).
 - Host-native HTTP/gRPC defaults are `127.0.0.1`; image/Compose set `0.0.0.0` in-container.
@@ -161,6 +164,10 @@ Sibling epics were opened on GitHub because the token cannot push `docs/issues.y
 | pydevops | PDO-THRESH-002 | https://github.com/pirlruc/pydevops/issues/173 |
 | cppdevops | CPPD-MOBILE-002 | https://github.com/pirlruc/cppdevops/issues/85 |
 | methodologies | MTH-PIN-SYNC | https://github.com/pirlruc/methodologies/issues/119 |
+| guardrails | GR-CI-024-BOT | https://github.com/pirlruc/guardrails/issues/192 |
+| commondevops | CMN-SHELL-001 | https://github.com/pirlruc/commondevops/issues/168 |
+
+`python-quality` and `container-scan` limits are already [PDO-THRESH-002](https://github.com/pirlruc/pydevops/issues/173) and [CDO-LOCAL-001](https://github.com/pirlruc/containerdevops/issues/127). Do not file them again.
 
 PY-SEC-005/006/007: [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/161) stayed closed. It deferred the Python proposals as out of scope of a Swift/Java pack epic. That close is right for that epic. The rules themselves were not rejected. pixeldive already uses `hmac.compare_digest`, production fail-closed auth/plaintext, and upload magic bytes, which is stricter than PY-SEC-001..004. [GR-PY-SEC-001](https://github.com/pirlruc/guardrails/issues/191) asks the Python pack to add the three IDs. Do not remove those implementations.
 
@@ -189,5 +196,6 @@ PY-SEC-005/006/007: [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/1
 - Follow-up: ruff format on `tests/test_sdk.py`; close gRPC channels on cache replace; skip REST list and JPEG encode while a frame is in flight; NIO call timeout; percent-decode `grpc-message`; Python Struct metadata ([PR #13](https://github.com/pirlruc/pixeldive/pull/13))
 - TOOL-003: guardrails 1.8.0 and github-scaffold 1.7.0 gitlinks; commondevops submodule names; Kotlin overlay keys; `COPY --chown`; actionlint + zizmor; CodeQL/Semgrep no longer exclude analog pins
 - TOOL-004: Dokka HTML on `:sdk` (the earlier "not published, so KT-DOC-001 N/A" note was wrong for a library that already has a public API); `ops-reuse.yml` calls common-infra-lint and container-iac via read tokens; KICS `698ed579` / `ce76b7d0` explained for `minio-init` and Postgres `cap_add`
+- CI fix: `/data/images` is created before `USER 65532`; Swift 6.4 Linux test bundles; Dependabot checks use the PR author; `.shellcheckrc` severity is error. Mobile SDK gates stay on `ios-sdk` and `android-sdk` when `GITHUB_ACTIONS` is set
 
 *Last updated: 2026-09-30*

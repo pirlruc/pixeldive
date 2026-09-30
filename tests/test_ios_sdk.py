@@ -144,3 +144,26 @@ def test_swift_coverage_parser() -> None:
     assert "--enable-code-coverage" in script
     assert "check-swift-coverage.py" in script
     assert "--threshold" in script
+
+
+def test_find_linux_swift6_test_bundle(tmp_path: Path) -> None:
+    """Swift 6.4 Linux bundles are directories named after the test target."""
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    path = root / "scripts" / "check-swift-coverage.py"
+    spec = importlib.util.spec_from_file_location("check_swift_coverage_bins", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    bundle = tmp_path / ".build" / "x86_64-unknown-linux-gnu" / "debug" / "PixeldiveSDKTests.xctest"
+    bundle.mkdir(parents=True)
+    binary = bundle / "PixeldiveSDKTests"
+    binary.write_text("#!/bin/sh\n", encoding="utf-8")
+    binary.chmod(0o755)
+    noise = tmp_path / ".build" / "checkouts" / "grpc" / "debug" / "OtherTests.xctest"
+    noise.mkdir(parents=True)
+    other = noise / "OtherTests"
+    other.write_text("#!/bin/sh\n", encoding="utf-8")
+    other.chmod(0o755)
+    assert module.find_test_binary(tmp_path) == binary

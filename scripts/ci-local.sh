@@ -40,6 +40,12 @@ fi
   --cov=app --cov=main --cov=sdk --cov=demo --cov-branch \
   --cov-fail-under="${STMT}" \
   -q
-bash "$ROOT/scripts/check-ios-sdk.sh"
-bash "$ROOT/scripts/check-android-sdk.sh"
+# ios-sdk and android-sdk are the fail-closed mobile jobs. A partial Swift
+# or Java on the Ubuntu quality runner must not fail the Python gate.
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  echo "skipping ios and android SDK gates (dedicated jobs own them)"
+else
+  bash "$ROOT/scripts/check-ios-sdk.sh"
+  bash "$ROOT/scripts/check-android-sdk.sh"
+fi
 echo "ci-local ok (statement_coverage=${STMT} branch_coverage=${BRANCH} doc_coverage=${DOC})"
