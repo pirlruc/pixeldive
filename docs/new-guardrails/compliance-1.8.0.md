@@ -125,7 +125,10 @@ CI jobs:
 - `quality` (Ubuntu) and `android-sdk` (Ubuntu, Temurin 21,
   `PIXELDIVE_REQUIRE_JAVA=1`) run `scripts/check-android-sdk.sh`:
   `:sdk:ktlintCheck` (`KT-BUILD-002`), `:sdk:detekt` (`KT-CPLX-001/002`,
-  `KT-BUILD-002`), and `:sdk:koverVerify` against the overlay (`KT-TEST-002`).
+  `KT-BUILD-002`), `:sdk:koverVerify` against the overlay (`KT-TEST-002`),
+  and `:sdk:dokkaGeneratePublicationHtml` (`KT-DOC-001`). Dokka HTML is
+  build output under `android/sdk/build/dokka/html`. Undocumented public
+  declarations fail the task.
 - `android-sdk` also runs Trivy filesystem scan of `android/` (`KT-SEC-004`;
   analog names OWASP Dependency-Check/grype — Trivy is proposed as an accepted
   evaluator in [kotlin.md](kotlin.md)).

@@ -21,11 +21,12 @@ if ! command -v java >/dev/null 2>&1; then
   exit 0
 fi
 
-echo "kotlin gates: statement_coverage=${STMT} branch_coverage=${BRANCH} max_cc=${MAX_CC}"
+DOC="$("$PYTHON" "$ROOT/scripts/read_kotlin_threshold.py" doc_coverage)"
+echo "kotlin gates: statement_coverage=${STMT} branch_coverage=${BRANCH} max_cc=${MAX_CC} doc_coverage=${DOC}"
 java -version
 bash "$ROOT/android/gradlew" -p "$ROOT/android" --no-daemon \
   -Ppixeldive.statementCoverage="$STMT" \
   -Ppixeldive.branchCoverage="$BRANCH" \
   -Ppixeldive.maxCc="$MAX_CC" \
-  :sdk:ktlintCheck :sdk:detekt :sdk:koverVerify
-echo "android-sdk ok"
+  :sdk:ktlintCheck :sdk:detekt :sdk:koverVerify :sdk:dokkaGeneratePublicationHtml
+echo "android-sdk ok (dokka html under android/sdk/build/dokka/html, doc_coverage=${DOC})"

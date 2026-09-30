@@ -71,6 +71,23 @@ Local HTTP uses `networkSecurityConfig` domain exceptions only (KT-AND-001
 proposal). Camera and photo permissions/rationale are in the demo manifest
 (KT-AND-002 proposal).
 
+## API reference (KT-DOC-001)
+
+`:sdk:dokkaGeneratePublicationHtml` writes Dokka HTML to
+`android/sdk/build/dokka/html/index.html`. That directory is build output and
+is not committed. The task fails if any public declaration lacks KDoc
+(`reportUndocumented` + `failOnWarning`), which is stricter than
+`doc_coverage` 95. `scripts/check-android-sdk.sh` runs it with the other
+Kotlin gates.
+
+```bash
+bash android/gradlew -p android :sdk:dokkaGeneratePublicationHtml
+```
+
+Dokka 2.0.0 stays on the V1 Gradle plugin unless
+`org.jetbrains.dokka.experimental.gradle.pluginMode=V2Enabled` is set in
+`android/gradle.properties`. The publication uses that V2 mode.
+
 ## Tests
 
 ```bash

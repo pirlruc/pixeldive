@@ -56,19 +56,26 @@ jobs:
       - name: Submodule pins (SC-DEP-004)
         run: bash scripts/check-submodule-pins.sh
 
+      # Non-dependabot PRs run these in ops-reuse.yml (common-infra-lint,
+      # container-iac). Dependabot cannot read the ops-repo tokens (CI-024).
       - name: Hadolint
+        if: github.actor == 'dependabot[bot]'
         run: bash scripts/run-hadolint.sh
 
       - name: KICS
+        if: github.actor == 'dependabot[bot]'
         run: bash scripts/run-kics.sh
 
       - name: ShellCheck
+        if: github.actor == 'dependabot[bot]'
         run: bash scripts/run-shellcheck.sh
 
       - name: actionlint
+        if: github.actor == 'dependabot[bot]'
         run: bash scripts/run-actionlint.sh
 
       - name: zizmor
+        if: github.actor == 'dependabot[bot]'
         run: bash scripts/run-zizmor.sh
 
       - name: Compose spec

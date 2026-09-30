@@ -1,9 +1,12 @@
+import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kover)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.dokka)
 }
 
 kotlin {
@@ -74,4 +77,24 @@ detekt {
     config.setFrom(files("$rootDir/config/detekt.yml"))
     source.setFrom(files("src/main/kotlin"))
     parallel = true
+}
+
+// KT-DOC-001: public API KDoc. reportUndocumented + failOnWarning is stricter
+// than doc_coverage 95. HTML lands in build/dokka/html (not committed).
+dokka {
+    moduleName.set("pixeldive-sdk")
+    dokkaSourceSets.main {
+        includes.from("Module.md")
+        documentedVisibilities.set(setOf(VisibilityModifier.Public))
+        reportUndocumented.set(true)
+        skipEmptyPackages.set(true)
+        sourceLink {
+            localDirectory.set(file("src/main/kotlin"))
+            remoteUrl("https://github.com/pirlruc/pixeldive/tree/main/android/sdk/src/main/kotlin")
+            remoteLineSuffix.set("#L")
+        }
+    }
+    dokkaPublications.html {
+        failOnWarning.set(true)
+    }
 }

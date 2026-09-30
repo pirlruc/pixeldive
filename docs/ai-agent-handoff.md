@@ -63,7 +63,7 @@ python3 -m pip install --target .venv -r requirements.txt -r requirements-dev.tx
 PYTHONPATH=.venv bash scripts/ci-local.sh
 ```
 
-CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`, `uv-lock`, `ios-sdk` on macOS, `android-sdk` on Ubuntu JDK 21), `security.yml` (gitleaks, CodeQL, bandit, pip-audit, semgrep `p/python` + `p/swift` + `p/kotlin`, dependency-review, Trivy, SBOM). Actions are SHA-pinned. Numeric gates read analog `docs/guardrails/python/profile.thresholds.yml` after `scripts/ci-init-guardrails.sh` (`GUARDRAILS_READ_TOKEN`); otherwise the consumer copy `config/python.profile.thresholds.yml`. Swift overlays live in `config/swift.profile.thresholds.yml` and are enforced by llvm-cov + `scripts/check-swift-docs.py`. Kotlin overlays live in `config/kotlin.profile.thresholds.yml` and are enforced by Kover/ktlint/detekt. The overlay reader allows stricter consumer values and fails on looser ones. Do not clone `.github/scaffold` in CI.
+CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`, `uv-lock`, `ios-sdk` on macOS, `android-sdk` on Ubuntu JDK 21), `.github/workflows/ops-reuse.yml` (common-infra-lint and container-iac), `security.yml` (gitleaks, CodeQL, bandit, pip-audit, semgrep `p/python` + `p/swift` + `p/kotlin`, dependency-review, Trivy, SBOM). Actions are SHA-pinned. Numeric gates read analog `docs/guardrails/python/profile.thresholds.yml` after `scripts/ci-init-guardrails.sh` (`GUARDRAILS_READ_TOKEN`); otherwise the consumer copy `config/python.profile.thresholds.yml`. Swift overlays live in `config/swift.profile.thresholds.yml` and are enforced by llvm-cov + `scripts/check-swift-docs.py`. Kotlin overlays live in `config/kotlin.profile.thresholds.yml` and are enforced by Kover/ktlint/detekt plus `:sdk:dokkaGeneratePublicationHtml` (KT-DOC-001). The overlay reader allows stricter consumer values and fails on looser ones. Do not clone `.github/scaffold` in CI. Do not check out commondevops, containerdevops, or pydevops from a pixeldive workflow; the reusable workflows sparse-checkout their own `scripts/` with the read tokens.
 
 ## Analog pins (TOOL-001)
 
@@ -118,42 +118,51 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Host-native HTTP/gRPC defaults are `127.0.0.1`; image/Compose set `0.0.0.0` in-container.
 - `GrpcClient` TLS PEMs require `insecure=False`; IP targets may need `ssl_target_name_override`.
 - HTTP mTLS HEALTHCHECK needs `HTTP_TLS_CLIENT_CERT_FILE` / `HTTP_TLS_CLIENT_KEY_FILE` (compose comment documents a read-only `/certs` mount).
-- Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001) and skips Gradle unless Java is on PATH (KT-ENV-001). When those tools are present, coverage is fail-closed (llvm-cov / Kover). `check-swift-coverage.py` puts `llvm-cov` next to `swift` on PATH and invokes `xcrun`/`llvm-cov` as literal argv (Semgrep `dangerous-subprocess-use-tainted-env-args`). `ios-sdk` on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1`; `android-sdk` sets `PIXELDIVE_REQUIRE_JAVA=1`. Linux URLSession ignores `URLProtocol`; tests use `HTTPPerforming` plus a loopback server. FoundationNetworking has no `URLResponse()` and `uploadTask(fromFile:)` traps in `_BodyFileSource` — Linux loads the file into `httpBody`. Do not include the Compose demo from `ANDROID_HOME`. Apple Swift treats CRLF as one `Character`; sanitizers walk `unicodeScalars`. PNG multipart bodies are not UTF-8.
+- Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001) and skips Gradle unless Java is on PATH (KT-ENV-001). When Java is present, `:sdk:dokkaGeneratePublicationHtml` writes HTML under `android/sdk/build/dokka/html` and fails if a public declaration has no KDoc. That HTML is not committed. When those tools are present, coverage is fail-closed (llvm-cov / Kover). `check-swift-coverage.py` puts `llvm-cov` next to `swift` on PATH and invokes `xcrun`/`llvm-cov` as literal argv (Semgrep `dangerous-subprocess-use-tainted-env-args`). `ios-sdk` on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1`; `android-sdk` sets `PIXELDIVE_REQUIRE_JAVA=1`. Linux URLSession ignores `URLProtocol`; tests use `HTTPPerforming` plus a loopback server. FoundationNetworking has no `URLResponse()` and `uploadTask(fromFile:)` traps in `_BodyFileSource` — Linux loads the file into `httpBody`. Do not include the Compose demo from `ANDROID_HOME`. Apple Swift treats CRLF as one `Character`; sanitizers walk `unicodeScalars`. PNG multipart bodies are not UTF-8.
 - Camera sessions should reuse one `PixeldiveClient` / gRPC channel, send in-memory frames (already in RAM from the camera), and use file/path helpers for gallery or on-disk bursts. Local storage hardlinks spools; S3 still streams multipart. Do not bump session rows after the first frame. Close `PixeldiveGrpcClient` when the host/token changes (`NioGrpcStreaming.close` / OkHttp dispatcher shutdown). Mobile gRPC is h2c: Android OkHttp `H2_PRIOR_KNOWLEDGE`, iOS grpc-swift NIO (Apple-only SPM product). URLSession does not speak h2c. Demos capture live camera (AVCapture / CameraX / getUserMedia) and upload on gRPC; session CRUD stays REST (`PIXELDIVE_GRPC_TARGET`, default `127.0.0.1:50051`). Native demos must not `listSessions` after every JPEG. The Python gRPC demo reads the multipart body once into a capped chunk list and streams those chunks ([PERF-006](issues.yml)); the REST-only fallback still uses a temp file. Starlette may still spool the multipart body. Raising inside the gRPC request iterator cancels the RPC, so the cap is enforced before `UploadImage`. TLS gRPC and Struct metadata are [SDK-007](issues.yml). ios-sdk Trivy scans `ios/` but must skip `.build` — grpc-swift / swift-nio-ssl checkouts ship sample private keys that fail SWIFT-SEC-004.
 - Android `HttpUrl.resolve` dropped a base path prefix — concatenate like iOS/httpx. Multipart `Content-Type` parameters (`charset=`) must be stripped, not glued onto the subtype. iOS must trim bearer tokens, reject non-file upload URLs, refuse off-origin followed redirects, and must not fabricate sample cameras when discovery is empty.
 
-## Reusable workflows (not called)
+## Reusable workflows
 
-Product CI stays in this repo. Private `workflow_call` hosts need a caller PAT
-(`COMMONDEVOPS_READ_TOKEN`, `CONTAINERDEVOPS_READ_TOKEN`, `PYDEVOPS_READ_TOKEN`).
-Those secrets are not part of this repo's documented set (`GUARDRAILS_READ_TOKEN`
-only). Wiring them without the secret fails the pull request.
+`ops-reuse.yml` calls two workflows. It does not check the ops repos out.
+Each reusable sparse-checkouts `scripts/` with the matching read token.
+`scripts_ref` equals the `uses:` SHA (CI-034). `blocking: true`.
+Dependabot cannot read those secrets (CI-024), so `docker-lint` still runs
+`scripts/run-hadolint.sh`, `run-kics.sh`, `run-shellcheck.sh`,
+`run-actionlint.sh`, and `run-zizmor.sh` when `github.actor` is
+`dependabot[bot]`. `scripts/ci-local.sh` skips those five on GitHub Actions
+so a non-dependabot `quality` job does not run a second hadolint. Local
+`ci-local.sh` still runs them. Compose `docker compose --profile s3 config`
+stays in `docker-lint` because container-iac's compose step omits the profile.
 
 | Repo / pin | Job | Reuse here |
 | --- | --- | --- |
-| commondevops `5.1.2` (`b3c462be`) | `common-infra-lint` | Same tools as `scripts/run-actionlint.sh`, `run-shellcheck.sh`, `run-hadolint.sh`, `run-zizmor.sh`. Call it once the read token exists. |
+| commondevops `5.1.2` (`b3c462be`) | `common-infra-lint` | Called. `dockerfiles: Dockerfile` (the file is at the repo root). Secret `COMMONDEVOPS_READ_TOKEN`. |
 | commondevops | `common-doc-verify`, `common-scaffold-verify` | Link lint and `issues-sync --validate-only` already run from vendored/local scripts. Scaffold is not cloned in CI. |
 | commondevops | `common-secrets-sast` | Overlaps gitleaks + semgrep. This repo also runs `p/swift` and `p/kotlin`, which that workflow's `--config auto` does not document. |
 | commondevops | `common-supply-chain` | Image SBOM/Trivy already run in `security.yml`. Filesystem license gate waits on a publish (SC-LIC). |
 | commondevops | `common-scorecard`, `common-release` | Scorecard is advisory. Release waits on the first publish. |
-| containerdevops `5.0.4` (`2dd60d34`) | `container-lint`, `container-iac` | Hadolint/KICS already run via `scripts/run-hadolint.sh` and `scripts/run-kics.sh`. |
+| containerdevops `5.0.4` (`2dd60d34`) | `container-iac` | Called. Paths `Dockerfile,docker-compose.yml`. Secret `CONTAINERDEVOPS_READ_TOKEN`. KICS ignores: [scanner-exceptions.md](scanner-exceptions.md). |
 | containerdevops | `container-build` + `container-scan` | Those jobs push an ephemeral GHCR image (DOCKER-DELIV-004). This repo scans the local `pixeldive:ci` tag and does not publish. |
-| pydevops `2.1.1` (`19fa370f`) | `python-quality` | Strictness levels do not read `profile.thresholds.yml` (CI-022). No proto generation, Postgres service, or Swift/Kotlin jobs. |
+| pydevops `2.1.1` (`19fa370f`) | `python-quality` | Not called. Strictness levels do not read `profile.thresholds.yml` (CI-022). Calling it would also check pydevops out inside the reusable. |
 | cppdevops `3.1.2` (`9bfad661`) | `cpp-*` | No C++ sources. `cpp-mobile-matrix` is not the Kotlin/Swift SDK. |
 
 ## Suggested next work
 
-Sibling-repo follow-ups were authored but **not pushed**. The cloud token can read those private repos and can push pixeldive; push to the others returned 403. Apply these `docs/issues.yml` epics from a credential that can write:
+Sibling epics were opened on GitHub because the token cannot push `docs/issues.yml`. Each issue body says to copy its YAML into that file and sync. They are not in the manifests yet.
 
-| Repo | Epic | Why |
+| Repo | Epic | Issue |
 | --- | --- | --- |
-| github-scaffold | GS-PIN-LAG | 1.7.0 defaults still say scaffold 1.6.0 and guardrails 1.7.0; `ci-container.yml` pins containerdevops 5.0.2 |
-| guardrails | GR-PIN-MTH | 1.8.0 still cites methodologies 1.6.0; document KICS `698ed579` and `ce76b7d0` |
-| commondevops | CMN-PIN-002 | `check-submodule-pins.sh` on 5.1.2 still expects guardrails 1.6.0; tag 5.1.2 has no GitHub Release |
-| containerdevops | CDO-LOCAL-001 | scan path always pushes to GHCR; tag 5.0.4 has no GitHub Release |
-| pydevops | PDO-THRESH-002 | `python-quality` does not read `profile.thresholds.yml` |
-| cppdevops | CPPD-MOBILE-002 | `cpp-mobile-matrix` is C++/NDK; say so, do not add Kotlin/Swift here |
-| methodologies | MTH-PIN-SYNC | same-day releases left companion citations one tag behind |
+| github-scaffold | GS-PIN-LAG | https://github.com/pirlruc/github-scaffold/issues/151 |
+| guardrails | GR-PIN-MTH | https://github.com/pirlruc/guardrails/issues/190 |
+| guardrails | GR-PY-SEC-001 | https://github.com/pirlruc/guardrails/issues/191 |
+| commondevops | CMN-PIN-002 | https://github.com/pirlruc/commondevops/issues/167 |
+| containerdevops | CDO-LOCAL-001 | https://github.com/pirlruc/containerdevops/issues/127 |
+| pydevops | PDO-THRESH-002 | https://github.com/pirlruc/pydevops/issues/173 |
+| cppdevops | CPPD-MOBILE-002 | https://github.com/pirlruc/cppdevops/issues/85 |
+| methodologies | MTH-PIN-SYNC | https://github.com/pirlruc/methodologies/issues/119 |
+
+PY-SEC-005/006/007: [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/161) stayed closed. It deferred the Python proposals as out of scope of a Swift/Java pack epic. That close is right for that epic. The rules themselves were not rejected. pixeldive already uses `hmac.compare_digest`, production fail-closed auth/plaintext, and upload magic bytes, which is stricter than PY-SEC-001..004. [GR-PY-SEC-001](https://github.com/pirlruc/guardrails/issues/191) asks the Python pack to add the three IDs. Do not remove those implementations.
 
 - [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
 - [SEC-004](issues.yml) shared quota store on PostgreSQL (`app/sessions/quotas.py`; first multi-replica tests). In-process `TenantQuota` is still sync
@@ -162,7 +171,7 @@ Sibling-repo follow-ups were authored but **not pushed**. The cloud token can re
 - [SEC-005](issues.yml) optional Redis quota hot path if Postgres contends
 - [SDK-008](issues.yml) iOS/Android custom CA trust for private PKI
 - First image/GitHub Release publish: SC-SIGN-001, SC-PROV-001, DOCKER-TEST-001
-- Propose the Python IDs that did not land (PY-SEC-005/006/007) from [docs/new-guardrails](new-guardrails/README.md). Swift/Kotlin/Android proposals in that folder landed in guardrails 1.7.0; do not re-file them. SWIFT-ENV-002 (SwiftFormat pre-commit) and SWIFT-IOS-001 (Xcode 26 assert) are still open here.
+- SWIFT-ENV-002 (SwiftFormat pre-commit) and SWIFT-IOS-001 (Xcode 26 assert) are still open here. PY-SEC-005/006/007 are filed as guardrails issue 191.
 
 ## Recent history
 
@@ -179,5 +188,6 @@ Sibling-repo follow-ups were authored but **not pushed**. The cloud token can re
 - Mobile gRPC image clients + camera-feed demos ([SDK-005](issues.yml), [SDK-006](issues.yml)): hand-rolled protobuf, iOS grpc-swift NIO, Android OkHttp h2c, AVCapture/CameraX/getUserMedia → `UploadImage`
 - Follow-up: ruff format on `tests/test_sdk.py`; close gRPC channels on cache replace; skip REST list and JPEG encode while a frame is in flight; NIO call timeout; percent-decode `grpc-message`; Python Struct metadata ([PR #13](https://github.com/pirlruc/pixeldive/pull/13))
 - TOOL-003: guardrails 1.8.0 and github-scaffold 1.7.0 gitlinks; commondevops submodule names; Kotlin overlay keys; `COPY --chown`; actionlint + zizmor; CodeQL/Semgrep no longer exclude analog pins
+- TOOL-004: Dokka HTML on `:sdk` (the earlier "not published, so KT-DOC-001 N/A" note was wrong for a library that already has a public API); `ops-reuse.yml` calls common-infra-lint and container-iac via read tokens; KICS `698ed579` / `ce76b7d0` explained for `minio-init` and Postgres `cap_add`
 
-*Last updated: 2026-09-29*
+*Last updated: 2026-09-30*

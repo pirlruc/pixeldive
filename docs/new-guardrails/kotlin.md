@@ -6,9 +6,10 @@ KT-BUILD-001 (JDK 21 accepted), and the `android/` pack that replaced KT-AND-001
 and KT-ENV-001 (ANDROID-SDK-001/002, ANDROID-TEST-001, ANDROID-BUILD-001/002,
 ANDROID-LINT-001). The text below is the original proposal. Do not re-file those IDs.
 
-The JVM `:sdk` does not publish API docs, so Dokka is not applicable (KT-DOC-001).
-The consumer overlay still carries `doc_coverage: 95` so the reader does not
-fail closed. Android Lint on the Compose demo stays host-only (ANDROID-TEST-001).
+`:sdk` generates Dokka HTML (`:sdk:dokkaGeneratePublicationHtml`) and fails
+when a public declaration has no KDoc (KT-DOC-001). The HTML is build output.
+`doc_coverage: 95` stays in the overlay; the Dokka gate is stricter. Android
+Lint on the Compose demo stays host-only (ANDROID-TEST-001).
 
 Proposals for [pirlruc/guardrails](https://github.com/pirlruc/guardrails) after adding a
 Kotlin JVM Android SDK against pin **1.6.0**. These are **not** in-repo deviations. The

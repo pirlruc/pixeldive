@@ -5,6 +5,7 @@ package com.pixeldive.sdk
  * `Build`, `ActivityManager`, and Camera2; JVM tests use [JvmDeviceProbe].
  */
 fun interface DeviceProbe {
+    /** Build the session create payload for [sessionName]. */
     fun snapshot(sessionName: String): SessionCreate
 }
 
@@ -93,6 +94,7 @@ object DeviceSnapshot {
 
 /** Process/Runtime fallback when Camera2 and `Build` are not on the classpath. */
 object JvmDeviceProbe : DeviceProbe {
+    /** Overlay `Runtime` and `os.*` onto [DeviceSnapshot.samplePixel]. */
     override fun snapshot(sessionName: String): SessionCreate {
         val runtime = Runtime.getRuntime()
         val totalMb = (runtime.totalMemory() / 1_048_576L).toInt().coerceAtLeast(1)

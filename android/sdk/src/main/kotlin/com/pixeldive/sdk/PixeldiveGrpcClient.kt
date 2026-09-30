@@ -103,6 +103,7 @@ class PixeldiveGrpcClient(
         }
     }
 
+    /** Factories for [PixeldiveGrpcClient]. */
     companion object {
         /** Insecure h2c client for local/dev grpc.aio (`127.0.0.1:50051`). */
         fun insecure(

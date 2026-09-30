@@ -8,6 +8,11 @@ Swift, Kotlin, and Android proposals that named SWIFT-CPLX-*, SWIFT-CONC-*,
 SWIFT-IOS-003/004, SWIFT-SEC-005, SWIFT-ENV-001, KT-SEC-005, KT-DOC-001, and the
 Android pack (ANDROID-SDK-001/002, ANDROID-TEST-001, ANDROID-BUILD-*) **landed in
 guardrails 1.7.0**. Do not re-file them. The Python proposals below did not land.
+PY-SEC-005/006/007 are filed as
+[guardrails#191](https://github.com/pirlruc/guardrails/issues/191)
+(GR-PY-SEC-001). [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/161)
+stays closed: it deferred them as out of scope of a Swift epic and did not
+reject the rules. pixeldive keeps the implementations.
 
 Companion: [compliance-1.8.0.md](compliance-1.8.0.md).
 Swift/iOS proposals (Kotlin analog): [swift.md](swift.md).

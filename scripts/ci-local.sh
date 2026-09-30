@@ -24,11 +24,17 @@ DOC="$("$PYTHON" scripts/read_python_threshold.py doc_coverage)"
 "$PYTHON" -m bandit -q -r app main.py sdk demo -x app/pb
 "$PYTHON" -m pip_audit -r requirements.txt --no-deps --disable-pip --progress-spinner off
 bash "$ROOT/scripts/check-submodule-pins.sh"
-bash "$ROOT/scripts/run-hadolint.sh"
-bash "$ROOT/scripts/run-kics.sh"
-bash "$ROOT/scripts/run-shellcheck.sh"
-bash "$ROOT/scripts/run-actionlint.sh"
-bash "$ROOT/scripts/run-zizmor.sh"
+# On GitHub Actions these tools belong to ops-reuse.yml (non-dependabot) or
+# the docker-lint job (dependabot). Local runs still execute them here.
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  echo "skipping hadolint, kics, shellcheck, actionlint, zizmor (workflow jobs own them)"
+else
+  bash "$ROOT/scripts/run-hadolint.sh"
+  bash "$ROOT/scripts/run-kics.sh"
+  bash "$ROOT/scripts/run-shellcheck.sh"
+  bash "$ROOT/scripts/run-actionlint.sh"
+  bash "$ROOT/scripts/run-zizmor.sh"
+fi
 "$PYTHON" scripts/lint-doc-links.py --root "$ROOT"
 "$PYTHON" -m pytest \
   --cov=app --cov=main --cov=sdk --cov=demo --cov-branch \

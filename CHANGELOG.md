@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Dokka HTML for the Android SDK (`:sdk:dokkaGeneratePublicationHtml`).
+  Public declarations without KDoc fail the task (KT-DOC-001).
+- `ops-reuse.yml` calls commondevops `common-infra-lint` and containerdevops
+  `container-iac` with the read tokens. This workflow does not check those
+  repos out. Dependabot keeps the in-repo lint scripts.
+
 ### Changed
 
 - Pin `docs/guardrails` to guardrails 1.8.0 and `.github/scaffold` to
