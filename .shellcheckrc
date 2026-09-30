@@ -1,4 +1,6 @@
-# SHELL-LINT-001. common-infra-lint runs shellcheck with no --severity,
-# and ShellCheck's default is style. The org threshold is error.
-severity=error
+# common-infra-lint runs shellcheck with no --severity. ShellCheck 0.11
+# does not honor a severity= key here, so sourced files must resolve and
+# the scripts must be clean at the default severity.
+# source-path=SCRIPTDIR resolves `source=python-env.sh` next to each script.
 external-sources=true
+source-path=SCRIPTDIR

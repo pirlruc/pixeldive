@@ -57,7 +57,7 @@ registry or GitHub Release publish.
 | CI-012 | security.yml includes gitleaks, CodeQL, bandit, pip-audit, semgrep, dependency-review, Trivy, SBOM. |
 | SC-DEP-001…003 | Dependabot seed includes github-actions, pip, docker, uv, pre-commit. |
 | SC-DEP-004 | Gitlink SHA + annotated tags 1.8.0 / 1.7.0 (`scripts/check-submodule-pins.sh`). |
-| SHELL-LINT-001 | ShellCheck `--severity=error` in CI and `scripts/run-shellcheck.sh`. |
+| SHELL-LINT-001 | `scripts/run-shellcheck.sh` uses `--severity=error`. `common-infra-lint` does not pass `--severity` (0.11 ignores `severity=` in `.shellcheckrc`). `scripts/*.sh` is clean at the default severity. |
 | DOC-LINT-001/002 | `scripts/lint-doc-links.py` (vendored analog copy; skips `.venv`). |
 
 ## Security exclusions

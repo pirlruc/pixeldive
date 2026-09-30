@@ -20,9 +20,13 @@ for site in \
   fi
 done
 if [[ -x "${ROOT}/.venv/bin/ruff" ]]; then
+  # Callers such as ci-local.sh read RUFF. Arrays cannot be exported.
+  # shellcheck disable=SC2034
   RUFF=("${ROOT}/.venv/bin/ruff")
 elif [[ -x "${ROOT}/.venv/local/bin/ruff" ]]; then
+  # shellcheck disable=SC2034
   RUFF=("${ROOT}/.venv/local/bin/ruff")
 else
+  # shellcheck disable=SC2034
   RUFF=("${PYTHON}" -m ruff)
 fi

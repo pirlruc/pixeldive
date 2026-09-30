@@ -14,8 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Find Swift 6.4 Linux test bundles (`PixeldiveSDKTests.xctest` directories).
 - Dependabot fallbacks use `github.event.pull_request.user.login`.
   `github.actor` is the spoofable check zizmor rejects.
-- `.shellcheckrc` sets ShellCheck severity to `error` (SHELL-LINT-001).
-  `common-infra-lint` otherwise defaults to style.
+- `.shellcheckrc` sets `source-path=SCRIPTDIR` so ShellCheck follows
+  `source=python-env.sh`. ShellCheck 0.11 ignores a `severity=` key, and
+  `common-infra-lint` passes no `--severity`. `RUFF` assignments disable
+  SC2034 because callers read the array and arrays cannot be exported.
+  Local `scripts/run-shellcheck.sh` still uses `--severity=error`.
 
 ### Added
 
