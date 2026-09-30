@@ -1,5 +1,16 @@
 # Proposed Kotlin / Android guardrails (pixeldive → org)
 
+**Landed in guardrails 1.7.0** (still true at pin 1.8.0): KT-SEC-002 (`p/kotlin`),
+KT-SEC-004 (Trivy `fs`), KT-SEC-005, KT-DOC-001 (Dokka on publishable modules),
+KT-BUILD-001 (JDK 21 accepted), and the `android/` pack that replaced KT-AND-001/002
+and KT-ENV-001 (ANDROID-SDK-001/002, ANDROID-TEST-001, ANDROID-BUILD-001/002,
+ANDROID-LINT-001). The text below is the original proposal. Do not re-file those IDs.
+
+`:sdk` generates Dokka HTML (`:sdk:dokkaGeneratePublicationHtml`) and fails
+when a public declaration has no KDoc (KT-DOC-001). The HTML is build output.
+`doc_coverage: 95` stays in the overlay; the Dokka gate is stricter. Android
+Lint on the Compose demo stays host-only (ANDROID-TEST-001).
+
 Proposals for [pirlruc/guardrails](https://github.com/pirlruc/guardrails) after adding a
 Kotlin JVM Android SDK against pin **1.6.0**. These are **not** in-repo deviations. The
 Kotlin pack already exists (`kotlin/`); Android-specific twins of the Swift iOS rules

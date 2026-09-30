@@ -1,5 +1,5 @@
-# Consumer SwiftLint gates. Numeric floors also live in
-# config/swift.profile.thresholds.yml (SWIFT-TEST-002, proposed SWIFT-CPLX-*).
+# Consumer SwiftLint gates (SWIFT-LINT-001, SWIFT-CPLX-001/002).
+# Numeric floors also live in config/swift.profile.thresholds.yml.
 opt_in_rules:
   - attributes
   - closure_end_indentation

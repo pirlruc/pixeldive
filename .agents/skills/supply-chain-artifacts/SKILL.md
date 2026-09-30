@@ -1,0 +1,36 @@
+---
+name: supply-chain-artifacts
+description: 'SBOM, provenance, signing, and license gates for published artifacts (SC-SBOM/PROV/SIGN/LIC). Use when editing files that match: **/*sbom*,**/cosign*,**/*provenance*,**/license_gate*,**/attestation*.'
+paths: '**/*sbom*,**/cosign*,**/*provenance*,**/license_gate*,**/attestation*'
+disable-model-invocation: true
+---
+
+<!-- Generated from .cursor/rules by scripts/render-agent-instructions.py. Edit the .mdc files, then re-run that script. -->
+
+Cursor applies the matching `.cursor/rules` file by glob and does not auto-invoke this skill. Other agents should follow this skill when the description matches.
+
+# Supply-chain artifacts (SC-SBOM / SC-PROV / SC-SIGN / SC-LIC)
+
+Cite Guardrail IDs from
+[`docs/guardrails/supply-chain/`](https://github.com/pirlruc/guardrails/tree/1.7.0/supply-chain).
+Do not bake threshold numbers into this rule — read `license_deny_list` and related keys from
+`docs/guardrails/supply-chain/profile.thresholds.yml`.
+
+## Required citations
+
+| ID | When it applies |
+|----|-----------------|
+| **SC-SBOM-001** / **SC-SBOM-002** | Every published artifact gets a CycloneDX and/or SPDX SBOM, published as attestation or retained artifact |
+| **SC-PROV-001** | SLSA provenance (or equivalent) attached to every published artifact |
+| **SC-SIGN-001** | Sign every published artifact; keyless Sigstore (cosign) is the org default |
+| **SC-LIC-001** / **SC-LIC-002** | License gate against SPDX SBOM deny list; reference implementation is pydevops `license_gate.py` |
+
+Language-local `*-SEC-*` IDs cover secret scan / SAST / dependency review only. Shared SBOM, signing,
+provenance, and license gates are **SC-*** — do not restate them under a language ID.
+
+Deprecated docker aliases: `DOCKER-SEC-002/003/004` → SC-SBOM / SC-SIGN / SC-PROV.
+
+## Do not
+
+- Skip signing or provenance on a published artifact without a `docs/guardrail-deviations.yml` entry.
+- Invent a second license inventory that bypasses the SPDX SBOM from SC-SBOM-*.

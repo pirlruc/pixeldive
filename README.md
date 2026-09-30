@@ -17,10 +17,10 @@ Both transports call the same `SessionService` ([ARCH-001](docs/issues.yml)).
 
 ## Methodology
 
-[GitHub Issue-native ADR](https://github.com/pirlruc/methodologies/tree/1.5.0/github-issue-adr) —
-Epic = decision record, optional Y-statement, no ADR markdown files. Templates:
-[pirlruc/github-scaffold](https://github.com/pirlruc/github-scaffold) @ 1.5.0. Quality: pin
-[pirlruc/guardrails](https://github.com/pirlruc/guardrails) @ 1.6.0 at `docs/guardrails/`. Applies to
+[GitHub Issue-native ADR](https://github.com/pirlruc/methodologies/tree/1.7.0/github-issue-adr) —
+Epic = decision record, Y-statement on every new Epic, no ADR markdown files. Templates:
+[pirlruc/github-scaffold](https://github.com/pirlruc/github-scaffold) @ 1.7.0. Quality: pin
+[pirlruc/guardrails](https://github.com/pirlruc/guardrails) @ 1.8.0 at `docs/guardrails/`. Applies to
 **new issues only**. Authored backlog: [`docs/issues.yml`](docs/issues.yml).
 Proposed analog additions: [`docs/new-guardrails/`](docs/new-guardrails/).
 
@@ -139,12 +139,12 @@ PIXELDIVE_TEST_DATABASE_URL=postgresql+asyncpg://pixeldive:pixeldive@127.0.0.1:5
 
 Floors live in `config/python.profile.thresholds.yml` (PY-TEST-002 95/95, PY-DOC-001, PY-CPLX-* max CC 8)
 and `config/swift.profile.thresholds.yml` (SWIFT-TEST-002 95 line coverage overlay)
-and `config/kotlin.profile.thresholds.yml` (KT-TEST-002 95/95).
+and `config/kotlin.profile.thresholds.yml` (KT-TEST-002 95/95, KT-DOC-001 number kept; Dokka is not applicable until the SDK publishes).
 When `GUARDRAILS_READ_TOKEN` is set, CI clones the analog pin and refuses a **looser** overlay (CI-022).
 Stricter values (avg MI 70 vs org 60; Swift statement coverage 95 vs org 90) are allowed. `docs/guardrail-deviations.yml` is empty.
 `uv.lock` is the PY-RUN-001 lockfile; `requirements.txt` is the pip/Docker freeze
 (`uv export`). Local `scripts/ci-local.sh` also runs pydoclint, hadolint, KICS,
-ShellCheck, and markdown link lint.
+ShellCheck, actionlint, zizmor, submodule-pin checks, and markdown link lint.
 
 ## Agent handoff
 

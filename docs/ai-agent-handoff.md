@@ -7,7 +7,7 @@
 | **Service** | pixeldive |
 | **Type** | Async Python microservice (FastAPI REST + gRPC) for image-processing sessions |
 | **Docs** | `docs/ai-agent-handoff.md`, `docs/issues.yml`, `docs/limitations.md`, `docs/new-guardrails/` |
-| **Methodology** | [github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.5.0/github-issue-adr) (Epic = decision record, no ADR markdown files) |
+| **Methodology** | [github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.7.0/github-issue-adr) (Epic = decision record, Y-statement on new Epics, no ADR markdown files) |
 
 ## Current slice
 
@@ -63,21 +63,21 @@ python3 -m pip install --target .venv -r requirements.txt -r requirements-dev.tx
 PYTHONPATH=.venv bash scripts/ci-local.sh
 ```
 
-CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`, `uv-lock`, `ios-sdk` on macOS, `android-sdk` on Ubuntu JDK 21), `security.yml` (gitleaks, CodeQL, bandit, pip-audit, semgrep `p/python` + `p/swift` + `p/kotlin`, dependency-review, Trivy, SBOM). Actions are SHA-pinned. Numeric gates read analog `docs/guardrails/python/profile.thresholds.yml` after `scripts/ci-init-guardrails.sh` (`GUARDRAILS_READ_TOKEN`); otherwise the consumer copy `config/python.profile.thresholds.yml`. Swift overlays live in `config/swift.profile.thresholds.yml` and are enforced by llvm-cov + `scripts/check-swift-docs.py`. Kotlin overlays live in `config/kotlin.profile.thresholds.yml` and are enforced by Kover/ktlint/detekt. The overlay reader allows stricter consumer values and fails on looser ones. Do not clone `.github/scaffold` in CI.
+CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`, `uv-lock`, `ios-sdk` on macOS, `android-sdk` on Ubuntu JDK 21), `.github/workflows/ops-reuse.yml` (common-infra-lint and container-iac), `security.yml` (gitleaks, CodeQL, bandit, pip-audit, semgrep `p/python` + `p/swift` + `p/kotlin`, dependency-review, Trivy, SBOM). Actions are SHA-pinned. Numeric gates read analog `docs/guardrails/python/profile.thresholds.yml` after `scripts/ci-init-guardrails.sh` (`GUARDRAILS_READ_TOKEN`); otherwise the consumer copy `config/python.profile.thresholds.yml`. Swift overlays live in `config/swift.profile.thresholds.yml` and are enforced by llvm-cov + `scripts/check-swift-docs.py`. Kotlin overlays live in `config/kotlin.profile.thresholds.yml` and are enforced by Kover/ktlint/detekt plus `:sdk:dokkaGeneratePublicationHtml` (KT-DOC-001). The overlay reader allows stricter consumer values and fails on looser ones. Do not clone `.github/scaffold` in CI. Do not check out commondevops, containerdevops, or pydevops from a pixeldive workflow; the reusable workflows sparse-checkout their own `scripts/` with the read tokens.
 
 ## Analog pins (TOOL-001)
 
 | Companion | How it is pinned |
 | --- | --- |
-| `pirlruc/guardrails` | Git submodule at `docs/guardrails/` (tag **1.6.0**). Private; needs `GUARDRAILS_READ_TOKEN`. |
-| `pirlruc/github-scaffold` | Git submodule at `.github/scaffold/` (tag **1.5.0**). Templates are synced into `.github/` and `.cursor/rules/`. |
-| `pirlruc/methodologies` | Cited by tag in docs (`tree/1.5.0/github-issue-adr`). Not a submodule. |
+| `pirlruc/guardrails` | Git submodule `guardrails` at `docs/guardrails/` (tag **1.8.0**, `aa5184ce`). Private; needs `GUARDRAILS_READ_TOKEN`. |
+| `pirlruc/github-scaffold` | Git submodule `github-scaffold` at `.github/scaffold/` (tag **1.7.0**, `e76bb3fd`). Templates are synced into `.github/` and `.cursor/rules/`. |
+| `pirlruc/methodologies` | Cited by tag in consumer docs (`tree/1.7.0/github-issue-adr`). Not a submodule. Scaffold 1.7.0 files still say 1.6.0. |
 
 Android client analogs (payload shape, not Gradle layout): [pirlruc/finsilo](https://github.com/pirlruc/finsilo) (`:app` / `:domain`) and Heimdall (`app → kit → core`). Phone/camera JSON maps to Android `Build`, `ActivityManager`, `DisplayMetrics`, and Camera2 — see field descriptions on `app/device_models.py`. Do not copy Heimdall's native kit layout into this Python service.
 
 ## github-issue-adr
 
-Authored backlog: [`docs/issues.yml`](issues.yml). Targets: [`docs/issues-sync-targets.yml`](issues-sync-targets.yml). Deviations (none): [`docs/guardrail-deviations.yml`](guardrail-deviations.yml). Do not invent `approved_by`.
+Authored backlog: [`docs/issues.yml`](issues.yml). Targets: [`docs/issues-sync-targets.yml`](issues-sync-targets.yml). Deviations (none): [`docs/guardrail-deviations.yml`](guardrail-deviations.yml). Do not invent `approved_by`. Pin check without a clone: `bash scripts/check-submodule-pins.sh`.
 
 ```bash
 bash scripts/setup-issue-scaffold.sh
@@ -113,16 +113,63 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Dependabot grouped PRs can be stale vs `aiobotocore` (they may still list `boto3`) and may jump the Docker image to CPython 3.14. Runtime is **3.13** per PY-RUN-003 ([QUAL-002](issues.yml)); 3.14 re-evaluation is 2027-04. boto3 is not a dependency.
 - Compose `depends_on.minio.required: false` needs Compose spec support for profiles; default `docker compose up` must stay local-disk.
 - Host ports are `127.0.0.1` (DOCKER-COMPOSE-006). MinIO server uses `mc ready local` (quay image includes `mc`). `minio-init` is a one-shot job.
+- The runtime image creates `/data/images` with `install -d -o 65532` before `USER`. A `RUN mkdir` after `USER 65532` cannot create `/data`.
+- Ubuntu runners that have Swift 6.4 emit `PixeldiveSDKTests.xctest` as a directory. `check-swift-coverage.py` must not look only for a file named `*PackageTests.xctest`.
+- `common-infra-lint` runs ShellCheck with no `--severity`. ShellCheck 0.11 ignores a `severity=` key in `.shellcheckrc`. The rc sets `external-sources=true` and `source-path=SCRIPTDIR`. `scripts/python-env.sh` disables SC2034 on the `RUFF` array (callers read it; arrays cannot be exported). Local `scripts/run-shellcheck.sh` still passes `--severity=error` (SHELL-LINT-001). [CMN-SHELL-001](https://github.com/pirlruc/commondevops/issues/168) asks the reusable to pass the threshold. Dependabot detection uses `github.event.pull_request.user.login`; `github.actor` fails zizmor `bot-conditions`.
 - Compose secrets have no in-file defaults; `cp .env.example .env` before `docker compose up`.
 - `ENVIRONMENT=production` requires `AUTH_REQUIRED=true`, `HTTP_INSECURE=false`, `GRPC_INSECURE=false`, resolvable TLS cert/key files, and positive `RATE_LIMIT_PER_MINUTE`, `TENANT_MAX_UPLOAD_BYTES`, and `SESSION_MAX_UPLOAD_BYTES` (0 stays unlimited outside production).
 - Host-native HTTP/gRPC defaults are `127.0.0.1`; image/Compose set `0.0.0.0` in-container.
 - `GrpcClient` TLS PEMs require `insecure=False`; IP targets may need `ssl_target_name_override`.
 - HTTP mTLS HEALTHCHECK needs `HTTP_TLS_CLIENT_CERT_FILE` / `HTTP_TLS_CLIENT_KEY_FILE` (compose comment documents a read-only `/certs` mount).
-- Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001) and skips Gradle unless Java is on PATH (KT-ENV-001). When those tools are present, coverage is fail-closed (llvm-cov / Kover). `check-swift-coverage.py` puts `llvm-cov` next to `swift` on PATH and invokes `xcrun`/`llvm-cov` as literal argv (Semgrep `dangerous-subprocess-use-tainted-env-args`). `ios-sdk` on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1`; `android-sdk` sets `PIXELDIVE_REQUIRE_JAVA=1`. Linux URLSession ignores `URLProtocol`; tests use `HTTPPerforming` plus a loopback server. FoundationNetworking has no `URLResponse()` and `uploadTask(fromFile:)` traps in `_BodyFileSource` — Linux loads the file into `httpBody`. Do not include the Compose demo from `ANDROID_HOME`. Apple Swift treats CRLF as one `Character`; sanitizers walk `unicodeScalars`. PNG multipart bodies are not UTF-8.
+- Linux `scripts/ci-local.sh` skips `swift test` unless Swift is on PATH (SWIFT-ENV-001) and skips Gradle unless Java is on PATH (KT-ENV-001). When Java is present, `:sdk:dokkaGeneratePublicationHtml` writes HTML under `android/sdk/build/dokka/html` and fails if a public declaration has no KDoc. That HTML is not committed. When those tools are present, coverage is fail-closed (llvm-cov / Kover). `check-swift-coverage.py` puts `llvm-cov` next to `swift` on PATH and invokes `xcrun`/`llvm-cov` as literal argv (Semgrep `dangerous-subprocess-use-tainted-env-args`). `ios-sdk` on macOS sets `PIXELDIVE_REQUIRE_SWIFT=1`; `android-sdk` sets `PIXELDIVE_REQUIRE_JAVA=1`. Linux URLSession ignores `URLProtocol`; tests use `HTTPPerforming` plus a loopback server. FoundationNetworking has no `URLResponse()` and `uploadTask(fromFile:)` traps in `_BodyFileSource` — Linux loads the file into `httpBody`. Do not include the Compose demo from `ANDROID_HOME`. Apple Swift treats CRLF as one `Character`; sanitizers walk `unicodeScalars`. PNG multipart bodies are not UTF-8.
 - Camera sessions should reuse one `PixeldiveClient` / gRPC channel, send in-memory frames (already in RAM from the camera), and use file/path helpers for gallery or on-disk bursts. Local storage hardlinks spools; S3 still streams multipart. Do not bump session rows after the first frame. Close `PixeldiveGrpcClient` when the host/token changes (`NioGrpcStreaming.close` / OkHttp dispatcher shutdown). Mobile gRPC is h2c: Android OkHttp `H2_PRIOR_KNOWLEDGE`, iOS grpc-swift NIO (Apple-only SPM product). URLSession does not speak h2c. Demos capture live camera (AVCapture / CameraX / getUserMedia) and upload on gRPC; session CRUD stays REST (`PIXELDIVE_GRPC_TARGET`, default `127.0.0.1:50051`). Native demos must not `listSessions` after every JPEG. The Python gRPC demo reads the multipart body once into a capped chunk list and streams those chunks ([PERF-006](issues.yml)); the REST-only fallback still uses a temp file. Starlette may still spool the multipart body. Raising inside the gRPC request iterator cancels the RPC, so the cap is enforced before `UploadImage`. TLS gRPC and Struct metadata are [SDK-007](issues.yml). ios-sdk Trivy scans `ios/` but must skip `.build` — grpc-swift / swift-nio-ssl checkouts ship sample private keys that fail SWIFT-SEC-004.
 - Android `HttpUrl.resolve` dropped a base path prefix — concatenate like iOS/httpx. Multipart `Content-Type` parameters (`charset=`) must be stripped, not glued onto the subtype. iOS must trim bearer tokens, reject non-file upload URLs, refuse off-origin followed redirects, and must not fabricate sample cameras when discovery is empty.
 
+## Reusable workflows
+
+`ops-reuse.yml` calls two workflows. It does not check the ops repos out.
+Each reusable sparse-checkouts `scripts/` with the matching read token.
+`scripts_ref` equals the `uses:` SHA (CI-034). `blocking: true`.
+Dependabot cannot read those secrets (CI-024), so `docker-lint` still runs
+`scripts/run-hadolint.sh`, `run-kics.sh`, `run-shellcheck.sh`,
+`run-actionlint.sh`, and `run-zizmor.sh` when `github.actor` is
+`dependabot[bot]`. `scripts/ci-local.sh` skips those five on GitHub Actions
+so a non-dependabot `quality` job does not run a second hadolint. Local
+`ci-local.sh` still runs them. Compose `docker compose --profile s3 config`
+stays in `docker-lint` because container-iac's compose step omits the profile.
+
+| Repo / pin | Job | Reuse here |
+| --- | --- | --- |
+| commondevops `5.1.2` (`b3c462be`) | `common-infra-lint` | Called. `dockerfiles: Dockerfile` (the file is at the repo root). Secret `COMMONDEVOPS_READ_TOKEN`. |
+| commondevops | `common-doc-verify`, `common-scaffold-verify` | Link lint and `issues-sync --validate-only` already run from vendored/local scripts. Scaffold is not cloned in CI. |
+| commondevops | `common-secrets-sast` | Overlaps gitleaks + semgrep. This repo also runs `p/swift` and `p/kotlin`, which that workflow's `--config auto` does not document. |
+| commondevops | `common-supply-chain` | Image SBOM/Trivy already run in `security.yml`. Filesystem license gate waits on a publish (SC-LIC). |
+| commondevops | `common-scorecard`, `common-release` | Scorecard is advisory. Release waits on the first publish. |
+| containerdevops `5.0.4` (`2dd60d34`) | `container-iac` | Called. Paths `Dockerfile,docker-compose.yml`. Secret `CONTAINERDEVOPS_READ_TOKEN`. KICS ignores: [scanner-exceptions.md](scanner-exceptions.md). |
+| containerdevops | `container-build` + `container-scan` | Those jobs push an ephemeral GHCR image (DOCKER-DELIV-004). This repo scans the local `pixeldive:ci` tag and does not publish. |
+| pydevops `2.1.1` (`19fa370f`) | `python-quality` | Not called. Strictness levels do not read `profile.thresholds.yml` (CI-022). Calling it would also check pydevops out inside the reusable. |
+| cppdevops `3.1.2` (`9bfad661`) | `cpp-*` | No C++ sources. `cpp-mobile-matrix` is not the Kotlin/Swift SDK. |
+
 ## Suggested next work
+
+Sibling epics were opened on GitHub because the token cannot push `docs/issues.yml`. Each issue body says to copy its YAML into that file and sync. They are not in the manifests yet.
+
+| Repo | Epic | Issue |
+| --- | --- | --- |
+| github-scaffold | GS-PIN-LAG | https://github.com/pirlruc/github-scaffold/issues/151 |
+| guardrails | GR-PIN-MTH | https://github.com/pirlruc/guardrails/issues/190 |
+| guardrails | GR-PY-SEC-001 | https://github.com/pirlruc/guardrails/issues/191 |
+| commondevops | CMN-PIN-002 | https://github.com/pirlruc/commondevops/issues/167 |
+| containerdevops | CDO-LOCAL-001 | https://github.com/pirlruc/containerdevops/issues/127 |
+| pydevops | PDO-THRESH-002 | https://github.com/pirlruc/pydevops/issues/173 |
+| cppdevops | CPPD-MOBILE-002 | https://github.com/pirlruc/cppdevops/issues/85 |
+| methodologies | MTH-PIN-SYNC | https://github.com/pirlruc/methodologies/issues/119 |
+| guardrails | GR-CI-024-BOT | https://github.com/pirlruc/guardrails/issues/192 |
+| commondevops | CMN-SHELL-001 | https://github.com/pirlruc/commondevops/issues/168 |
+
+`python-quality` and `container-scan` limits are already [PDO-THRESH-002](https://github.com/pirlruc/pydevops/issues/173) and [CDO-LOCAL-001](https://github.com/pirlruc/containerdevops/issues/127). Do not file them again.
+
+PY-SEC-005/006/007: [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/161) stayed closed. It deferred the Python proposals as out of scope of a Swift/Java pack epic. That close is right for that epic. The rules themselves were not rejected. pixeldive already uses `hmac.compare_digest`, production fail-closed auth/plaintext, and upload magic bytes, which is stricter than PY-SEC-001..004. [GR-PY-SEC-001](https://github.com/pirlruc/guardrails/issues/191) asks the Python pack to add the three IDs. Do not remove those implementations.
 
 - [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
 - [SEC-004](issues.yml) shared quota store on PostgreSQL (`app/sessions/quotas.py`; first multi-replica tests). In-process `TenantQuota` is still sync
@@ -131,7 +178,7 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - [SEC-005](issues.yml) optional Redis quota hot path if Postgres contends
 - [SDK-008](issues.yml) iOS/Android custom CA trust for private PKI
 - First image/GitHub Release publish: SC-SIGN-001, SC-PROV-001, DOCKER-TEST-001
-- Propose [docs/new-guardrails](new-guardrails/README.md) IDs upstream to pirlruc/guardrails (including [swift.md](new-guardrails/swift.md) and [kotlin.md](new-guardrails/kotlin.md))
+- SWIFT-ENV-002 (SwiftFormat pre-commit) and SWIFT-IOS-001 (Xcode 26 assert) are still open here. PY-SEC-005/006/007 are filed as guardrails issue 191.
 
 ## Recent history
 
@@ -147,5 +194,8 @@ keys rather than forking the schema ([SDK-002](issues.yml)).
 - Camera ingest: unified `add_image`/`add_images_batch`, local spool hardlink, parallel REST spool, quota release on delete, streaming mobile file uploads ([PERF-005](issues.yml), [SDK-004](issues.yml))
 - Mobile gRPC image clients + camera-feed demos ([SDK-005](issues.yml), [SDK-006](issues.yml)): hand-rolled protobuf, iOS grpc-swift NIO, Android OkHttp h2c, AVCapture/CameraX/getUserMedia → `UploadImage`
 - Follow-up: ruff format on `tests/test_sdk.py`; close gRPC channels on cache replace; skip REST list and JPEG encode while a frame is in flight; NIO call timeout; percent-decode `grpc-message`; Python Struct metadata ([PR #13](https://github.com/pirlruc/pixeldive/pull/13))
+- TOOL-003: guardrails 1.8.0 and github-scaffold 1.7.0 gitlinks; commondevops submodule names; Kotlin overlay keys; `COPY --chown`; actionlint + zizmor; CodeQL/Semgrep no longer exclude analog pins
+- TOOL-004: Dokka HTML on `:sdk` (the earlier "not published, so KT-DOC-001 N/A" note was wrong for a library that already has a public API); `ops-reuse.yml` calls common-infra-lint and container-iac via read tokens; KICS `698ed579` / `ce76b7d0` explained for `minio-init` and Postgres `cap_add`
+- CI fix: `/data/images` is created before `USER 65532`; Swift 6.4 Linux test bundles; Dependabot checks use the PR author. ShellCheck 0.11 ignores `severity=` in `.shellcheckrc`; `source-path=SCRIPTDIR` plus SC2034 disables on `RUFF` keep `scripts/*.sh` clean at the default severity `common-infra-lint` uses. Mobile SDK gates stay on `ios-sdk` and `android-sdk` when `GITHUB_ACTIONS` is set
 
-*Last updated: 2026-09-21*
+*Last updated: 2026-09-30*

@@ -6,10 +6,18 @@ sealed class PixeldiveException(
     cause: Throwable? = null,
 ) : Exception(message, cause) {
     /** A path id was not a UUID (blocks `../` injection into URLs). */
-    class InvalidResourceId(val value: String) : PixeldiveException("Invalid resource id: $value")
+    class InvalidResourceId(
+        /** The rejected path segment. */
+        val value: String,
+    ) : PixeldiveException("Invalid resource id: $value")
 
     /** The service returned a non-success HTTP status. */
-    class HttpStatus(val code: Int, val body: String) : PixeldiveException("HTTP $code: $body")
+    class HttpStatus(
+        /** HTTP status code. */
+        val code: Int,
+        /** Response body, truncated by the transport. */
+        val body: String,
+    ) : PixeldiveException("HTTP $code: $body")
 
     /** JSON encoding or decoding failed. */
     class Decoding(detail: String, cause: Throwable? = null) :
@@ -20,7 +28,12 @@ sealed class PixeldiveException(
         PixeldiveException("Transport failed: $detail", cause)
 
     /** A gRPC status other than OK. */
-    class GrpcStatus(val code: Int, val detail: String) :
+    class GrpcStatus(
+        /** Numeric gRPC status code. */
+        val code: Int,
+        /** `grpc-message` detail. */
+        val detail: String,
+    ) :
         PixeldiveException("grpc-status $code: $detail")
 }
 

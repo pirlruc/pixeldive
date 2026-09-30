@@ -135,7 +135,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install semgrep==1.177.0
           semgrep scan --error --severity ERROR --config p/python \
-            --exclude app/pb --exclude docs/guardrails --exclude .github/scaffold \
+            --exclude app/pb \
             app main.py sdk demo scripts
           semgrep scan --error --severity ERROR --config p/swift \
             --exclude ios/.build --exclude ios/Demo/PixeldiveDemo.xcodeproj \

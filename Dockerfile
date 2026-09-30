@@ -28,7 +28,8 @@ ENV PATH="/opt/venv/bin:${PATH}" \
     GRPC_HOST="0.0.0.0" \
     GRPC_PORT="50051"
 
-COPY --from=builder /opt/venv /opt/venv
+# DOCKER-BUILD-007: chown on COPY, not a follow-up RUN that rewrites the tree.
+COPY --from=builder --chown=65532:65532 /opt/venv /opt/venv
 
 # Official python-slim ships pip/setuptools in /usr/local (CVE-2025-47273).
 # They are build tooling, not runtime (DOCKER-BUILD-001).
@@ -46,14 +47,15 @@ RUN rm -rf \
     \) -exec rm -rf {} +
 
 WORKDIR /app
-COPY app /app/app
-COPY proto /app/proto
-COPY migrations /app/migrations
-COPY alembic.ini /app/alembic.ini
-COPY main.py /app/main.py
+COPY --chown=65532:65532 app /app/app
+COPY --chown=65532:65532 proto /app/proto
+COPY --chown=65532:65532 migrations /app/migrations
+COPY --chown=65532:65532 alembic.ini /app/alembic.ini
+COPY --chown=65532:65532 main.py /app/main.py
 
-RUN mkdir -p /data/images && chown -R 65532:65532 /app /data
-
+# Empty volume mount point. Created as root because USER 65532 cannot
+# mkdir /data. This is not a COPY --chown of a tree (DOCKER-BUILD-007).
+RUN install -d -o 65532 -g 65532 /data/images
 USER 65532:65532
 EXPOSE 8000 50051
 VOLUME ["/data/images"]

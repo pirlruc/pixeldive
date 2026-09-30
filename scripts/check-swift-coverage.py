@@ -59,16 +59,36 @@ def find_profdata(package: Path) -> Path:
 
 
 def find_test_binary(package: Path) -> Path:
-    """Return the XCTest bundle or Linux test executable."""
-    mac_bins = sorted(package.glob("**/*.xctest/Contents/MacOS/*"))
-    files = [path for path in mac_bins if path.is_file()]
-    if files:
-        return files[-1]
-    linux_bins = sorted(package.glob("**/*PackageTests.xctest"))
-    files = [path for path in linux_bins if path.is_file()]
-    if files:
-        return files[-1]
-    raise SystemExit(f"no test binary under {package} (SWIFT-TEST-002)")
+    """Return the XCTest bundle or Linux test executable.
+
+    Swift 6.4 on Linux emits ``PixeldiveSDKTests.xctest`` as a directory
+    bundle, not a file named ``*PackageTests.xctest``. Dependency checkouts
+    under ``.build/checkouts`` are not the package under test.
+    """
+    mac_bins = sorted(
+        path
+        for path in package.glob(".build/**/*.xctest/Contents/MacOS/*")
+        if path.is_file() and "checkouts" not in path.parts
+    )
+    if mac_bins:
+        return mac_bins[-1]
+    candidates: list[Path] = []
+    for path in package.glob(".build/**/*.xctest"):
+        if "checkouts" in path.parts:
+            continue
+        if path.is_file():
+            candidates.append(path)
+            continue
+        if path.is_dir():
+            candidates.extend(child for child in path.iterdir() if child.is_file())
+    if not candidates:
+        raise SystemExit(f"no test binary under {package} (SWIFT-TEST-002)")
+    preferred = [
+        path
+        for path in candidates
+        if "PackageTests" in path.name or path.name.startswith("Pixeldive")
+    ]
+    return sorted(preferred or candidates)[-1]
 
 
 def run_llvm_cov(binary: Path, profile: Path) -> str:

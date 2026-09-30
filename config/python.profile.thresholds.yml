@@ -1,4 +1,4 @@
-# Consumer copy of docs/guardrails/python/profile.thresholds.yml (pin 1.6.0).
+# Consumer copy of docs/guardrails/python/profile.thresholds.yml (pin 1.8.0).
 # CI inits docs/guardrails with GUARDRAILS_READ_TOKEN (not GITHUB_TOKEN). When the
 # analog tree is present, scripts/read_python_threshold.py requires every analog
 # key and forbids a looser overlay. Stricter values are allowed (avg MI 70 > 60).

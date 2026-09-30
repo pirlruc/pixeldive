@@ -22,20 +22,46 @@ import java.util.UUID
 /** JSON values stored on session/image `metadata` objects. */
 @Serializable(with = JsonValueSerializer::class)
 sealed class JsonValue {
-    data class Str(val value: String) : JsonValue()
+    /** JSON string. */
+    data class Str(
+        /** String contents. */
+        val value: String,
+    ) : JsonValue()
 
-    data class IntNumber(val value: Long) : JsonValue()
+    /** JSON integer, stored as a number without a fraction. */
+    data class IntNumber(
+        /** Integer contents. */
+        val value: Long,
+    ) : JsonValue()
 
-    data class FloatNumber(val value: Double) : JsonValue()
+    /** JSON number that is not an integer. */
+    data class FloatNumber(
+        /** Number contents. */
+        val value: Double,
+    ) : JsonValue()
 
-    data class Bool(val value: Boolean) : JsonValue()
+    /** JSON boolean. */
+    data class Bool(
+        /** Boolean contents. */
+        val value: Boolean,
+    ) : JsonValue()
 
-    data class Obj(val value: Map<String, JsonValue>) : JsonValue()
+    /** JSON object. */
+    data class Obj(
+        /** Object fields. */
+        val value: Map<String, JsonValue>,
+    ) : JsonValue()
 
-    data class Arr(val value: List<JsonValue>) : JsonValue()
+    /** JSON array. */
+    data class Arr(
+        /** Array elements. */
+        val value: List<JsonValue>,
+    ) : JsonValue()
 
+    /** JSON null. */
     data object Null : JsonValue()
 
+    /** Factories for [JsonValue] maps. */
     companion object {
         /** String map used by sample payloads and demo metadata. */
         fun strings(values: Map<String, String>): Map<String, JsonValue> = values.mapValues { Str(it.value) }

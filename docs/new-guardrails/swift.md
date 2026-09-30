@@ -1,5 +1,14 @@
 # Proposed Swift guardrails (pixeldive → org)
 
+**Landed in guardrails 1.7.0** (still true at pin 1.8.0): SWIFT-CPLX-001/002,
+SWIFT-CONC-001/002, SWIFT-API-004, SWIFT-IOS-003/004, SWIFT-SEC-003/004/005,
+SWIFT-ENV-001 (Linux SPM), SWIFT-TEST-002 (llvm-cov, stricter overlay),
+SWIFT-DOC-001 (`///` scan), SWIFT-LINT-001 (complexity rules in the lint gate).
+The text below is the original proposal. Do not re-file those IDs.
+
+SWIFT-ENV-002 is only partly met: `.swiftformat` is in-repo; SwiftFormat is not
+yet a pre-commit hook. SWIFT-IOS-001 (assert Xcode 26 on `macos-15`) is still open.
+
 Proposals for [pirlruc/guardrails](https://github.com/pirlruc/guardrails) after adding a
 Swift 6 iOS SDK against pin **1.6.0**. These are **not** in-repo deviations. The Swift
 pack already exists (`swift/`); several Kotlin/Android rules have no Swift twin.

@@ -23,14 +23,29 @@ DOC="$("$PYTHON" scripts/read_python_threshold.py doc_coverage)"
 "$PYTHON" scripts/run-pydoclint.py --config pyproject.toml app main.py sdk demo
 "$PYTHON" -m bandit -q -r app main.py sdk demo -x app/pb
 "$PYTHON" -m pip_audit -r requirements.txt --no-deps --disable-pip --progress-spinner off
-bash "$ROOT/scripts/run-hadolint.sh"
-bash "$ROOT/scripts/run-kics.sh"
-bash "$ROOT/scripts/run-shellcheck.sh"
+bash "$ROOT/scripts/check-submodule-pins.sh"
+# On GitHub Actions these tools belong to ops-reuse.yml (non-dependabot) or
+# the docker-lint job (dependabot). Local runs still execute them here.
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  echo "skipping hadolint, kics, shellcheck, actionlint, zizmor (workflow jobs own them)"
+else
+  bash "$ROOT/scripts/run-hadolint.sh"
+  bash "$ROOT/scripts/run-kics.sh"
+  bash "$ROOT/scripts/run-shellcheck.sh"
+  bash "$ROOT/scripts/run-actionlint.sh"
+  bash "$ROOT/scripts/run-zizmor.sh"
+fi
 "$PYTHON" scripts/lint-doc-links.py --root "$ROOT"
 "$PYTHON" -m pytest \
   --cov=app --cov=main --cov=sdk --cov=demo --cov-branch \
   --cov-fail-under="${STMT}" \
   -q
-bash "$ROOT/scripts/check-ios-sdk.sh"
-bash "$ROOT/scripts/check-android-sdk.sh"
+# ios-sdk and android-sdk are the fail-closed mobile jobs. A partial Swift
+# or Java on the Ubuntu quality runner must not fail the Python gate.
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  echo "skipping ios and android SDK gates (dedicated jobs own them)"
+else
+  bash "$ROOT/scripts/check-ios-sdk.sh"
+  bash "$ROOT/scripts/check-android-sdk.sh"
+fi
 echo "ci-local ok (statement_coverage=${STMT} branch_coverage=${BRANCH} doc_coverage=${DOC})"

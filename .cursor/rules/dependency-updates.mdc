@@ -7,12 +7,12 @@ alwaysApply: false
 # Dependency updates (SC-DEP-*)
 
 Governs `.github/dependabot.yml` (and `.yaml`). Cite Guardrail IDs from
-[`docs/guardrails/supply-chain/`](https://github.com/pirlruc/guardrails/tree/1.6.0/supply-chain).
+[`docs/guardrails/supply-chain/`](https://github.com/pirlruc/guardrails/tree/1.7.0/supply-chain).
 Cadence and open-PR limit come from `docs/guardrails/supply-chain/profile.thresholds.yml` — do not bake numbers
 into this rule.
 
 Process companion:
-[dependency-updates.md](https://github.com/pirlruc/methodologies/blob/1.5.0/github-issue-adr/docs/process/dependency-updates.md).
+[dependency-updates.md](https://github.com/pirlruc/methodologies/blob/1.6.0/github-issue-adr/docs/process/dependency-updates.md).
 
 ## Required shape
 
@@ -75,7 +75,7 @@ Org **Grant Dependabot access** is org-only. On a personal account:
 ## CI interaction
 
 Skip jobs that need **Actions** secrets when `github.actor == 'dependabot[bot]'`
-([CI-024](https://github.com/pirlruc/guardrails/blob/1.6.0/ci/guardrails.md)). Dependabot secrets are for
+([CI-024](https://github.com/pirlruc/guardrails/blob/1.7.0/ci/guardrails.md)). Dependabot secrets are for
 version updates only.
 
 ## Do not
