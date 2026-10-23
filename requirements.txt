@@ -21,7 +21,7 @@ idna==3.20
 jmespath==1.1.0
 mako==1.4.1
 markupsafe==3.0.3
-multidict==6.9.0
+multidict==6.9.1
 propcache==0.5.4
 protobuf==5.29.6
 pydantic==2.13.5
