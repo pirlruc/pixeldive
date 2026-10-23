@@ -85,4 +85,4 @@ bash scripts/check-ci-local.sh
 ```
 
 Coverage floor: `config/swift.profile.thresholds.yml` (SWIFT-TEST-002). CI job `ios-sdk`
-runs on macOS. Linux `scripts/check-ci-local.sh` does not claim Swift gates (SWIFT-ENV-001). `scripts/check-ci-docker.sh` runs `swift test` in `swift:6.0` when Swift is not on PATH.
+runs on macOS. Linux `scripts/check-ci-local.sh` does not claim Swift gates (SWIFT-ENV-001). `scripts/check-ci-docker.sh` runs `swift test` in `swift:6.1` when Swift is not on PATH.

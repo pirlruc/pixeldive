@@ -8,7 +8,7 @@ cd "$ROOT"
 SUPPLY_IMAGE="${PIXELDIVE_SUPPLY_IMAGE:-ghcr.io/pirlruc/ci-supply-chain@sha256:2afa89cd956049503cb4ffb67b4079963e09906fcfc0c3e8ffd68286f93bb341}"
 CST_IMAGE="${PIXELDIVE_CST_IMAGE:-ghcr.io/pirlruc/ci-container@sha256:8895fe81e776dd2a3ea4ca2bfae0c94cd7d8a45f20df027c715c1278946b1363}"
 IMAGE="${PIXELDIVE_IMAGE:-pixeldive:ci}"
-SWIFT_IMAGE="${PIXELDIVE_SWIFT_IMAGE:-swift:6.0}"
+SWIFT_IMAGE="${PIXELDIVE_SWIFT_IMAGE:-swift:6.1}"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is required for host-unavailable CI checks" >&2

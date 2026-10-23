@@ -25,13 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Local `scripts/run-shellcheck.sh` still uses `--severity=error`.
 - Refuse an auth-disabled bind that is not loopback unless `PIXELDIVE_ALLOW_ANONYMOUS=true`.
 - Remove the default database password. `AUTO_CREATE_TABLES` defaults to false. `gc_min_age_seconds` defaults to 60. Duplicate API tokens are rejected at startup.
+- Pin swift-nio 2.104.0. Release 2.97.1 has fixed HIGH findings, and
+  2.98.0 needs Swift tools 6.1, so the Linux package test image is `swift:6.1`.
 
 ### Added
 
 - PostgreSQL `tenant_quota` for shared rate and byte caps (SEC-004), and an optional Redis backend behind the Compose `redis` profile (SEC-005). The default without those URLs stays in-process.
 - Mobile TLS gRPC constructors beside `insecure()`, protobuf Struct metadata (field 8), and an optional PEM CA on iOS and Android (SDK-007, SDK-008).
 - `docs/docker-hub.md` and `docs/github-packages.md` for the 0.1.0 image. `/metrics` is unauthenticated Prometheus text on the HTTP port.
-- `scripts/check-ci-local.sh` and `scripts/check-ci-docker.sh`. `ops-reuse.yml` calls the commondevops 5.4.5 and containerdevops 6.3.3 reusables. `python-quality` is not called: its consumer file is the org profile, and this repo's average maintainability floor is 70.
+- `scripts/check-ci-local.sh` and `scripts/check-ci-docker.sh`. `ops-reuse.yml` calls the commondevops 5.4.6 and containerdevops 6.3.3 reusables. `python-quality` is not called: its consumer file is the org profile, and this repo's average maintainability floor is 70.
 - Dokka HTML for the Android SDK (`:sdk:dokkaGeneratePublicationHtml`).
   Public declarations without KDoc fail the task (KT-DOC-001).
 - `ops-reuse.yml` calls commondevops `common-infra-lint` and containerdevops

@@ -125,7 +125,7 @@ maps `Build` / Camera2 into the same keys, tagged `metadata.platform=android`.
 ```bash
 bash scripts/check-ci-local.sh
 bash scripts/check-ci-docker.sh
-# macOS is the iOS final gate. Linux without Swift uses the swift:6.0 image
+# macOS is the iOS final gate. Linux without Swift uses the swift:6.1 image
 # from check-ci-docker.sh. Android local runs use the Android Studio JBR
 # when /opt/android-studio/jbr exists.
 PIXELDIVE_REQUIRE_SWIFT=1 bash scripts/check-ios-sdk.sh
