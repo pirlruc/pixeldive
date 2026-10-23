@@ -132,8 +132,8 @@ Each reusable sparse-checkouts `scripts/` with the matching read token.
 `scripts_ref` equals the `uses:` SHA (CI-034). `blocking: true`.
 Dependabot cannot read those secrets (CI-024), so `docker-lint` still runs
 `scripts/run-hadolint.sh`, `run-kics.sh`, `run-shellcheck.sh`,
-`run-actionlint.sh`, and `run-zizmor.sh` when `github.actor` is
-`dependabot[bot]`. `scripts/ci-local.sh` skips those five on GitHub Actions
+`run-actionlint.sh`, and `run-zizmor.sh` when
+`github.event.pull_request.user.login` is `dependabot[bot]`. `scripts/ci-local.sh` skips those five on GitHub Actions
 so a non-dependabot `quality` job does not run a second hadolint. Local
 `ci-local.sh` still runs them. Compose `docker compose --profile s3 config`
 stays in `docker-lint` because container-iac's compose step omits the profile.
