@@ -230,17 +230,3 @@ jobs:
       scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
     secrets:
       scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
-
-  published-rescan:
-    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
-    permissions:
-      contents: read
-      packages: read
-      security-events: write
-    uses: pirlruc/containerdevops/.github/workflows/container-published-rescan.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
-    with:
-      blocking: false
-      image: ghcr.io/pirlruc/pixeldive:latest
-      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
-    secrets:
-      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
