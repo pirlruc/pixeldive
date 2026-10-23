@@ -1,7 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # SC-DEP-004: gitlink SHA must equal the peeled annotated tag named here.
+# common-pins-verify runs this file with sh, so it stays POSIX.
 # Does not clone the private submodules; it reads the gitlink in HEAD.
-set -euo pipefail
+set -eu
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "${ROOT}"
@@ -16,15 +17,15 @@ gr="$(git rev-parse 'HEAD:docs/guardrails')"
 sc="$(git rev-parse 'HEAD:.github/scaffold')"
 
 status=0
-if [[ "${gr}" != "${GR_EXPECT}" ]]; then
+if [ "${gr}" != "${GR_EXPECT}" ]; then
   echo "SC-DEP-004: docs/guardrails gitlink ${gr} != ${GR_TAG} ${GR_EXPECT}" >&2
   status=1
 fi
-if [[ "${sc}" != "${SC_EXPECT}" ]]; then
+if [ "${sc}" != "${SC_EXPECT}" ]; then
   echo "SC-DEP-004: .github/scaffold gitlink ${sc} != ${SC_TAG} ${SC_EXPECT}" >&2
   status=1
 fi
-if [[ "${status}" -ne 0 ]]; then
+if [ "${status}" -ne 0 ]; then
   exit 1
 fi
 
