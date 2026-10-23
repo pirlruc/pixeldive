@@ -12,6 +12,28 @@ from app.config import Settings
 from app.database import create_engine, init_db, session_scope
 
 
+def test_duplicate_api_key_rejected() -> None:
+    """The same token cannot map twice."""
+    with pytest.raises(ValidationError):
+        Settings(api_keys="secret:one,secret:two")
+
+
+def test_anonymous_non_loopback_rejected() -> None:
+    """Auth-disabled binds stay on loopback unless the dev flag is set."""
+    with pytest.raises(ValidationError):
+        Settings(http_host="0.0.0.0")
+    settings = Settings(http_host="0.0.0.0", allow_anonymous=True)
+    assert settings.allow_anonymous is True
+
+
+def test_defaults_have_no_db_password() -> None:
+    """The shipped database URL does not embed a password."""
+    settings = Settings()
+    assert "pixeldive:pixeldive" not in settings.database_url
+    assert settings.auto_create_tables is False
+    assert settings.gc_min_age_seconds > 0
+
+
 def test_invalid_storage_backend() -> None:
     """Unknown STORAGE_BACKEND values fail validation."""
     with pytest.raises(ValidationError):

@@ -55,6 +55,7 @@ services:
       LOG_JSON: "true"
       ENVIRONMENT: ${ENVIRONMENT:-development}
       AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
+      PIXELDIVE_ALLOW_ANONYMOUS: ${PIXELDIVE_ALLOW_ANONYMOUS:-true}
       API_KEYS: ${API_KEYS:-}
       HTTP_INSECURE: ${HTTP_INSECURE:-true}
       GRPC_INSECURE: ${GRPC_INSECURE:-true}
