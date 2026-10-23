@@ -1,0 +1,30 @@
+schemaVersion: "2.0.0"
+metadataTest:
+  envVars:
+    - key: PYTHONDONTWRITEBYTECODE
+      value: "1"
+    - key: PYTHONUNBUFFERED
+      value: "1"
+  user: "65532:65532"
+  exposedPorts:
+    - "8000"
+    - "50051"
+  entrypoint: ["python", "/app/main.py"]
+commandTests:
+  - name: "import app"
+    command: "python"
+    args: ["-c", "import app; print(app.__name__)"]
+    expectedOutput: ["app"]
+fileExistenceTests:
+  - name: "main"
+    path: "/app/main.py"
+    shouldExist: true
+  - name: "venv python"
+    path: "/opt/venv/bin/python"
+    shouldExist: true
+  - name: "pip absent"
+    path: "/usr/local/bin/pip"
+    shouldExist: false
+  - name: "data dir"
+    path: "/data/images"
+    shouldExist: true

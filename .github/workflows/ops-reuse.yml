@@ -69,3 +69,178 @@ jobs:
       scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
     secrets:
       scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+
+  supply-chain:
+    # Filesystem SBOM, Grype, Trivy vuln, and the grant licence gate.
+    # Image secret scanning is container-scan (DOCKER-SEC-005). This
+    # reusable's Trivy step is `trivy fs --scanners vuln` only.
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+      security-events: write
+    uses: pirlruc/commondevops/.github/workflows/common-supply-chain.yml@4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+    with:
+      blocking: true
+      working_directory: .
+      scripts_ref: 4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+    secrets:
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
+
+  scorecard:
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]') &&
+      github.event.repository.fork == false
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      security-events: write
+    uses: pirlruc/commondevops/.github/workflows/common-scorecard.yml@4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+    with:
+      blocking: true
+      publish_results: true
+
+  docs:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+    uses: pirlruc/commondevops/.github/workflows/common-doc-verify.yml@4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+    with:
+      blocking: true
+      shell_scripts: scripts/*.sh
+      ruff_paths: scripts/lint-doc-links.py
+      yaml_files: docs/issues.yml docs/guardrail-deviations.yml docs/issues-sync-targets.yml
+      yaml_globs: .github/workflows/*.yml
+      run_link_lint: true
+      run_markdownlint: true
+      scripts_ref: 4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+    secrets:
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
+
+  pins:
+    permissions:
+      contents: read
+    uses: pirlruc/commondevops/.github/workflows/common-pins-verify.yml@4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+    with:
+      pin_script: scripts/check-submodule-pins.sh
+      scripts_ref: 4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+
+  threshold-drift:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+    uses: pirlruc/commondevops/.github/workflows/common-threshold-drift.yml@4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+    with:
+      drift_script: scripts/check-threshold-drift.sh
+      scripts_ref: 4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+    secrets:
+      checkout_token: ${{ secrets.GUARDRAILS_READ_TOKEN }}
+
+  token-audit:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions: {}
+    uses: pirlruc/commondevops/.github/workflows/common-token-audit.yml@4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+    with:
+      scripts_ref: 4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+    secrets:
+      guardrails_token: ${{ secrets.GUARDRAILS_READ_TOKEN }}
+      containerdevops_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
+
+  sweep:
+    permissions:
+      actions: write
+    uses: pirlruc/commondevops/.github/workflows/artifact-sweep.yml@4a7c8c431090f32bb0febcd42f5ac8ef2d405e0e
+
+  container-lint:
+    # Hadolint only. common-infra-lint and common-secrets-sast are the
+    # jobs above; nesting them again would duplicate those calls.
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+      packages: read
+    uses: pirlruc/containerdevops/.github/workflows/container-lint.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      blocking: true
+      dockerfile: Dockerfile
+      run_infra_lint: false
+      run_secrets_scan: false
+      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+    secrets:
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+
+  container-build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+      packages: write
+    uses: pirlruc/containerdevops/.github/workflows/container-build.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      blocking: true
+      image_name: pixeldive:ci
+      structure_test_config: container-structure-test.yml
+      platforms: linux/amd64
+      image_title: pixeldive
+      image_description: Async image-processing sessions over HTTP and gRPC.
+      artifact_name: pixeldive-ci
+      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+    secrets:
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+
+  container-scan:
+    needs: container-build
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+      security-events: write
+    uses: pirlruc/containerdevops/.github/workflows/container-scan.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      blocking: true
+      image: ghcr.io/${{ github.repository_owner }}/${{ needs.container-build.outputs.image_ref }}
+      scanners: vuln,secret
+      image_config_scanners: misconfig,secret
+      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+    secrets:
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+
+  container-handoff-cleanup:
+    needs: [container-build, container-scan]
+    if: always() && needs.container-build.result == 'success'
+    permissions:
+      packages: write
+    uses: pirlruc/containerdevops/.github/workflows/container-handoff-cleanup.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      package: ${{ needs.container-build.outputs.handoff_package }}
+      tag: ${{ needs.container-build.outputs.handoff_tag }}
+
+  compose-smoke:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+    uses: pirlruc/containerdevops/.github/workflows/container-compose-smoke.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      blocking: true
+      compose_files: docker-compose.yml
+      env_files: .env.example
+      project_name: pixeldive-smoke
+      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+    secrets:
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+
+  published-rescan:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    uses: pirlruc/containerdevops/.github/workflows/container-published-rescan.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      blocking: false
+      image: ghcr.io/pirlruc/pixeldive:latest
+      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+    secrets:
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}

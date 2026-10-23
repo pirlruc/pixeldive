@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import time
 import uuid
 
 import pytest
@@ -91,6 +93,10 @@ async def test_batch_dedup_and_delete_gc(service: SessionService, storage) -> No
     assert other.storage_path == shared
     await service.delete_session(first.id)
     assert await storage.exists(shared)
+    # Production grace is 60s. Age the blob so the last delete can reclaim it.
+    blob = storage._contained(shared)
+    aged = time.time() - service._settings.gc_min_age_seconds - 5
+    os.utime(blob, (aged, aged))
     await service.delete_session(second.id)
     assert not await storage.exists(shared)
 

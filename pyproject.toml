@@ -21,6 +21,7 @@ dependencies = [
   "pydantic-settings==2.15.0",
   "python-dotenv==1.2.2",
   "python-multipart==0.0.32",
+  "redis==6.4.0",
   "sqlmodel==0.0.42",
   "uvicorn==0.53.0",
 ]
@@ -112,6 +113,10 @@ warn_untyped_fields = true
 addopts = "--cov=app --cov=main --cov=sdk --cov=demo --cov-branch --cov-report=term-missing"
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
+markers = [
+  "quota_postgres: shared PostgreSQL quota budget (PIXELDIVE_TEST_DATABASE_URL)",
+  "quota_redis: shared Redis rate budget (REDIS_URL or a reachable redis)",
+]
 pythonpath = [".", "sdk"]
 testpaths = ["tests"]
 

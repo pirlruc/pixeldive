@@ -22,7 +22,7 @@ class SessionOpsMixin(SessionHost):
         principal: Principal | None = None,
     ) -> SessionImage:
         """Load one image row scoped to a session."""
-        self._quota.hit(principal)
+        await self._quota.hit(principal)
         async with self._factory() as db:
             await self._require_session(db, session_id, principal)
             image = await db.get(SessionImage, image_id)

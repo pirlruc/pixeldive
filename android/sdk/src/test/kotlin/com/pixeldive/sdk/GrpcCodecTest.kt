@@ -89,6 +89,7 @@ class GrpcCodecTest {
         assertEquals("frame.png", image.filename)
         assertEquals(67, image.sizeBytes)
         assertEquals(Instant.parse("2026-09-20T12:00:00Z"), image.uploadedAt)
+        assertTrue(image.metadata.isEmpty())
         val batch = ImageProto.decodeBatch(body)
         assertEquals(1, batch.size)
         assertThrows<PixeldiveException.Decoding> { ImageProto.decodeUpload(ByteArray(0)) }
@@ -270,7 +271,7 @@ class GrpcCodecTest {
     fun decodeSkipsUnknownFields() {
         val ids =
             ProtoWire.stringField(1, imageId) + ProtoWire.stringField(2, sessionId) +
-                ProtoWire.varintField(9, 1) + ProtoWire.bytesField(8, byteArrayOf(1)) +
+                ProtoWire.varintField(9, 1) + ProtoWire.bytesField(10, byteArrayOf(1)) +
                 ProtoWire.varintField(6, 1)
         val image = ImageProto.decodeSessionImage(ids)
         assertEquals(imageId, image.id.toString())
@@ -309,6 +310,57 @@ class GrpcCodecTest {
         assertEquals("from-trailers", mixed.second)
         assertEquals(0, firstMessage(emptyList()).size)
         assertEquals(1, firstMessage(listOf(byteArrayOf(1))).size)
+    }
+
+    @Test
+    fun structMetadataDecodesFieldEight() {
+        val metadata =
+            structEntry("platform", ProtoWire.stringField(3, "ios")) +
+                structEntry("iso", ProtoWire.fixed64Field(2, 64.0.toRawBits())) +
+                structEntry("ratio", ProtoWire.fixed64Field(2, 1.5.toRawBits())) +
+                structEntry("ok", ProtoWire.varintField(4, 1)) +
+                structEntry("off", ProtoWire.varintField(4, 0)) +
+                structEntry("note", ProtoWire.varintField(1, 0)) +
+                structEntry("obj", ProtoWire.bytesField(5, structEntry("k", ProtoWire.stringField(3, "v")))) +
+                structEntry("tags", listValue("a")) +
+                structEntry("extra", ProtoWire.varintField(9, 1)) +
+                ProtoWire.varintField(3, 1) +
+                ProtoWire.bytesField(1, ProtoWire.bytesField(2, ProtoWire.stringField(3, "skip")))
+        val image =
+            ImageProto.decodeSessionImage(
+                ProtoWire.stringField(1, imageId) +
+                    ProtoWire.stringField(2, sessionId) +
+                    ProtoWire.bytesField(8, metadata),
+            )
+        assertEquals(JsonValue.Str("ios"), image.metadata["platform"])
+        assertEquals(JsonValue.IntNumber(64), image.metadata["iso"])
+        assertEquals(JsonValue.FloatNumber(1.5), image.metadata["ratio"])
+        assertEquals(JsonValue.Bool(true), image.metadata["ok"])
+        assertEquals(JsonValue.Bool(false), image.metadata["off"])
+        assertEquals(JsonValue.Null, image.metadata["note"])
+        assertEquals(JsonValue.Obj(mapOf("k" to JsonValue.Str("v"))), image.metadata["obj"])
+        assertEquals(JsonValue.Arr(listOf(JsonValue.Str("a"), JsonValue.Bool(true))), image.metadata["tags"])
+        assertEquals(JsonValue.Null, image.metadata["extra"])
+        assertEquals(null, image.metadata["skip"])
+        assertTrue(decodeStruct(ByteArray(0)).isEmpty())
+        assertEquals(JsonValue.Null, decodeValue(ByteArray(0)))
+        assertEquals(JsonValue.Null, decodeValue(ProtoWire.stringField(2, "x")))
+        assertEquals(JsonValue.IntNumber(0), jsonNumber(ByteArray(0)))
+        assertEquals(null, integralLong(Double.NaN))
+        assertEquals(null, integralLong(Double.POSITIVE_INFINITY))
+        assertThrows<PixeldiveException.Decoding> { decodeStruct(byteArrayOf(0x0A, 0x05)) }
+    }
+
+    private fun structEntry(
+        key: String,
+        value: ByteArray,
+    ): ByteArray = ProtoWire.bytesField(1, ProtoWire.stringField(1, key) + ProtoWire.bytesField(2, value))
+
+    private fun listValue(text: String): ByteArray {
+        val items =
+            ProtoWire.bytesField(1, ProtoWire.stringField(3, text)) +
+                ProtoWire.bytesField(1, ProtoWire.varintField(4, 1))
+        return ProtoWire.bytesField(6, items)
     }
 
     private fun grpcOk(

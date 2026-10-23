@@ -126,6 +126,7 @@ enum ImageProto {
         var contentType = ""
         var sizeBytes: Int64 = 0
         var uploaded = Date(timeIntervalSince1970: 0)
+        var metadata: [String: JSONValue] = [:]
         while let next = try reader.next() {
             switch (next.number, next.wire) {
             case (1, 2):
@@ -140,6 +141,8 @@ enum ImageProto {
                 sizeBytes = Int64(try decodeVarint(next.value))
             case (7, 2):
                 uploaded = try decodeTimestamp(next.value)
+            case (8, 2):
+                metadata = try decodeStruct(next.value)
             default:
                 continue
             }
@@ -151,7 +154,7 @@ enum ImageProto {
             contentType: contentType,
             sizeBytes: Int(sizeBytes),
             uploadedAt: uploaded,
-            metadata: [:]
+            metadata: metadata
         )
     }
 }

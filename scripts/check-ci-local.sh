@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 # Local parity for PY-* gates (python-quality-gates.mdc).
+# python-quality was not adopted: High reads the org floors unless the
+# consumer file is docs/guardrails/python/profile.thresholds.yml. This
+# repo's stricter overlay is config/python.profile.thresholds.yml
+# (avg_maintainability_index 70). These local gates keep that overlay.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 # shellcheck source=python-env.sh
 source "$ROOT/scripts/python-env.sh"
+
+bash "$ROOT/scripts/generate_proto.sh"
+git -C "$ROOT" diff --exit-code -- app/pb
 
 "$PYTHON" scripts/read_python_threshold.py statement_coverage >/dev/null
 "$PYTHON" scripts/read_python_threshold.py branch_coverage >/dev/null
@@ -48,4 +55,4 @@ else
   bash "$ROOT/scripts/check-ios-sdk.sh"
   bash "$ROOT/scripts/check-android-sdk.sh"
 fi
-echo "ci-local ok (statement_coverage=${STMT} branch_coverage=${BRANCH} doc_coverage=${DOC})"
+echo "check-ci-local ok (statement_coverage=${STMT} branch_coverage=${BRANCH} doc_coverage=${DOC})"

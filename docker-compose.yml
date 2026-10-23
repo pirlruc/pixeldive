@@ -43,6 +43,9 @@ services:
       minio-init:
         condition: service_completed_successfully
         required: false
+      redis:
+        condition: service_healthy
+        required: false
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pixeldive}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pixeldive}
       STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
@@ -83,6 +86,11 @@ services:
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-0}
       TENANT_MAX_UPLOAD_BYTES: ${TENANT_MAX_UPLOAD_BYTES:-0}
       SESSION_MAX_UPLOAD_BYTES: ${SESSION_MAX_UPLOAD_BYTES:-0}
+      # Empty keeps PostgreSQL when DATABASE_URL is postgres, else memory.
+      # Redis only when this profile's env is set: QUOTA_BACKEND=redis and
+      # QUOTA_REDIS_URL=redis://redis:6379/0 with `docker compose --profile redis`.
+      QUOTA_BACKEND: ${QUOTA_BACKEND:-}
+      QUOTA_REDIS_URL: ${QUOTA_REDIS_URL:-}
     ports:
       - "127.0.0.1:8000:8000"
       - "127.0.0.1:50051:50051"
@@ -159,6 +167,27 @@ services:
           sleep 1
         done
         mc mb --ignore-existing local/pixeldive
+
+  redis:
+    profiles: ["redis"]
+    # redis:8.10.2-alpine (multi-arch index digest; DOCKER-COMPOSE-001).
+    image: redis:8.10.2-alpine@sha256:0bf6577d7774e592b29d093e3ac9390eb91e13d72c21e506afce736de5e0eeb0
+    restart: unless-stopped
+    # Counters are ephemeral, so this service has no named volume.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    mem_limit: 256m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
   pgdata:

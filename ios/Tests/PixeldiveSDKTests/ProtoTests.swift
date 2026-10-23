@@ -83,6 +83,7 @@ final class ProtoTests: XCTestCase {
         XCTAssertEqual(image.filename, "frame.png")
         XCTAssertEqual(image.sizeBytes, 67)
         XCTAssertEqual(image.uploadedAt.timeIntervalSince1970, 1_789_905_600, accuracy: 0.001)
+        XCTAssertTrue(image.metadata.isEmpty)
         XCTAssertEqual(try ImageProto.decodeBatch(body).count, 1)
         XCTAssertThrowsError(try ImageProto.decodeUpload(Data()))
         XCTAssertEqual(try ImageProto.decodeBatch(Data()).count, 0)
@@ -120,6 +121,51 @@ final class ProtoTests: XCTestCase {
         XCTAssertEqual(try ImageProto.decodeChunkData(Data([0x08, 0x01])).count, 0)
     }
 
+    func testStructMetadataDecodesFieldEight() throws {
+        let image = try ImageProto.decodeSessionImage(sessionImage(structMetadata()))
+        XCTAssertEqual(image.metadata["platform"], JSONValue.string("ios"))
+        XCTAssertEqual(image.metadata["iso"], JSONValue.int(64))
+        XCTAssertEqual(image.metadata["ratio"], JSONValue.double(1.5))
+        XCTAssertEqual(image.metadata["ok"], JSONValue.bool(true))
+        XCTAssertEqual(image.metadata["off"], JSONValue.bool(false))
+        XCTAssertEqual(image.metadata["note"], JSONValue.null)
+        XCTAssertEqual(image.metadata["obj"], JSONValue.object(["k": JSONValue.string("v")]))
+        let tags = [JSONValue.string("a"), JSONValue.bool(true)]
+        XCTAssertEqual(image.metadata["tags"], JSONValue.array(tags))
+        XCTAssertEqual(image.metadata["extra"], JSONValue.null)
+        XCTAssertNil(image.metadata["skip"])
+        XCTAssertTrue(try decodeStruct(Data()).isEmpty)
+        XCTAssertEqual(try decodeValue(Data()), JSONValue.null)
+        XCTAssertEqual(jsonNumber(Data()), JSONValue.int(0))
+        XCTAssertNil(integralInt(.nan))
+        XCTAssertNil(integralInt(.infinity))
+        XCTAssertThrowsError(try decodeStruct(Data([0x0A, 0x05])))
+    }
+
+    private func structMetadata() -> Data {
+        var metadata = Data()
+        metadata.append(structEntry("platform", ProtoWire.stringField(3, "ios")))
+        metadata.append(structEntry("iso", ProtoWire.fixed64Field(2, Double(64).bitPattern)))
+        metadata.append(structEntry("ratio", ProtoWire.fixed64Field(2, Double(1.5).bitPattern)))
+        metadata.append(structEntry("ok", ProtoWire.varintField(4, 1)))
+        metadata.append(structEntry("off", ProtoWire.varintField(4, 0)))
+        metadata.append(structEntry("note", ProtoWire.varintField(1, 0)))
+        let nested = structEntry("k", ProtoWire.stringField(3, "v"))
+        metadata.append(structEntry("obj", ProtoWire.bytesField(5, nested)))
+        metadata.append(structEntry("tags", listValue("a")))
+        metadata.append(structEntry("extra", ProtoWire.varintField(9, 1)))
+        metadata.append(ProtoWire.varintField(3, 1))
+        let skipped = ProtoWire.bytesField(2, ProtoWire.stringField(3, "skip"))
+        metadata.append(ProtoWire.bytesField(1, skipped))
+        return metadata
+    }
+
+    private func sessionImage(_ metadata: Data) -> Data {
+        ProtoWire.stringField(1, imageID)
+            + ProtoWire.stringField(2, sessionID)
+            + ProtoWire.bytesField(8, metadata)
+    }
+
     private static let imageChunkHex =
         "0a2431323365343536372d653839622d313264332d613435362d343236363134313734303030"
         + "1a05662e706e672209696d6167652f706e672a026869"
@@ -133,6 +179,16 @@ final class ProtoTests: XCTestCase {
         "0a6c0a2431323365343536372d653839622d313264332d613435362d343236363134313734303031"
         + "122431323365343536372d653839622d313264332d613435362d343236363134313734303030"
         + "1a096672616d652e706e672209696d6167652f706e6728433a0608c095bfd506"
+}
+
+private func structEntry(_ key: String, _ value: Data) -> Data {
+    ProtoWire.bytesField(1, ProtoWire.stringField(1, key) + ProtoWire.bytesField(2, value))
+}
+
+private func listValue(_ text: String) -> Data {
+    let items = ProtoWire.bytesField(1, ProtoWire.stringField(3, text))
+        + ProtoWire.bytesField(1, ProtoWire.varintField(4, 1))
+    return ProtoWire.bytesField(6, items)
 }
 
 private extension Data {

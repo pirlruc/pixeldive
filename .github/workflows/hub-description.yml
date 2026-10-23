@@ -1,0 +1,23 @@
+name: hub-description
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/docker-hub.md"
+      - ".github/workflows/hub-description.yml"
+
+permissions: {}
+
+jobs:
+  overview:
+    permissions:
+      contents: read
+    uses: pirlruc/containerdevops/.github/workflows/container-hub-description.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      dockerhub_image: pirlruc/pixeldive
+      dockerhub_readme: docs/docker-hub.md
+      dockerhub_short_description: Async image-processing sessions over HTTP and gRPC.
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_DESCRIPTION_TOKEN: ${{ secrets.DOCKERHUB_DESCRIPTION_TOKEN }}

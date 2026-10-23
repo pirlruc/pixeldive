@@ -12,6 +12,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/grpc/grpc-swift.git", exact: "1.24.2"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.23.0"),
     ],
     targets: [
         .target(
@@ -20,6 +21,11 @@ let package = Package(
                 .product(
                     name: "GRPC",
                     package: "grpc-swift",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS])
+                ),
+                .product(
+                    name: "NIOSSL",
+                    package: "swift-nio-ssl",
                     condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS])
                 ),
             ],

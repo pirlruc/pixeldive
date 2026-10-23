@@ -128,6 +128,7 @@ private class ImageFields {
     var contentType = ""
     var sizeBytes = 0L
     var uploaded = Instant.EPOCH
+    var metadata: Map<String, JsonValue> = emptyMap()
 
     fun accept(next: Triple<Int, Int, ByteArray>) {
         val (field, wire, value) = next
@@ -150,6 +151,7 @@ private class ImageFields {
             3 -> filename = utf8(value)
             4 -> contentType = utf8(value)
             7 -> uploaded = decodeTimestamp(value)
+            8 -> metadata = decodeStruct(value)
         }
     }
 
@@ -161,7 +163,7 @@ private class ImageFields {
             contentType = contentType,
             sizeBytes = sizeBytes.toInt(),
             uploadedAt = uploaded,
-            metadata = emptyMap(),
+            metadata = metadata,
         )
 }
 

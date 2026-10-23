@@ -47,6 +47,9 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
             settings.rate_limit_window_seconds,
             settings.tenant_max_upload_bytes,
             settings.session_max_upload_bytes,
+            backend=settings.quota_backend,
+            database_url=settings.database_url,
+            redis_url=settings.quota_redis_url,
         )
 
     async def ping_db(self) -> None:
@@ -60,7 +63,7 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
         principal: Principal | None = None,
     ) -> Session:
         """Insert a CREATED session with Android device JSON."""
-        self._quota.hit(principal)
+        await self._quota.hit(principal)
         record = Session(
             session_name=payload.session_name,
             status=SessionStatus.CREATED.value,
@@ -82,7 +85,7 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
         principal: Principal | None = None,
     ) -> Session:
         """Load a session or raise SessionNotFoundError."""
-        self._quota.hit(principal)
+        await self._quota.hit(principal)
         async with self._factory() as db:
             return await self._require_session(db, session_id, principal)
 
@@ -93,7 +96,7 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
         principal: Principal | None = None,
     ) -> Session:
         """Apply optional name/status/metadata updates (replace or merge)."""
-        self._quota.hit(principal)
+        await self._quota.hit(principal)
         updates = patch.model_dump(exclude_none=True, by_alias=False)
         merge = bool(updates.pop("merge_metadata", False))
         if "status" in updates:
@@ -117,14 +120,14 @@ class SessionService(SessionListMixin, SessionOpsMixin, SessionBatchMixin):
         principal: Principal | None = None,
     ) -> None:
         """Delete the session row (cascade images) and GC unreferenced blobs."""
-        self._quota.hit(principal)
+        await self._quota.hit(principal)
         async with self._factory() as db:
             record = await self._require_session(db, session_id, principal, with_images=True)
             paths = [image.storage_path for image in record.images]
             nbytes = sum(image.size_bytes for image in record.images)
             await db.delete(record)
             await db.commit()
-        self._quota.release_bytes(principal, session_id, nbytes)
+        await self._quota.release_bytes(principal, session_id, nbytes)
         await gc_unreferenced(
             self._factory,
             self._storage,

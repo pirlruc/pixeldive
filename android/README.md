@@ -95,7 +95,7 @@ Dokka 2.0.0 stays on the V1 Gradle plugin unless
 bash android/gradlew -p android :sdk:test
 
 # Android-shaped fixture against the Python service (Linux CI)
-bash scripts/ci-local.sh
+bash scripts/check-ci-local.sh
 ```
 
 Coverage floor: `config/kotlin.profile.thresholds.yml` (KT-TEST-002). CI job

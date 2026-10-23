@@ -44,6 +44,17 @@ class Settings(StorageSettingsMixin, RuntimeSettingsMixin, BaseSettings):
             raise ValueError(msg)
         return value
 
+    @field_validator("quota_backend")
+    @classmethod
+    def _quota_backend_name(cls, value: str) -> str:
+        """Accept memory, postgres, redis, or empty for URL-based selection."""
+        choice = value.strip().lower()
+        allowed = {"", "memory", "postgres", "redis"}
+        if choice not in allowed:
+            msg = "quota_backend must be memory, postgres, or redis"
+            raise ValueError(msg)
+        return choice
+
     @field_validator(*_TLS_PATH_FIELDS, mode="before")
     @classmethod
     def _empty_tls_path(cls, value: object) -> object:

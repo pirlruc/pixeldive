@@ -4,6 +4,13 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+if [[ -z "${JAVA_HOME:-}" && -d /opt/android-studio/jbr ]]; then
+  export JAVA_HOME=/opt/android-studio/jbr
+  export PATH="${JAVA_HOME}/bin:${PATH}"
+fi
+if [[ -z "${ANDROID_HOME:-}" && -d "${HOME}/Android/Sdk" ]]; then
+  export ANDROID_HOME="${HOME}/Android/Sdk"
+fi
 # shellcheck source=python-env.sh
 source "$ROOT/scripts/python-env.sh"
 

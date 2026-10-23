@@ -130,10 +130,18 @@ func makeEphemeralSession(timeout: TimeInterval) -> URLSession {
 }
 
 #if canImport(ObjectiveC)
+import Security
+
 /// Default sessions must not follow redirects: the Authorization header would
 /// otherwise be replayed onto the Location host.
 final class RedirectBlockingDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
-    static let shared = RedirectBlockingDelegate()
+    static let shared = RedirectBlockingDelegate(anchors: [])
+
+    private let anchors: [SecCertificate]
+
+    init(anchors: [SecCertificate]) {
+        self.anchors = anchors
+    }
 
     func urlSession(
         _ session: URLSession,
@@ -144,5 +152,63 @@ final class RedirectBlockingDelegate: NSObject, URLSessionTaskDelegate, @uncheck
     ) {
         completionHandler(nil)
     }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        let decision = trustDecision(challenge.protectionSpace, anchors: anchors)
+        completionHandler(decision.disposition, decision.credential)
+    }
+}
+
+struct TrustDecision {
+    var disposition: URLSession.AuthChallengeDisposition
+    var credential: URLCredential?
+}
+
+func trustDecision(_ space: URLProtectionSpace, anchors: [SecCertificate]) -> TrustDecision {
+    guard !anchors.isEmpty, let trust = serverTrust(space) else {
+        return TrustDecision(disposition: .performDefaultHandling, credential: nil)
+    }
+    guard let credential = credentialIfTrusted(trust, anchors: anchors) else {
+        return TrustDecision(disposition: .cancelAuthenticationChallenge, credential: nil)
+    }
+    return TrustDecision(disposition: .useCredential, credential: credential)
+}
+
+func serverTrust(_ space: URLProtectionSpace) -> SecTrust? {
+    guard space.authenticationMethod == NSURLAuthenticationMethodServerTrust else {
+        return nil
+    }
+    return space.serverTrust
+}
+
+func trustingSession(
+    existing: URLSession?,
+    timeout: TimeInterval,
+    anchors: [SecCertificate]
+) -> URLSession {
+    URLSession(
+        configuration: sessionConfiguration(existing: existing, timeout: timeout),
+        delegate: RedirectBlockingDelegate(anchors: anchors),
+        delegateQueue: nil
+    )
+}
+
+func sessionConfiguration(existing: URLSession?, timeout: TimeInterval) -> URLSessionConfiguration {
+    guard let existing else {
+        return ephemeralConfiguration(timeout)
+    }
+    return existing.configuration
+}
+
+func ephemeralConfiguration(_ timeout: TimeInterval) -> URLSessionConfiguration {
+    let config = URLSessionConfiguration.ephemeral
+    config.timeoutIntervalForRequest = timeout
+    config.timeoutIntervalForResource = timeout
+    return config
 }
 #endif

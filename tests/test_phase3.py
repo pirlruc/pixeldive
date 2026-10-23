@@ -287,7 +287,7 @@ async def test_single_image_chunks_empty_stream() -> None:
     assert chunks[0].data == b""
 
 
-def test_rate_window_expires(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_rate_window_expires(monkeypatch: pytest.MonkeyPatch) -> None:
     """Hits older than the window are dropped before counting (SEC-002)."""
     from app.sessions.quotas import TenantQuota
 
@@ -296,12 +296,12 @@ def test_rate_window_expires(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     principal = Principal(owner_id="tenant-a")
     times = iter([0.0, 2.0])
-    monkeypatch.setattr("app.sessions.quotas.time.monotonic", lambda: next(times))
-    quota.hit(principal)
-    quota.hit(principal)
+    monkeypatch.setattr("app.sessions.quota_memory.monotonic_now", lambda: next(times))
+    await quota.hit(principal)
+    await quota.hit(principal)
 
 
-def test_quota_release_allows_retry() -> None:
+async def test_quota_release_allows_retry() -> None:
     """Failed persists must not keep reserved bytes (SEC-002)."""
     from app.sessions.quotas import TenantQuota
 
@@ -313,17 +313,17 @@ def test_quota_release_allows_retry() -> None:
     )
     principal = Principal(owner_id="tenant-a")
     session_id = uuid.uuid4()
-    quota.reserve_bytes(principal, session_id, 10)
+    await quota.reserve_bytes(principal, session_id, 10)
     with pytest.raises(QuotaExceededError):
-        quota.reserve_bytes(principal, session_id, 1)
-    quota.release_bytes(principal, session_id, 4)
-    quota.reserve_bytes(principal, session_id, 4)
-    quota.release_bytes(principal, session_id, 10)
-    quota.release_bytes(None, session_id, 10)
-    quota.release_bytes(principal, session_id, 0)
+        await quota.reserve_bytes(principal, session_id, 1)
+    await quota.release_bytes(principal, session_id, 4)
+    await quota.reserve_bytes(principal, session_id, 4)
+    await quota.release_bytes(principal, session_id, 10)
+    await quota.release_bytes(None, session_id, 10)
+    await quota.release_bytes(principal, session_id, 0)
     unlimited = TenantQuota(0, 60.0, 0, 0)
-    unlimited.reserve_bytes(principal, session_id, 5)
-    unlimited.release_bytes(principal, session_id, 5)
+    await unlimited.reserve_bytes(principal, session_id, 5)
+    await unlimited.release_bytes(principal, session_id, 5)
 
 
 @pytest.mark.asyncio

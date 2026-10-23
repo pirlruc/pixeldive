@@ -137,6 +137,11 @@ final class GrpcClientTests: XCTestCase {
         XCTAssertEqual(box.snapshot(), [Data("a".utf8), Data("b".utf8)])
         try checkGrpcStatus(GRPCStatus.ok)
         XCTAssertThrowsError(try checkGrpcStatus(GRPCStatus(code: .permissionDenied, message: "nope")))
+        let tls = try PixeldiveGrpcClient.tls(host: "127.0.0.1", port: 1, token: "tok", caPEM: fixtureCaPEM)
+        tls.close()
+        let plain = try PixeldiveGrpcClient.tls(host: "127.0.0.1", port: 1, caPEM: "  ")
+        plain.close()
+        XCTAssertThrowsError(try PixeldiveGrpcClient.tls(host: "127.0.0.1", port: 1, caPEM: "nope"))
         #endif
     }
 }
