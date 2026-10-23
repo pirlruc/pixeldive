@@ -5,23 +5,32 @@ alwaysApply: true
 
 # Agent workflow guardrails
 
+## No approval needed
+
+- Web search and fetch
+- Reading the repo, running tools already on PATH, project-local environments, builds, and tests — see [build-test-environments.mdc](build-test-environments.mdc)
+- Commits on a feature branch, using [Conventional Commits](conventional-commits.mdc), including submodule pointer bumps
+- Annotated tag creation for a release
+- Creating, switching, and deleting `feature-*` branches, locally and on the remote
+- Non-force pushes to feature branches
+- Pull request creation, closing, and merging. Merge only when the required checks are green
+- `gh release create` for a release that already has its annotated tag
+- Issue create, update, and close through `issues-sync.py`: run `--dry-run` first and show its output, then sync. `gh issue edit`, `gh issue comment`, and `gh issue close` with an explanatory comment are also allowed
+
 ## Never without explicit approval
 
 | Action | Examples |
 |--------|----------|
 | Installing on the system OS | `apt-get install`, `brew install`, `pip install` / `pip install --user` into system Python, `npm i -g`, SDK/toolchain installers, `vcpkg install` outside the manifest |
-| Writing to git history | `git commit`, `git tag`, `git merge`, `git rebase`, `git cherry-pick`, submodule pointer bumps |
-| Creating or moving refs | `git branch`, `git checkout -b`, `git switch -c`, branch deletion (local or remote) |
-| Publishing | `git push`, `gh pr create`, `gh pr merge`, `gh release create`, creating issues via `issues-sync.py` |
+| Pushing to the default branch | `git push origin main` |
+| Rewriting pushed history | `git push --force`, `git reset --hard` of pushed commits, amending a pushed commit |
+| Moving or deleting releases | Deleting or moving an existing tag or GitHub Release |
+| Deleting other branches | Deleting a branch whose name does not start with `feature-`, locally or on the remote |
+| Repository administration | Visibility, secrets, branch protection, rulesets, and other repo settings |
+| Lowering a guardrail gate | See [guardrails-compliance.mdc](guardrails-compliance.mdc). Engineering Lead approval still applies |
 
-### No approval needed
-
-Using tools already on PATH; project-local environments (`uv sync`, `pip install` into `.venv`, `npm ci` in the
-repo); configuring/building into repo build directories; running tests; pulling/running Docker images.
-See [build-test-environments.mdc](build-test-environments.mdc).
-
-When a task requires any gated action above, stop and ask, stating exactly what will be run.
-Approval is per action, not per session: a prior "yes" to a commit is not a "yes" to push.
+When a task requires a gated action above, stop and ask, stating exactly what will be run.
+Approval is per action, not per session.
 
 ## Branch naming
 

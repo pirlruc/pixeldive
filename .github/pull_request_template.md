@@ -28,4 +28,4 @@
 ## Methodology
 
 Epic issues are decision records — no ADR markdown files.  
-See [github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.6.0/github-issue-adr) (methodologies @ `1.6.0`).
+See [github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.9.1/github-issue-adr) (methodologies @ `1.9.1`).

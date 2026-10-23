@@ -1,0 +1,22 @@
+---
+description: User-facing pages describe the product, not an agent session
+alwaysApply: true
+---
+
+# Public docs hygiene
+
+README, Docker Hub Overview, GitHub Packages description, and GitHub Release notes are for someone using the repository or the image. Cite [DOC-PUB-001](https://github.com/pirlruc/guardrails/blob/1.12.0/markdown/guardrails.md).
+
+## Write
+
+- What the image or repository is, how to pull or call it, and which tag or digest to pin.
+- Inputs, outputs, and permissions a caller must grant.
+- Links as GitHub URLs. See [cross-repo-links.mdc](cross-repo-links.mdc).
+
+## Do not write
+
+- Instructions addressed to an agent, session transcripts, plan names, or task-ledger notes.
+- Machine-local paths (`/home/…`, a home-directory checkout).
+- `docs/ai-agent-handoff.md` as a primary entry. That file is for maintainers.
+
+Hub Overview pages cannot follow a relative link to a sibling markdown file. Cross-image links on those pages are absolute GitHub URLs.

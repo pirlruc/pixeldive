@@ -1,0 +1,16 @@
+---
+description: Run the repo's local CI before pushing, to save Actions minutes
+alwaysApply: true
+---
+
+# Local CI before push
+
+GitHub Actions is the merge gate, not the first place a change is tested. Run the repository's local parity script and fix failures on the machine before `git push`.
+
+## Order
+
+1. The repo's host-first script, usually `scripts/check-ci-local.sh` or `common/scripts/check-ci-local.sh`. See [build-test-environments.mdc](build-test-environments.mdc).
+2. Docker only for the tools that script queues. Do not install those tools on the system OS.
+3. Push one pull request per repo when the local run is green. Do not push to watch a workflow fail and then push again.
+
+A workflow that only runs on GitHub (a private registry login, a release publish) still gets a local stand-in where the repo has one: `docker build`, the image's structure test, and the scanner image.

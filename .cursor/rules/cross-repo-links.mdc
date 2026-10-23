@@ -48,5 +48,5 @@ Scripts that need the consuming repo root derive it from `git rev-parse --show-t
 
 ## Related
 
-- Approval gates for submodule pointer bumps: [agent-workflow.mdc](agent-workflow.mdc)
+- Submodule pointer bumps: [agent-workflow.mdc](agent-workflow.mdc)
 - Guardrails submodule pinning: [guardrails-compliance.mdc](guardrails-compliance.mdc)
