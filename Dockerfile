@@ -1,8 +1,9 @@
-# python:3.13.15-slim-bookworm (linux/amd64 digest; DOCKER-BUILD-002/003).
+# python:3.13.17-slim-trixie (linux/amd64 digest; DOCKER-BUILD-002/003).
+# Debian 13 clears the fixable perl HIGH findings that bookworm still ships.
 # CPython minor follows PY-RUN-003 / guardrails python/profile.md (3.13;
 # 3.14 is still in bugfix until ~2027-10, so it does not qualify until the
 # 2027-04 re-evaluation). Keep lockstep with setup-python and requires-python.
-FROM python:3.13.15-slim-bookworm@sha256:3e2de9c40ca4e3d73240059f9d48baff27908f10293e985a2f382a0378e6df4a AS builder
+FROM python:3.13.17-slim-trixie@sha256:fe14fd57a4c0361110eaa0c284112b189750bcb43fb04bb5d1ee7b7744027ccf AS builder
 
 WORKDIR /build
 # --without-pip keeps pip/setuptools/msgpack out of the runtime venv
@@ -11,7 +12,7 @@ RUN python -m venv --without-pip /opt/venv
 COPY requirements.txt .
 RUN pip --python /opt/venv/bin/python install --no-cache-dir -r requirements.txt
 
-FROM python:3.13.15-slim-bookworm@sha256:3e2de9c40ca4e3d73240059f9d48baff27908f10293e985a2f382a0378e6df4a
+FROM python:3.13.17-slim-trixie@sha256:fe14fd57a4c0361110eaa0c284112b189750bcb43fb04bb5d1ee7b7744027ccf
 
 LABEL org.opencontainers.image.title="pixeldive" \
       org.opencontainers.image.description="Image-processing session management (REST + gRPC)" \
