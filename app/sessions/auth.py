@@ -32,6 +32,7 @@ def parse_api_keys(raw: str) -> dict[str, str]:
 
 def _parse_json_keys(text: str) -> dict[str, str]:
     """Parse a JSON object of token → owner_id."""
+
     def _pairs(pairs: list[tuple[object, object]]) -> dict[str, str]:
         mapping: dict[str, str] = {}
         for key, value in pairs:
