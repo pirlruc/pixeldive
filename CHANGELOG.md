@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PostgreSQL `tenant_quota` for shared rate and byte caps (SEC-004), and an optional Redis backend behind the Compose `redis` profile (SEC-005). The default without those URLs stays in-process.
 - Mobile TLS gRPC constructors beside `insecure()`, protobuf Struct metadata (field 8), and an optional PEM CA on iOS and Android (SDK-007, SDK-008).
 - `docs/docker-hub.md` and `docs/github-packages.md` for the 0.1.0 image. `/metrics` is unauthenticated Prometheus text on the HTTP port.
-- `scripts/check-ci-local.sh` and `scripts/check-ci-docker.sh`. `ops-reuse.yml` calls commondevops 5.4.7 (`e20d134c`) and containerdevops 6.3.3. The infra, secrets, and supply-chain jobs use a public GHCR Ubuntu image because this repo cannot pull the private ci images. `python-quality` is not called: its consumer file is the org profile, and this repo's average maintainability floor is 70.
+- `scripts/check-ci-local.sh` and `scripts/check-ci-docker.sh`. `ops-reuse.yml` calls commondevops `6ddf27bb` and containerdevops 6.3.3. Infra, secrets, and supply-chain use a public GHCR Ubuntu image with `mount_runner_git: false`, because this repo cannot pull the private ci images and the host library mounts replace libraries that image's bash needs. `python-quality` is not called: its consumer file is the org profile, and this repo's average maintainability floor is 70.
 - Dokka HTML for the Android SDK (`:sdk:dokkaGeneratePublicationHtml`).
   Public declarations without KDoc fail the task (KT-DOC-001).
 - `ops-reuse.yml` calls commondevops `common-infra-lint` and containerdevops
