@@ -69,9 +69,9 @@ CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`,
 
 | Companion | How it is pinned |
 | --- | --- |
-| `pirlruc/guardrails` | Git submodule `guardrails` at `docs/guardrails/` (tag **1.8.0**, `aa5184ce`). Private; needs `GUARDRAILS_READ_TOKEN`. |
-| `pirlruc/github-scaffold` | Git submodule `github-scaffold` at `.github/scaffold/` (tag **1.7.0**, `e76bb3fd`). Templates are synced into `.github/` and `.cursor/rules/`. |
-| `pirlruc/methodologies` | Cited by tag in consumer docs (`tree/1.7.0/github-issue-adr`). Not a submodule. Scaffold 1.7.0 files still say 1.6.0. |
+| `pirlruc/guardrails` | Git submodule `guardrails` at `docs/guardrails/` (tag **1.13.1**, `1945211ac851c3c0f83694bd4ea53571fdced4ab`). Private; needs `GUARDRAILS_READ_TOKEN`. |
+| `pirlruc/github-scaffold` | Git submodule `github-scaffold` at `.github/scaffold/` (tag **1.10.2**, `c8eddcfb2c8a808981e640fa9739cb4fcefa991e`). Templates are synced into `.github/` and `.cursor/rules/`. |
+| `pirlruc/methodologies` | Not a submodule. README and this file's header still cite `tree/1.7.0`. Issue and pull-request templates cite `1.9.1`. |
 
 Android client analogs (payload shape, not Gradle layout): [pirlruc/finsilo](https://github.com/pirlruc/finsilo) (`:app` / `:domain`) and Heimdall (`app → kit → core`). Phone/camera JSON maps to Android `Build`, `ActivityManager`, `DisplayMetrics`, and Camera2 — see field descriptions on `app/device_models.py`. Do not copy Heimdall's native kit layout into this Python service.
 
@@ -196,6 +196,7 @@ PY-SEC-005/006/007: [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/1
 - Follow-up: ruff format on `tests/test_sdk.py`; close gRPC channels on cache replace; skip REST list and JPEG encode while a frame is in flight; NIO call timeout; percent-decode `grpc-message`; Python Struct metadata ([PR #13](https://github.com/pirlruc/pixeldive/pull/13))
 - TOOL-003: guardrails 1.8.0 and github-scaffold 1.7.0 gitlinks; commondevops submodule names; Kotlin overlay keys; `COPY --chown`; actionlint + zizmor; CodeQL/Semgrep no longer exclude analog pins
 - TOOL-004: Dokka HTML on `:sdk` (the earlier "not published, so KT-DOC-001 N/A" note was wrong for a library that already has a public API); `ops-reuse.yml` calls common-infra-lint and container-iac via read tokens; KICS `698ed579` / `ce76b7d0` explained for `minio-init` and Postgres `cap_add`
+- 2026-10-24: [PR 22](https://github.com/pirlruc/pixeldive/pull/22) merged as `5b9002b`. Annotated tag `0.1.0` has no digest. GitHub Release https://github.com/pirlruc/pixeldive/releases/tag/0.1.0 lists index `sha256:79e0ee5ffe1d594fbb0746fdb87c5baeccc7a6a378bdf2c74289834044720f5c` and linux/amd64 `sha256:3d453946eaaafa716922ef86f22ab33544fa5471703797c91449e794cdeba7cb`. Hub `full_description` matches `docs/docker-hub.md`. Keyless signing did not run: `verify_command` is word-split, so `python -c "import app"` never reached cosign. Do not move tag `0.1.0`.
 - `feature-ops-refresh`: guardrails 1.13.1, scaffold 1.10.2, ops reusables at commondevops `0932c7bf` and containerdevops `416e31ea`, SEC-004/005 quota stores, SDK-007/008 TLS gRPC and PEM CA. `python-quality` stays unused because the stricter average maintainability floor is `config/python.profile.thresholds.yml`. iOS NIO TLS is covered on macos-15; Linux `swift:6.1` runs the package tests. `ios/Package.resolved` pins grpc-swift 1.24.2, swift-nio 2.104.0, and swift-nio-ssl.
 
-*Last updated: 2026-10-23*
+*Last updated: 2026-10-24*
