@@ -21,12 +21,12 @@ jobs:
     permissions:
       contents: read
       packages: read
-    uses: pirlruc/commondevops/.github/workflows/common-infra-lint.yml@6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+    uses: pirlruc/commondevops/.github/workflows/common-infra-lint.yml@32075ce01925f26be0b61ef787f2cd726df8fa6b
     with:
       blocking: true
       dockerfiles: Dockerfile
       run_shfmt: true
-      scripts_ref: 6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+      scripts_ref: 32075ce01925f26be0b61ef787f2cd726df8fa6b
       container_image: ghcr.io/catthehacker/ubuntu:act-24.04@sha256:dff4ec57d90046a7283aafc314298380be82bfeccb9ad0f1b36c4ebe74aabe78
       mount_runner_git: false
     secrets:
@@ -37,10 +37,10 @@ jobs:
     permissions:
       contents: read
       packages: read
-    uses: pirlruc/commondevops/.github/workflows/common-secrets-sast.yml@6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+    uses: pirlruc/commondevops/.github/workflows/common-secrets-sast.yml@32075ce01925f26be0b61ef787f2cd726df8fa6b
     with:
       blocking: true
-      scripts_ref: 6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+      scripts_ref: 32075ce01925f26be0b61ef787f2cd726df8fa6b
       container_image: ghcr.io/catthehacker/ubuntu:act-24.04@sha256:dff4ec57d90046a7283aafc314298380be82bfeccb9ad0f1b36c4ebe74aabe78
       mount_runner_git: false
     secrets:
@@ -51,10 +51,10 @@ jobs:
     permissions:
       contents: read
       issues: read
-    uses: pirlruc/commondevops/.github/workflows/common-scaffold-verify.yml@6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+    uses: pirlruc/commondevops/.github/workflows/common-scaffold-verify.yml@32075ce01925f26be0b61ef787f2cd726df8fa6b
     with:
       blocking: true
-      scripts_ref: 6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+      scripts_ref: 32075ce01925f26be0b61ef787f2cd726df8fa6b
     secrets:
       checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
 
@@ -84,11 +84,11 @@ jobs:
       actions: read
       packages: read
       security-events: write
-    uses: pirlruc/commondevops/.github/workflows/common-supply-chain.yml@6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+    uses: pirlruc/commondevops/.github/workflows/common-supply-chain.yml@32075ce01925f26be0b61ef787f2cd726df8fa6b
     with:
       blocking: true
       working_directory: .
-      scripts_ref: 6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+      scripts_ref: 32075ce01925f26be0b61ef787f2cd726df8fa6b
       container_image: ghcr.io/catthehacker/ubuntu:act-24.04@sha256:dff4ec57d90046a7283aafc314298380be82bfeccb9ad0f1b36c4ebe74aabe78
       mount_runner_git: false
     secrets:
@@ -103,7 +103,7 @@ jobs:
       actions: read
       id-token: write
       security-events: write
-    uses: pirlruc/commondevops/.github/workflows/common-scorecard.yml@6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+    uses: pirlruc/commondevops/.github/workflows/common-scorecard.yml@32075ce01925f26be0b61ef787f2cd726df8fa6b
     with:
       blocking: true
       publish_results: true
@@ -112,7 +112,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       contents: read
-    uses: pirlruc/commondevops/.github/workflows/common-doc-verify.yml@6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+    uses: pirlruc/commondevops/.github/workflows/common-doc-verify.yml@32075ce01925f26be0b61ef787f2cd726df8fa6b
     with:
       blocking: true
       shell_scripts: scripts/*.sh
@@ -122,35 +122,35 @@ jobs:
       run_link_lint: true
       # 5.4.4 scripts checkout has no markdownlint lockfile (CI-039).
       run_markdownlint: false
-      scripts_ref: 6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+      scripts_ref: 32075ce01925f26be0b61ef787f2cd726df8fa6b
     secrets:
       checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
 
   pins:
     permissions:
       contents: read
-    uses: pirlruc/commondevops/.github/workflows/common-pins-verify.yml@6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+    uses: pirlruc/commondevops/.github/workflows/common-pins-verify.yml@32075ce01925f26be0b61ef787f2cd726df8fa6b
     with:
       pin_script: scripts/check-submodule-pins.sh
-      scripts_ref: 6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+      scripts_ref: 32075ce01925f26be0b61ef787f2cd726df8fa6b
 
   threshold-drift:
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       contents: read
-    uses: pirlruc/commondevops/.github/workflows/common-threshold-drift.yml@6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+    uses: pirlruc/commondevops/.github/workflows/common-threshold-drift.yml@32075ce01925f26be0b61ef787f2cd726df8fa6b
     with:
       drift_script: scripts/check-threshold-drift.sh
-      scripts_ref: 6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+      scripts_ref: 32075ce01925f26be0b61ef787f2cd726df8fa6b
     secrets:
       checkout_token: ${{ secrets.GUARDRAILS_READ_TOKEN }}
 
   token-audit:
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
     permissions: {}
-    uses: pirlruc/commondevops/.github/workflows/common-token-audit.yml@6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+    uses: pirlruc/commondevops/.github/workflows/common-token-audit.yml@32075ce01925f26be0b61ef787f2cd726df8fa6b
     with:
-      scripts_ref: 6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+      scripts_ref: 32075ce01925f26be0b61ef787f2cd726df8fa6b
     secrets:
       guardrails_token: ${{ secrets.GUARDRAILS_READ_TOKEN }}
       containerdevops_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
@@ -159,7 +159,7 @@ jobs:
   sweep:
     permissions:
       actions: write
-    uses: pirlruc/commondevops/.github/workflows/artifact-sweep.yml@6ddf27bb8cd4cd40f794599bf46fa6a6ebbb41c3
+    uses: pirlruc/commondevops/.github/workflows/artifact-sweep.yml@32075ce01925f26be0b61ef787f2cd726df8fa6b
 
   container-lint:
     # Hadolint only. common-infra-lint and common-secrets-sast are the
