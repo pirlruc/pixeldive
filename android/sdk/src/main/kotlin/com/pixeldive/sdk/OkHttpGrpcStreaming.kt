@@ -11,15 +11,16 @@ import okhttp3.RequestBody
 import okhttp3.Response
 import java.util.concurrent.TimeUnit
 
-/** OkHttp HTTP/2 prior-knowledge (h2c) transport for [PixeldiveGrpcClient]. */
+/** OkHttp HTTP/2 transport for [PixeldiveGrpcClient]. `http` is h2c; `https` is TLS with ALPN. */
 class OkHttpGrpcStreaming(
     host: String,
     port: Int,
     private val http: OkHttpClient = h2cClient(),
     private val ownsHttp: Boolean = true,
+    scheme: String = "http",
 ) : GrpcStreaming {
     private val root: HttpUrl =
-        HttpUrl.Builder().scheme("http").host(host).port(port).build()
+        HttpUrl.Builder().scheme(scheme).host(host).port(port).build()
 
     override suspend fun clientStreaming(
         path: String,
@@ -85,14 +86,27 @@ class OkHttpGrpcStreaming(
 }
 
 internal fun h2cClient(timeoutSeconds: Long = 60): OkHttpClient =
+    grpcHttpClient(listOf(Protocol.H2_PRIOR_KNOWLEDGE), timeoutSeconds).build()
+
+internal fun tlsGrpcClient(
+    caPem: String?,
+    timeoutSeconds: Long = 60,
+): OkHttpClient {
+    val builder = grpcHttpClient(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1), timeoutSeconds)
+    return applyTrust(builder, caPem).build()
+}
+
+private fun grpcHttpClient(
+    protocols: List<Protocol>,
+    timeoutSeconds: Long,
+): OkHttpClient.Builder =
     OkHttpClient.Builder()
-        .protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE))
+        .protocols(protocols)
         .connectTimeout(timeoutSeconds, TimeUnit.SECONDS)
         .readTimeout(timeoutSeconds, TimeUnit.SECONDS)
         .writeTimeout(timeoutSeconds, TimeUnit.SECONDS)
         .followRedirects(false)
         .followSslRedirects(false)
-        .build()
 
 internal fun finish(response: Response): ByteArray {
     val bytes = response.body?.bytes() ?: ByteArray(0)

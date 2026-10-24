@@ -123,10 +123,12 @@ maps `Build` / Camera2 into the same keys, tagged `metadata.platform=android`.
 ## Quality gates
 
 ```bash
-bash scripts/ci-local.sh
-# macOS / Linux-with-Swift: Foundation package tests (SWIFT-TEST-001)
+bash scripts/check-ci-local.sh
+bash scripts/check-ci-docker.sh
+# macOS is the iOS final gate. Linux without Swift uses the swift:6.1 image
+# from check-ci-docker.sh. Android local runs use the Android Studio JBR
+# when /opt/android-studio/jbr exists.
 PIXELDIVE_REQUIRE_SWIFT=1 bash scripts/check-ios-sdk.sh
-# Linux-with-JDK: Kotlin JVM package tests (KT-TEST-001)
 PIXELDIVE_REQUIRE_JAVA=1 bash scripts/check-android-sdk.sh
 ```
 
@@ -137,15 +139,13 @@ PIXELDIVE_TEST_DATABASE_URL=postgresql+asyncpg://pixeldive:pixeldive@127.0.0.1:5
   bash scripts/ci-postgres.sh
 ```
 
+`/metrics` is Prometheus text on the same HTTP port as the API. It is not behind API-key auth. Do not publish that port on a shared network. A production scrape should use a private interface or a reverse proxy that authenticates the scraper. There is no separate metrics bind.
+
 Floors live in `config/python.profile.thresholds.yml` (PY-TEST-002 95/95, PY-DOC-001, PY-CPLX-* max CC 8)
 and `config/swift.profile.thresholds.yml` (SWIFT-TEST-002 95 line coverage overlay)
-and `config/kotlin.profile.thresholds.yml` (KT-TEST-002 95/95, KT-DOC-001 number kept; Dokka is not applicable until the SDK publishes).
-When `GUARDRAILS_READ_TOKEN` is set, CI clones the analog pin and refuses a **looser** overlay (CI-022).
+and `config/kotlin.profile.thresholds.yml` (KT-TEST-002 95/95, KT-DOC-001).
+When `GUARDRAILS_READ_TOKEN` is set, CI clones the analog pin and refuses a looser overlay (CI-022).
 Stricter values (avg MI 70 vs org 60; Swift statement coverage 95 vs org 90) are allowed. `docs/guardrail-deviations.yml` is empty.
 `uv.lock` is the PY-RUN-001 lockfile; `requirements.txt` is the pip/Docker freeze
-(`uv export`). Local `scripts/ci-local.sh` also runs pydoclint, hadolint, KICS,
-ShellCheck, actionlint, zizmor, submodule-pin checks, and markdown link lint.
-
-## Agent handoff
-
-See [`docs/ai-agent-handoff.md`](docs/ai-agent-handoff.md).
+(`uv export`). Local `scripts/check-ci-local.sh` also runs pydoclint, hadolint, KICS,
+ShellCheck, actionlint, zizmor, submodule-pin checks, protobuf drift, and markdown link lint.

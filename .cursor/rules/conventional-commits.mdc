@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Conventional Commits
 
-When the user asks for a commit (or you commit with explicit approval), use [Conventional Commits](https://www.conventionalcommits.org/):
+When creating a commit, use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
 <type>(<scope>): <subject>
@@ -55,7 +55,7 @@ test(flow): cover typed graph cycle detection
 
 ## Scope guardrails
 
-Approval for commits, pushes, and OS installs lives in
+Which git actions need approval lives in
 [agent-workflow.mdc](agent-workflow.mdc). Do not amend, force-push, or skip
 hooks unless the user requests it. Match the consuming repo's existing commit
 message style when in doubt.

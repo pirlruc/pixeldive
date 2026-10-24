@@ -1,4 +1,4 @@
-# Consumer copy of docs/guardrails/docker/profile.thresholds.yml (pin 1.6.0).
+# Consumer copy of docs/guardrails/docker/profile.thresholds.yml.
 
 image_max_size_mb: 300                 # DOCKER-PERF-001
 ci_image_max_size_mb: 2000             # DOCKER-PERF-002

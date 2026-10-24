@@ -53,7 +53,7 @@ Prefer tools already on PATH, then a project-local env (not a system OS install)
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 bash scripts/generate_proto.sh
-bash scripts/ci-local.sh
+bash scripts/check-ci-local.sh
 ```
 
 If `ensurepip` is missing:
@@ -132,8 +132,8 @@ Each reusable sparse-checkouts `scripts/` with the matching read token.
 `scripts_ref` equals the `uses:` SHA (CI-034). `blocking: true`.
 Dependabot cannot read those secrets (CI-024), so `docker-lint` still runs
 `scripts/run-hadolint.sh`, `run-kics.sh`, `run-shellcheck.sh`,
-`run-actionlint.sh`, and `run-zizmor.sh` when `github.actor` is
-`dependabot[bot]`. `scripts/ci-local.sh` skips those five on GitHub Actions
+`run-actionlint.sh`, and `run-zizmor.sh` when
+`github.event.pull_request.user.login` is `dependabot[bot]`. `scripts/ci-local.sh` skips those five on GitHub Actions
 so a non-dependabot `quality` job does not run a second hadolint. Local
 `ci-local.sh` still runs them. Compose `docker compose --profile s3 config`
 stays in `docker-lint` because container-iac's compose step omits the profile.
@@ -196,6 +196,6 @@ PY-SEC-005/006/007: [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/1
 - Follow-up: ruff format on `tests/test_sdk.py`; close gRPC channels on cache replace; skip REST list and JPEG encode while a frame is in flight; NIO call timeout; percent-decode `grpc-message`; Python Struct metadata ([PR #13](https://github.com/pirlruc/pixeldive/pull/13))
 - TOOL-003: guardrails 1.8.0 and github-scaffold 1.7.0 gitlinks; commondevops submodule names; Kotlin overlay keys; `COPY --chown`; actionlint + zizmor; CodeQL/Semgrep no longer exclude analog pins
 - TOOL-004: Dokka HTML on `:sdk` (the earlier "not published, so KT-DOC-001 N/A" note was wrong for a library that already has a public API); `ops-reuse.yml` calls common-infra-lint and container-iac via read tokens; KICS `698ed579` / `ce76b7d0` explained for `minio-init` and Postgres `cap_add`
-- CI fix: `/data/images` is created before `USER 65532`; Swift 6.4 Linux test bundles; Dependabot checks use the PR author. ShellCheck 0.11 ignores `severity=` in `.shellcheckrc`; `source-path=SCRIPTDIR` plus SC2034 disables on `RUFF` keep `scripts/*.sh` clean at the default severity `common-infra-lint` uses. Mobile SDK gates stay on `ios-sdk` and `android-sdk` when `GITHUB_ACTIONS` is set
+- `feature-ops-refresh`: guardrails 1.13.1, scaffold 1.10.2, ops reusables at commondevops `0932c7bf` and containerdevops `416e31ea`, SEC-004/005 quota stores, SDK-007/008 TLS gRPC and PEM CA. `python-quality` stays unused because the stricter average maintainability floor is `config/python.profile.thresholds.yml`. iOS NIO TLS is covered on macos-15; Linux `swift:6.1` runs the package tests. `ios/Package.resolved` pins grpc-swift 1.24.2, swift-nio 2.104.0, and swift-nio-ssl.
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-23*

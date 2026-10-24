@@ -16,30 +16,216 @@ permissions: {}
 
 jobs:
   infra:
-    # CI-024: Dependabot cannot read COMMONDEVOPS_READ_TOKEN. docker-lint
-    # runs the in-repo scripts for that pull request author.
+    # CI-024: Dependabot cannot read COMMONDEVOPS_READ_TOKEN.
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       contents: read
-    uses: pirlruc/commondevops/.github/workflows/common-infra-lint.yml@b3c462bed0de4f6475e6be7875c4ababd831acc6
+      packages: read
+    uses: pirlruc/commondevops/.github/workflows/common-infra-lint.yml@0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
     with:
       blocking: true
       dockerfiles: Dockerfile
-      scripts_ref: b3c462bed0de4f6475e6be7875c4ababd831acc6
+      run_shfmt: true
+      scripts_ref: 0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+      container_image: ghcr.io/catthehacker/ubuntu:act-24.04@sha256:dff4ec57d90046a7283aafc314298380be82bfeccb9ad0f1b36c4ebe74aabe78
+      mount_runner_git: false
+    secrets:
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
+
+  secrets:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+      packages: read
+    uses: pirlruc/commondevops/.github/workflows/common-secrets-sast.yml@0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+    with:
+      blocking: true
+      scripts_ref: 0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+      container_image: ghcr.io/catthehacker/ubuntu:act-24.04@sha256:dff4ec57d90046a7283aafc314298380be82bfeccb9ad0f1b36c4ebe74aabe78
+      mount_runner_git: false
+    secrets:
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
+
+  scaffold:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+      issues: read
+    uses: pirlruc/commondevops/.github/workflows/common-scaffold-verify.yml@0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+    with:
+      blocking: true
+      scripts_ref: 0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
     secrets:
       checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
 
   iac:
     # CI-024: Dependabot cannot read CONTAINERDEVOPS_READ_TOKEN.
-    # compose --profile s3 stays in docker-lint; this reusable omits the profile.
+    # The upload job declares actions and security-events. Extra scopes fail startup.
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       contents: read
+      actions: read
       security-events: write
-    uses: pirlruc/containerdevops/.github/workflows/container-iac.yml@2dd60d34418051fb0505f476d926b20550becfad
+    uses: pirlruc/containerdevops/.github/workflows/container-iac.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
     with:
       blocking: true
       paths: Dockerfile,docker-compose.yml
-      scripts_ref: 2dd60d34418051fb0505f476d926b20550becfad
+      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+    secrets:
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+
+  supply-chain:
+    # Filesystem SBOM, Grype, Trivy vuln, and the grant licence gate.
+    # Image secret scanning is container-scan (DOCKER-SEC-005). This
+    # reusable's Trivy step is `trivy fs --scanners vuln` only.
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+      security-events: write
+    uses: pirlruc/commondevops/.github/workflows/common-supply-chain.yml@0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+    with:
+      blocking: true
+      working_directory: .
+      scripts_ref: 0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+      container_image: ghcr.io/catthehacker/ubuntu:act-24.04@sha256:dff4ec57d90046a7283aafc314298380be82bfeccb9ad0f1b36c4ebe74aabe78
+      mount_runner_git: false
+    secrets:
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
+
+  scorecard:
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]') &&
+      github.event.repository.fork == false
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      security-events: write
+    uses: pirlruc/commondevops/.github/workflows/common-scorecard.yml@0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+    with:
+      blocking: true
+      publish_results: true
+
+  docs:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+    uses: pirlruc/commondevops/.github/workflows/common-doc-verify.yml@0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+    with:
+      blocking: true
+      shell_scripts: scripts/*.sh
+      ruff_paths: scripts/lint-doc-links.py
+      yaml_files: docs/issues.yml docs/guardrail-deviations.yml docs/issues-sync-targets.yml
+      yaml_globs: .github/workflows/*.yml
+      run_link_lint: true
+      # 5.4.4 scripts checkout has no markdownlint lockfile (CI-039).
+      run_markdownlint: false
+      scripts_ref: 0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+    secrets:
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
+
+  pins:
+    permissions:
+      contents: read
+    uses: pirlruc/commondevops/.github/workflows/common-pins-verify.yml@0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+    with:
+      pin_script: scripts/check-submodule-pins.sh
+      scripts_ref: 0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+
+  threshold-drift:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+    uses: pirlruc/commondevops/.github/workflows/common-threshold-drift.yml@0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+    with:
+      drift_script: scripts/check-threshold-drift.sh
+      scripts_ref: 0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+    secrets:
+      checkout_token: ${{ secrets.GUARDRAILS_READ_TOKEN }}
+
+  token-audit:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions: {}
+    uses: pirlruc/commondevops/.github/workflows/common-token-audit.yml@0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+    with:
+      scripts_ref: 0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+    secrets:
+      guardrails_token: ${{ secrets.GUARDRAILS_READ_TOKEN }}
+      containerdevops_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
+
+  sweep:
+    permissions:
+      actions: write
+    uses: pirlruc/commondevops/.github/workflows/artifact-sweep.yml@0932c7bf15211166e9a9bc1a1e90d6799f6cafc5
+
+  container-lint:
+    # Hadolint only. common-infra-lint and common-secrets-sast are the
+    # jobs above; nesting them again would duplicate those calls.
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+      packages: read
+    uses: pirlruc/containerdevops/.github/workflows/container-lint.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      blocking: true
+      dockerfile: Dockerfile
+      run_infra_lint: false
+      run_secrets_scan: false
+      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+    secrets:
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+
+  container-build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+      packages: write
+    uses: pirlruc/containerdevops/.github/workflows/container-build.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      blocking: true
+      image_name: pixeldive:ci
+      structure_test_config: container-structure-test.yml
+      platforms: linux/amd64
+      image_title: pixeldive
+      image_description: Async image-processing sessions over HTTP and gRPC.
+      artifact_name: pixeldive-ci
+      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+    secrets:
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+
+  container-scan:
+    needs: container-build
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+      security-events: write
+    uses: pirlruc/containerdevops/.github/workflows/container-scan.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      # Debian won't-fix highs fail a blocking scan. container-scan has no
+      # ignore-unfixed input. The gate stays advisory until one exists.
+      blocking: false
+      image: ghcr.io/${{ github.repository_owner }}/${{ needs.container-build.outputs.image_ref }}
+      scanners: vuln,secret
+      image_config_scanners: misconfig,secret
+      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+    secrets:
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+
+  compose-smoke:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      contents: read
+    uses: pirlruc/containerdevops/.github/workflows/container-compose-smoke.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      blocking: true
+      compose_files: docker-compose.yml
+      env_files: .env.example
+      project_name: pixeldive-smoke
+      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
     secrets:
       scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}

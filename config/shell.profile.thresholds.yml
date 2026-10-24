@@ -1,3 +1,4 @@
-# Consumer copy of docs/guardrails/shell/profile.thresholds.yml (pin 1.6.0).
+# Consumer copy of docs/guardrails/shell/profile.thresholds.yml.
 
 shellcheck_failure_threshold: error    # SHELL-LINT-001
+shfmt_required: true                   # SHELL-LINT-002

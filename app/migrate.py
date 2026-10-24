@@ -24,6 +24,11 @@ def upgrade_head_sync(database_url: str) -> None:
     command.upgrade(alembic_config(database_url), "head")
 
 
+def check_sync(database_url: str) -> None:
+    """Fail when model metadata disagrees with the migrated database."""
+    command.check(alembic_config(database_url))
+
+
 async def upgrade_head(database_url: str) -> None:
     """Run migrations on a worker thread so the event loop stays free."""
     await asyncio.to_thread(upgrade_head_sync, database_url)

@@ -16,18 +16,26 @@ updates:
     directory: /
     patterns: ["*"]
     multi-ecosystem-group: all-dependencies
+    cooldown:
+      default-days: 7
   - package-ecosystem: pip
     directory: /
     patterns: ["*"]
     multi-ecosystem-group: all-dependencies
+    cooldown:
+      default-days: 7
   - package-ecosystem: docker
     directory: /
     patterns: ["*"]
     multi-ecosystem-group: all-dependencies
+    cooldown:
+      default-days: 7
   - package-ecosystem: uv
     directory: /
     patterns: ["*"]
     multi-ecosystem-group: all-dependencies
+    cooldown:
+      default-days: 7
     # Security updates ignore multi-ecosystem groups and opened one PR per
     # package, so a single bump could not clear pip-audit. Group them.
     groups:
@@ -38,11 +46,17 @@ updates:
     directory: /
     patterns: ["*"]
     multi-ecosystem-group: all-dependencies
+    cooldown:
+      default-days: 7
   - package-ecosystem: swift
     directory: /ios
     patterns: ["*"]
     multi-ecosystem-group: all-dependencies
+    cooldown:
+      default-days: 7
   - package-ecosystem: gradle
     directory: /android
     patterns: ["*"]
     multi-ecosystem-group: all-dependencies
+    cooldown:
+      default-days: 7

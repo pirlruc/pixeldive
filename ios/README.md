@@ -81,8 +81,8 @@ Apple-only SPM product so Linux `swift test` still compiles the protobuf codec.
 swift test --package-path ios
 
 # Android-shaped fixture against the Python service (Linux CI)
-bash scripts/ci-local.sh
+bash scripts/check-ci-local.sh
 ```
 
 Coverage floor: `config/swift.profile.thresholds.yml` (SWIFT-TEST-002). CI job `ios-sdk`
-runs on macOS. Linux `scripts/ci-local.sh` does not claim Swift gates (SWIFT-ENV-001).
+runs on macOS. Linux `scripts/check-ci-local.sh` does not claim Swift gates (SWIFT-ENV-001). `scripts/check-ci-docker.sh` runs `swift test` in `swift:6.1` when Swift is not on PATH.

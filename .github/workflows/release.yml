@@ -1,0 +1,53 @@
+name: release
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+# CI-025. Publish grants packages: write. Hub description grants contents only.
+permissions: {}
+
+jobs:
+  publish:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: pirlruc/containerdevops/.github/workflows/container-publish.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      image_name: pixeldive
+      dockerhub_image: pirlruc/pixeldive
+      platforms: linux/amd64
+      sign: ${{ github.event.repository.visibility == 'public' }}
+      blocking: true
+      tag_latest: true
+      verify_platforms: true
+      verify_command: python -c "import app"
+      structure_test_config: container-structure-test.yml
+      image_title: pixeldive
+      image_description: Async image-processing sessions over HTTP and gRPC.
+      dockerhub_readme: docs/docker-hub.md
+      dockerhub_short_description: Async image-processing sessions over HTTP and gRPC.
+      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DOCKERHUB_DESCRIPTION_TOKEN: ${{ secrets.DOCKERHUB_DESCRIPTION_TOKEN }}
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
+
+  hub-description:
+    permissions:
+      contents: read
+    uses: pirlruc/containerdevops/.github/workflows/container-hub-description.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    with:
+      dockerhub_image: pirlruc/pixeldive
+      dockerhub_readme: docs/docker-hub.md
+      dockerhub_short_description: Async image-processing sessions over HTTP and gRPC.
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_DESCRIPTION_TOKEN: ${{ secrets.DOCKERHUB_DESCRIPTION_TOKEN }}

@@ -46,15 +46,15 @@ class SessionBatchMixin(SessionHost):
         try:
             for upload in uploads:
                 validate_upload(upload, self._settings)
-            self._quota.hit(principal)
+            await self._quota.hit(principal)
             async with self._factory() as db:
                 await self._require_session(db, session_id, principal)
             total = sum(upload_size(item) for item in uploads)
-            self._quota.reserve_bytes(principal, session_id, total)
+            await self._quota.reserve_bytes(principal, session_id, total)
             try:
                 return await self._commit_batch(session_id, uploads, principal)
             except Exception:
-                self._quota.release_bytes(principal, session_id, total)
+                await self._quota.release_bytes(principal, session_id, total)
                 raise
         finally:
             for upload in uploads:

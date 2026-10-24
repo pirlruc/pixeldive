@@ -51,3 +51,7 @@ class ForbiddenError(SessionServiceError):
 
 class QuotaExceededError(SessionServiceError):
     """Per-tenant rate or upload-byte quota was exceeded (SEC-002)."""
+
+
+class QuotaUnavailableError(SessionServiceError):
+    """The shared quota store could not be reached (SEC-004, SEC-005)."""

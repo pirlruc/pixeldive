@@ -20,28 +20,40 @@ the same text. Other agents apply a skill when its description matches.
 - [dependency-updates](.agents/skills/dependency-updates/SKILL.md)
 - [supply-chain-artifacts](.agents/skills/supply-chain-artifacts/SKILL.md)
 - [release-publish](.agents/skills/release-publish/SKILL.md)
+- [ansible-roles](.agents/skills/ansible-roles/SKILL.md)
+- [opentofu-iac](.agents/skills/opentofu-iac/SKILL.md)
+- [sops-secrets](.agents/skills/sops-secrets/SKILL.md)
 
 ## Always-on rules
 
 # Agent workflow guardrails
+
+## No approval needed
+
+- Web search and fetch
+- Reading the repo, running tools already on PATH, project-local environments, builds, and tests — see [build-test-environments.mdc](.cursor/rules/build-test-environments.mdc)
+- Commits on a feature branch, using [Conventional Commits](.cursor/rules/conventional-commits.mdc), including submodule pointer bumps
+- Annotated tag creation for a release
+- Creating, switching, and deleting `feature-*` branches, locally and on the remote
+- Non-force pushes to feature branches
+- Pull request creation, closing, and merging. Merge only when the required checks are green
+- `gh release create` for a release that already has its annotated tag
+- Issue create, update, and close through `issues-sync.py`: run `--dry-run` first and show its output, then sync. `gh issue edit`, `gh issue comment`, and `gh issue close` with an explanatory comment are also allowed
 
 ## Never without explicit approval
 
 | Action | Examples |
 |--------|----------|
 | Installing on the system OS | `apt-get install`, `brew install`, `pip install` / `pip install --user` into system Python, `npm i -g`, SDK/toolchain installers, `vcpkg install` outside the manifest |
-| Writing to git history | `git commit`, `git tag`, `git merge`, `git rebase`, `git cherry-pick`, submodule pointer bumps |
-| Creating or moving refs | `git branch`, `git checkout -b`, `git switch -c`, branch deletion (local or remote) |
-| Publishing | `git push`, `gh pr create`, `gh pr merge`, `gh release create`, creating issues via `issues-sync.py` |
+| Pushing to the default branch | `git push origin main` |
+| Rewriting pushed history | `git push --force`, `git reset --hard` of pushed commits, amending a pushed commit |
+| Moving or deleting releases | Deleting or moving an existing tag or GitHub Release |
+| Deleting other branches | Deleting a branch whose name does not start with `feature-`, locally or on the remote |
+| Repository administration | Visibility, secrets, branch protection, rulesets, and other repo settings |
+| Lowering a guardrail gate | See [guardrails-compliance.mdc](.cursor/rules/guardrails-compliance.mdc). Engineering Lead approval still applies |
 
-### No approval needed
-
-Using tools already on PATH; project-local environments (`uv sync`, `pip install` into `.venv`, `npm ci` in the
-repo); configuring/building into repo build directories; running tests; pulling/running Docker images.
-See [build-test-environments.mdc](.cursor/rules/build-test-environments.mdc).
-
-When a task requires any gated action above, stop and ask, stating exactly what will be run.
-Approval is per action, not per session: a prior "yes" to a commit is not a "yes" to push.
+When a task requires a gated action above, stop and ask, stating exactly what will be run.
+Approval is per action, not per session.
 
 ## Branch naming
 
@@ -63,7 +75,7 @@ Create branches as `feature-<purpose>`, lowercase, hyphen-separated:
 
 # Conventional Commits
 
-When the user asks for a commit (or you commit with explicit approval), use [Conventional Commits](https://www.conventionalcommits.org/):
+When creating a commit, use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
 <type>(<scope>): <subject>
@@ -113,7 +125,7 @@ test(flow): cover typed graph cycle detection
 
 ## Scope guardrails
 
-Approval for commits, pushes, and OS installs lives in
+Which git actions need approval lives in
 [agent-workflow.mdc](.cursor/rules/agent-workflow.mdc). Do not amend, force-push, or skip
 hooks unless the user requests it. Match the consuming repo's existing commit
 message style when in doubt.
@@ -225,6 +237,40 @@ per-tool host-vs-Docker resolution table. Mirror that structure when adding cont
 
 ---
 
+# Local CI before push
+
+GitHub Actions is the merge gate, not the first place a change is tested. Run the repository's local parity script and fix failures on the machine before `git push`.
+
+## Order
+
+1. The repo's host-first script, usually `scripts/check-ci-local.sh` or `common/scripts/check-ci-local.sh`. See [build-test-environments.mdc](.cursor/rules/build-test-environments.mdc).
+2. Docker only for the tools that script queues. Do not install those tools on the system OS.
+3. Push one pull request per repo when the local run is green. Do not push to watch a workflow fail and then push again.
+
+A workflow that only runs on GitHub (a private registry login, a release publish) still gets a local stand-in where the repo has one: `docker build`, the image's structure test, and the scanner image.
+
+---
+
+# Public docs hygiene
+
+README, Docker Hub Overview, GitHub Packages description, and GitHub Release notes are for someone using the repository or the image. Cite [DOC-PUB-001](https://github.com/pirlruc/guardrails/blob/1.12.0/markdown/guardrails.md).
+
+## Write
+
+- What the image or repository is, how to pull or call it, and which tag or digest to pin.
+- Inputs, outputs, and permissions a caller must grant.
+- Links as GitHub URLs. See [cross-repo-links.mdc](.cursor/rules/cross-repo-links.mdc).
+
+## Do not write
+
+- Instructions addressed to an agent, session transcripts, plan names, or task-ledger notes.
+- Machine-local paths (`/home/…`, a home-directory checkout).
+- `docs/ai-agent-handoff.md` as a primary entry. That file is for maintainers.
+
+Hub Overview pages cannot follow a relative link to a sibling markdown file. Cross-image links on those pages are absolute GitHub URLs.
+
+---
+
 # Cross-repo linkage
 
 Every repository is standalone. Where a sibling repo happens to sit on disk is incidental to the machine it was
@@ -270,7 +316,7 @@ Scripts that need the consuming repo root derive it from `git rev-parse --show-t
 
 ## Related
 
-- Approval gates for submodule pointer bumps: [agent-workflow.mdc](.cursor/rules/agent-workflow.mdc)
+- Submodule pointer bumps: [agent-workflow.mdc](.cursor/rules/agent-workflow.mdc)
 - Guardrails submodule pinning: [guardrails-compliance.mdc](.cursor/rules/guardrails-compliance.mdc)
 
 ---
@@ -324,7 +370,7 @@ issue text by hand.
 
 Field definitions: [guardrails deviation rule](https://github.com/pirlruc/guardrails#deviation-rule).
 Process and approval flow:
-[guardrail-compliance.md](https://github.com/pirlruc/methodologies/blob/1.6.0/github-issue-adr/docs/process/guardrail-compliance.md).
+[guardrail-compliance.md](https://github.com/pirlruc/methodologies/blob/1.9.1/github-issue-adr/docs/process/guardrail-compliance.md).
 
 ## Related
 
@@ -335,7 +381,7 @@ Process and approval flow:
 
 # github-issue-adr methodology
 
-[github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.6.0/github-issue-adr) is the methodology for every
+[github-issue-adr](https://github.com/pirlruc/methodologies/tree/1.9.1/github-issue-adr) is the methodology for every
 repo carrying this scaffold. Do not introduce a second decision-record format alongside it.
 
 ## Core model
@@ -367,8 +413,8 @@ issue that the manifest should own — the two drift immediately.
 python3 .github/scaffold/scripts/issues-sync.py --repo pirlruc/<repo> --yaml docs/issues.yml --dry-run
 ```
 
-Creating issues is a publishing action and needs approval — see [agent-workflow.mdc](.cursor/rules/agent-workflow.mdc). Run
-`--dry-run` first and show the result.
+Sync issues with `issues-sync.py`. Run `--dry-run` first and show the result, then sync.
+See [agent-workflow.mdc](.cursor/rules/agent-workflow.mdc). `status: rejected` requires `resolution`.
 
 Schema: [`docs/issues-schema.md`](https://github.com/pirlruc/github-scaffold/blob/main/docs/issues-schema.md).
 
@@ -425,7 +471,7 @@ Keep these sections, in order, across every repo that carries the file:
 
 - Propose new work as entries appended to `docs/issues.yml` in a pull request.
 - Never `gh issue create` (or equivalent) from the automation — that bypasses the authored-manifest
-  contract and the publishing approval gate.
+  contract. A human or a later agent syncs with `issues-sync.py` after the manifest PR merges.
 - The `ai-reviewer` label is applied by `issues-sync.py` after a human merges and syncs; provenance in
   the prompt uses epic id prefixes (`GS-`, `GR-`, `MTH-`, …) and the PR description.
 - Schema: [`docs/issues-schema.md`](https://github.com/pirlruc/github-scaffold/blob/main/docs/issues-schema.md).

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 
 from app.models import Session, SessionImage  # noqa: F401
+from app.sessions.quota_model import TenantQuotaRow  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

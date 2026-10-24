@@ -39,6 +39,16 @@ enum ProtoWire {
     static func boolField(_ field: Int, _ value: Bool) -> Data {
         value ? varintField(field, 1) : Data()
     }
+
+    static func fixed64Field(_ field: Int, _ bits: UInt64) -> Data {
+        var data = tag(field, wire: 1)
+        var current = bits
+        for _ in 0..<8 {
+            data.append(UInt8(current & 0xFF))
+            current >>= 8
+        }
+        return data
+    }
 }
 
 struct ProtoField {

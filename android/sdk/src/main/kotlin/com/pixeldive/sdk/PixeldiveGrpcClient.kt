@@ -8,7 +8,7 @@ class PixeldiveGrpcClient(
 ) {
     private val chunkSize = chunkSize.coerceAtLeast(1)
 
-    /** Close the streaming transport (OkHttp h2c client). */
+    /** Close the streaming transport (OkHttp HTTP/2 client). */
     fun close() {
         stream.close()
     }
@@ -105,6 +105,23 @@ class PixeldiveGrpcClient(
 
     /** Factories for [PixeldiveGrpcClient]. */
     companion object {
+        /**
+         * TLS HTTP/2 client. ALPN negotiates `h2`.
+         *
+         * [caPem] is an optional PEM CA trusted in addition to the platform store.
+         * Certificate verification stays enabled. [insecure] remains the h2c helper.
+         */
+        fun tls(
+            host: String,
+            port: Int = 443,
+            token: String? = null,
+            caPem: String? = null,
+        ): PixeldiveGrpcClient =
+            PixeldiveGrpcClient(
+                OkHttpGrpcStreaming(host, port, tlsGrpcClient(caPem), scheme = "https"),
+                token,
+            )
+
         /** Insecure h2c client for local/dev grpc.aio (`127.0.0.1:50051`). */
         fun insecure(
             host: String,

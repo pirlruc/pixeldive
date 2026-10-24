@@ -127,6 +127,7 @@ async def _reset_postgres(engine: AsyncEngine) -> None:
     async with engine.begin() as connection:
         await connection.execute(text("DELETE FROM session_images"))
         await connection.execute(text("DELETE FROM sessions"))
+        await connection.execute(text("DELETE FROM tenant_quota"))
 
 
 @pytest_asyncio.fixture

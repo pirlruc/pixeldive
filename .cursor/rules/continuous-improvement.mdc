@@ -48,7 +48,7 @@ Keep these sections, in order, across every repo that carries the file:
 
 - Propose new work as entries appended to `docs/issues.yml` in a pull request.
 - Never `gh issue create` (or equivalent) from the automation — that bypasses the authored-manifest
-  contract and the publishing approval gate.
+  contract. A human or a later agent syncs with `issues-sync.py` after the manifest PR merges.
 - The `ai-reviewer` label is applied by `issues-sync.py` after a human merges and syncs; provenance in
   the prompt uses epic id prefixes (`GS-`, `GR-`, `MTH-`, …) and the PR description.
 - Schema: [`docs/issues-schema.md`](https://github.com/pirlruc/github-scaffold/blob/main/docs/issues-schema.md).

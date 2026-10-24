@@ -1,0 +1,14 @@
+---
+description: Ansible role and playbook changes
+globs: "roles/**,**/playbooks/**"
+alwaysApply: false
+---
+
+# Ansible roles
+
+Org principles live in `docs/guardrails/ansible/` (`ANSIBLE-*`).
+
+1. `supported_platforms` is an allowed set. Test every platform this repo declares, not every platform the org lists (ANSIBLE-RUN-001, ANSIBLE-TEST-001).
+2. Secrets are hashes, Vault, SOPS with Age, or runtime lookups. Not plaintext (ANSIBLE-SEC-001).
+3. A secret task argument sets `no_log` (ANSIBLE-SEC-002).
+4. YAML for playbooks and roles passes yamllint (ANSIBLE-LINT-002). There is no separate YAML pack.

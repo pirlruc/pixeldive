@@ -56,6 +56,7 @@ async def test_alembic_creates_tables(tmp_path: Path) -> None:
     await engine.dispose()
     assert "sessions" in tables
     assert "session_images" in tables
+    assert "tenant_quota" in tables
 
 
 def test_parse_api_keys_and_authenticate() -> None:

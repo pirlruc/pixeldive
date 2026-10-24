@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from pydantic import Field
+
 from app.io_sizes import GRPC_UPLOAD_CHUNK_BYTES, IO_CHUNK_BYTES
 
 
@@ -20,6 +22,10 @@ class RuntimeSettingsMixin:
     list_max_limit: int = 200
     auth_required: bool = False
     api_keys: str = ""
+    allow_anonymous: bool = Field(
+        default=False,
+        validation_alias="PIXELDIVE_ALLOW_ANONYMOUS",
+    )
     http_insecure: bool = True
     grpc_insecure: bool = True
     tls_cert_file: Path | None = None
@@ -36,6 +42,8 @@ class RuntimeSettingsMixin:
     rate_limit_window_seconds: float = 60.0
     tenant_max_upload_bytes: int = 0
     session_max_upload_bytes: int = 0
+    quota_backend: str = ""
+    quota_redis_url: str = ""
     orphan_sweep_interval_seconds: float = 0.0
     grpc_upload_chunk_bytes: int = GRPC_UPLOAD_CHUNK_BYTES
     environment: str = "development"

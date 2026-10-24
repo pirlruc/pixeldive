@@ -12,7 +12,7 @@ Cursor applies the matching `.cursor/rules` file by glob and does not auto-invok
 # Release and publish (REL-*)
 
 Cite Guardrail IDs from
-[`docs/guardrails/release/`](https://github.com/pirlruc/guardrails/tree/1.7.0/release).
+[`docs/guardrails/release/`](https://github.com/pirlruc/guardrails/tree/1.9.0/release).
 Conventional Commits (see [conventional-commits.mdc](../../../.cursor/rules/conventional-commits.mdc)) govern commit **input**;
 this rule governs release **output**. Do not bake cadence numbers into this file.
 

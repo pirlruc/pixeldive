@@ -14,6 +14,7 @@ from app.exceptions import (
     InvalidMetadataError,
     InvalidStatusError,
     QuotaExceededError,
+    QuotaUnavailableError,
     SessionNotFoundError,
     SessionServiceError,
     UnauthenticatedError,
@@ -42,6 +43,7 @@ ERROR_STATUS: dict[type[SessionServiceError], TransportStatus] = {
     UnauthenticatedError: TransportStatus(401, grpc.StatusCode.UNAUTHENTICATED),
     ForbiddenError: TransportStatus(403, grpc.StatusCode.PERMISSION_DENIED),
     QuotaExceededError: TransportStatus(429, grpc.StatusCode.RESOURCE_EXHAUSTED),
+    QuotaUnavailableError: TransportStatus(503, grpc.StatusCode.UNAVAILABLE),
 }
 
 

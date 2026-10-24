@@ -1,0 +1,17 @@
+---
+description: OpenTofu and HCL changes
+globs: "**/*.tf,**/*.tfvars,**/*.hcl"
+alwaysApply: false
+---
+
+# OpenTofu
+
+Org principles live in `docs/guardrails/opentofu/` (`TOFU-*`). HCL is not
+DOCKER-LINT-002.
+
+1. `tofu fmt` and `tofu validate` pass (TOFU-LINT-001, TOFU-LINT-002).
+2. tflint uses the committed config (TOFU-LINT-003).
+3. Commit `.terraform.lock.hcl` (TOFU-BUILD-001).
+4. State is encrypted. No secret literals in HCL (TOFU-SEC-001, TOFU-SEC-002).
+5. Stateful resources set `prevent_destroy` (TOFU-SEC-003).
+6. A pull request carries a plan. CI does not apply (TOFU-TEST-001).

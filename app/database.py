@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import SQLModel
 
+import app.sessions.quota_model  # noqa: F401  # registers tenant_quota on metadata
 from app.config import Settings
 
 

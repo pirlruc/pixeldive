@@ -1,9 +1,11 @@
 """Runtime configuration loaded from environment variables."""
 
+from __future__ import annotations
+
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.settings_runtime import RuntimeSettingsMixin
@@ -25,7 +27,12 @@ _TLS_PATH_FIELDS = (
 class Settings(StorageSettingsMixin, RuntimeSettingsMixin, BaseSettings):
     """Process-wide settings for the dual REST/gRPC server."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        populate_by_name=True,
+    )
 
     @field_validator("storage_backend")
     @classmethod
@@ -37,6 +44,17 @@ class Settings(StorageSettingsMixin, RuntimeSettingsMixin, BaseSettings):
             raise ValueError(msg)
         return value
 
+    @field_validator("quota_backend")
+    @classmethod
+    def _quota_backend_name(cls, value: str) -> str:
+        """Accept memory, postgres, redis, or empty for URL-based selection."""
+        choice = value.strip().lower()
+        allowed = {"", "memory", "postgres", "redis"}
+        if choice not in allowed:
+            msg = "quota_backend must be memory, postgres, or redis"
+            raise ValueError(msg)
+        return choice
+
     @field_validator(*_TLS_PATH_FIELDS, mode="before")
     @classmethod
     def _empty_tls_path(cls, value: object) -> object:
@@ -44,6 +62,21 @@ class Settings(StorageSettingsMixin, RuntimeSettingsMixin, BaseSettings):
         if value == "":
             return None
         return value
+
+    @model_validator(mode="after")
+    def _bind_and_keys(self) -> Settings:
+        """Reject duplicate tokens and anonymous binds off loopback."""
+        self.api_key_map()
+        if self.auth_required or self.allow_anonymous:
+            return self
+        for host in (self.http_host, self.grpc_host):
+            if host.strip("[]").lower() not in {"127.0.0.1", "::1", "localhost"}:
+                msg = (
+                    "refusing auth-disabled bind on a non-loopback address; "
+                    "set AUTH_REQUIRED or PIXELDIVE_ALLOW_ANONYMOUS"
+                )
+                raise ValueError(msg)
+        return self
 
     def api_key_map(self) -> dict[str, str]:
         """Parse ``api_keys`` into token → owner_id."""

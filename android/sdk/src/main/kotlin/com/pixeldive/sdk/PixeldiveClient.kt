@@ -5,18 +5,19 @@ import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 
-/** Thin OkHttp client for pixeldive `/api/v1` (REST; mirrors Python `RestClient`). */
+/**
+ * Thin OkHttp client for pixeldive `/api/v1` (REST; mirrors Python `RestClient`).
+ *
+ * [caPem] is an optional PEM CA trusted in addition to the platform store.
+ * HTTP base URLs stay valid. TLS verification is not disabled.
+ */
 class PixeldiveClient(
     baseUrl: String,
     token: String? = null,
     http: OkHttpClient = defaultHttp(),
+    caPem: String? = null,
 ) {
-    private val transport =
-        HttpTransport(
-            baseUrl,
-            token,
-            http.newBuilder().followRedirects(false).followSslRedirects(false).build(),
-        )
+    private val transport = HttpTransport(baseUrl, token, httpClient(http, caPem))
 
     /** GET `/health`. */
     suspend fun health(): HealthStatus = transport.json(HealthStatus.serializer(), "GET", "/health")

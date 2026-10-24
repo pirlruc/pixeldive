@@ -38,6 +38,19 @@ internal object ProtoWire {
         field: Int,
         value: Boolean,
     ): ByteArray = if (value) varintField(field, 1) else ByteArray(0)
+
+    fun fixed64Field(
+        field: Int,
+        bits: Long,
+    ): ByteArray {
+        val raw = ByteArray(8)
+        var current = bits
+        for (index in 0 until 8) {
+            raw[index] = (current and 0xFF).toByte()
+            current = current ushr 8
+        }
+        return tag(field, 1) + raw
+    }
 }
 
 internal class ProtoReader(

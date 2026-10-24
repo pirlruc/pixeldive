@@ -25,7 +25,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # Non-dependabot runs use common-secrets-sast. Dependabot cannot
+      # read COMMONDEVOPS_READ_TOKEN (CI-024).
       - name: Secret scan
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
         run: bash scripts/run-gitleaks.sh
 
   dependency-review:
@@ -145,6 +148,8 @@ jobs:
             android
 
   image:
+    # Non-dependabot image scan is container-build + container-scan.
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:

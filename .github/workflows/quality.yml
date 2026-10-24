@@ -41,8 +41,11 @@ jobs:
       - name: Generate protobuf stubs
         run: bash scripts/generate_proto.sh
 
+      - name: Proto drift
+        run: git diff --exit-code -- app/pb
+
       - name: PY-* gates
-        run: bash scripts/ci-local.sh
+        run: bash scripts/check-ci-local.sh
 
   docker-lint:
     runs-on: ubuntu-latest
@@ -189,6 +192,10 @@ jobs:
           GUARDRAILS_READ_TOKEN: ${{ secrets.GUARDRAILS_READ_TOKEN }}
         run: bash scripts/ci-init-guardrails.sh
 
+      # GitHub-hosted runners have no Android Studio JBR. Local
+      # scripts/check-android-sdk.sh uses /opt/android-studio/jbr when
+      # it is present. macos-15 is the iOS final gate; this job is the
+      # Android final gate.
       - name: Set up Java
         uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
         with:

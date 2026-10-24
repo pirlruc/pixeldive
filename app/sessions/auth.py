@@ -32,11 +32,22 @@ def parse_api_keys(raw: str) -> dict[str, str]:
 
 def _parse_json_keys(text: str) -> dict[str, str]:
     """Parse a JSON object of token → owner_id."""
-    data = json.loads(text)
+
+    def _pairs(pairs: list[tuple[object, object]]) -> dict[str, str]:
+        mapping: dict[str, str] = {}
+        for key, value in pairs:
+            token = str(key)
+            if token in mapping:
+                msg = "API_KEYS contains a duplicate token"
+                raise ValueError(msg)
+            mapping[token] = str(value)
+        return mapping
+
+    data = json.loads(text, object_pairs_hook=_pairs)
     if not isinstance(data, dict):
         msg = "API_KEYS JSON must be an object"
         raise ValueError(msg)
-    return {str(key): str(value) for key, value in data.items()}
+    return data
 
 
 def _parse_pair_keys(text: str) -> dict[str, str]:
@@ -49,8 +60,12 @@ def _parse_pair_keys(text: str) -> dict[str, str]:
         token, sep, owner = item.partition(":")
         token = token.strip()
         owner = owner.strip() if sep else token
-        if token:
-            mapping[token] = owner or token
+        if not token:
+            continue
+        if token in mapping:
+            msg = "API_KEYS contains a duplicate token"
+            raise ValueError(msg)
+        mapping[token] = owner or token
     return mapping
 
 

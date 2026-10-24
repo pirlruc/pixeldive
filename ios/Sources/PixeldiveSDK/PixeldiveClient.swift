@@ -5,6 +5,9 @@ import FoundationNetworking
 #endif
 
 /// Thin URLSession client for pixeldive `/api/v1` (REST; mirrors Python `RestClient`).
+///
+/// Pass `caPEM` to trust a private CA in addition to the platform store.
+/// HTTP base URLs stay valid. TLS verification is not disabled.
 public struct PixeldiveClient: Sendable {
     let http: HTTPTransport
 
@@ -16,6 +19,19 @@ public struct PixeldiveClient: Sendable {
         timeout: TimeInterval = 60
     ) {
         let resolved = redirectSafeSession(existing: session, timeout: timeout)
+        self.init(baseURL: baseURL, token: token, performer: URLSessionPerformer(session: resolved))
+    }
+
+    /// Trust `caPEM` in addition to the platform roots. Verification stays enabled.
+    public init(
+        baseURL: URL,
+        token: String? = nil,
+        session: URLSession? = nil,
+        timeout: TimeInterval = 60,
+        caPEM: String
+    ) throws {
+        let ders = try derCertificates(in: caPEM)
+        let resolved = try sessionTrusting(ders, existing: session, timeout: timeout)
         self.init(baseURL: baseURL, token: token, performer: URLSessionPerformer(session: resolved))
     }
 

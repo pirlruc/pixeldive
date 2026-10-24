@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-10-23
 
 ### Fixed
 
@@ -23,9 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `common-infra-lint` passes no `--severity`. `RUFF` assignments disable
   SC2034 because callers read the array and arrays cannot be exported.
   Local `scripts/run-shellcheck.sh` still uses `--severity=error`.
+- Refuse an auth-disabled bind that is not loopback unless `PIXELDIVE_ALLOW_ANONYMOUS=true`.
+- Remove the default database password. `AUTO_CREATE_TABLES` defaults to false. `gc_min_age_seconds` defaults to 60. Duplicate API tokens are rejected at startup.
+- Pin swift-nio 2.104.0. Release 2.97.1 has fixed HIGH findings, and
+  2.98.0 needs Swift tools 6.1, so the Linux package test image is `swift:6.1`.
+- Shell scripts match shfmt 3.11 with `[*.sh]` indent 2. Dependabot
+  waits 7 days before proposing a newly published version. The launcher
+  activity stays exported, and the loopback healthcheck keeps
+  `HTTPSConnection` with a verifying SSL context.
 
 ### Added
 
+- PostgreSQL `tenant_quota` for shared rate and byte caps (SEC-004), and an optional Redis backend behind the Compose `redis` profile (SEC-005). The default without those URLs stays in-process.
+- Mobile TLS gRPC constructors beside `insecure()`, protobuf Struct metadata (field 8), and an optional PEM CA on iOS and Android (SDK-007, SDK-008).
+- `docs/docker-hub.md` and `docs/github-packages.md` for the 0.1.0 image. `/metrics` is unauthenticated Prometheus text on the HTTP port.
+- `scripts/check-ci-local.sh` and `scripts/check-ci-docker.sh`. `ops-reuse.yml` calls commondevops `0932c7bf` and containerdevops 6.3.3. That pin puts tools installed on the public image onto `PATH` and allows `pip install --user` on Ubuntu 24.04. Infra, secrets, and supply-chain use a public GHCR Ubuntu image with `mount_runner_git: false`, because this repo cannot pull the private ci images and the host library mounts replace libraries that image's bash needs. `python-quality` is not called: its consumer file is the org profile, and this repo's average maintainability floor is 70.
 - Dokka HTML for the Android SDK (`:sdk:dokkaGeneratePublicationHtml`).
   Public declarations without KDoc fail the task (KT-DOC-001).
 - `ops-reuse.yml` calls commondevops `common-infra-lint` and containerdevops
@@ -34,8 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Pin `docs/guardrails` to guardrails 1.8.0 and `.github/scaffold` to
-  github-scaffold 1.7.0. Submodule names match commondevops.
+- Pin `docs/guardrails` to guardrails 1.13.1 and `.github/scaffold` to github-scaffold 1.10.2.
+- Alembic `0001_phase2` is an explicit schema. `0002_tenant_quota` adds the shared quota table. `alembic check` runs in the Postgres job.
+- Proto stubs are checked with `git diff --exit-code -- app/pb` after `generate_proto.sh`.
 - Sync scaffold 1.7.0 templates, Cursor rules, and agent instruction files.
 - Cite methodologies 1.7.0 in consumer docs. Kotlin overlay carries the new
   `doc_coverage` and `lint_exception_max_days` keys.
