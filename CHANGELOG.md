@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove the default database password. `AUTO_CREATE_TABLES` defaults to false. `gc_min_age_seconds` defaults to 60. Duplicate API tokens are rejected at startup.
 - Pin swift-nio 2.104.0. Release 2.97.1 has fixed HIGH findings, and
   2.98.0 needs Swift tools 6.1, so the Linux package test image is `swift:6.1`.
+- Shell scripts match shfmt 3.11 with `[*.sh]` indent 2. Dependabot
+  waits 7 days before proposing a newly published version. The launcher
+  activity stays exported, and the loopback healthcheck keeps
+  `HTTPSConnection` with a verifying SSL context.
 
 ### Added
 

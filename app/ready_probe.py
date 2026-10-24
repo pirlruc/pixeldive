@@ -25,6 +25,7 @@ def probe() -> None:
         get_ready(http.client.HTTPConnection("127.0.0.1", port, timeout=4))
         return
     get_ready(
+        # nosemgrep: python.lang.security.audit.httpsconnection-detected.httpsconnection-detected
         http.client.HTTPSConnection(
             "127.0.0.1",
             port,

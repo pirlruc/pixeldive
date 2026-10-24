@@ -18,8 +18,8 @@ docker compose --profile redis up -d redis
 
 ready=0
 for _ in $(seq 1 30); do
-  if docker compose exec -T db pg_isready -U "$POSTGRES_USER" >/dev/null 2>&1 \
-    && docker compose --profile redis exec -T redis redis-cli ping >/dev/null 2>&1; then
+  if docker compose exec -T db pg_isready -U "$POSTGRES_USER" >/dev/null 2>&1 &&
+    docker compose --profile redis exec -T redis redis-cli ping >/dev/null 2>&1; then
     ready=1
     break
   fi

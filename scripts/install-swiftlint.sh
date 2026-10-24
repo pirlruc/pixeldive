@@ -11,7 +11,7 @@ if [[ "$OS" == Darwin ]]; then
   ARCHIVE="portable_swiftlint.zip"
   URL="https://github.com/realm/SwiftLint/releases/download/${VERSION}/${ARCHIVE}"
   SHA256="4c1f56c40a4b230e575aef096c95b82db76d63dd600697d489403586eb68cbb5"
-elif [[ "$OS" == Linux && ( "$ARCH" == x86_64 || "$ARCH" == amd64 ) ]]; then
+elif [[ "$OS" == Linux && ("$ARCH" == x86_64 || "$ARCH" == amd64) ]]; then
   ARCHIVE="swiftlint_linux_amd64.zip"
   URL="https://github.com/realm/SwiftLint/releases/download/${VERSION}/${ARCHIVE}"
   SHA256="65ff9a5c66351b5613311192559219b5ce30b0759990f39657ff29e08f68d92b"

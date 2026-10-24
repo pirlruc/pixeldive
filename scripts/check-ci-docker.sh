@@ -24,9 +24,9 @@ fi
 DOCKER_SOCK="/var/run/docker.sock"
 endpoint="$(docker context inspect --format '{{.Endpoints.docker.Host}}' 2>/dev/null || true)"
 case "${endpoint}" in
-  unix://*)
-    DOCKER_SOCK="${endpoint#unix://}"
-    ;;
+unix://*)
+  DOCKER_SOCK="${endpoint#unix://}"
+  ;;
 esac
 if [[ ! -S "${DOCKER_SOCK}" ]]; then
   echo "docker socket is not usable: ${DOCKER_SOCK}" >&2

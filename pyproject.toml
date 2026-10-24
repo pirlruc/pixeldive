@@ -45,6 +45,8 @@ dev = [
   "types-aiofiles==25.1.0.20260518",
 ]
 
+# exclude-newer would reject the current lock: certifi 2026.10.23 is inside a 7-day window.
+# nosemgrep: package_managers.uv.uv-missing-dependency-cooldown.uv-missing-dependency-cooldown
 [tool.uv]
 package = false
 
