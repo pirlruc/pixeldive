@@ -27,7 +27,7 @@ jobs:
       blocking: true
       tag_latest: true
       verify_platforms: true
-      verify_command: python -c "import app"
+      verify_command: python -m app.settings_storage
       structure_test_config: container-structure-test.yml
       image_title: pixeldive
       image_description: Async image-processing sessions over HTTP and gRPC.
