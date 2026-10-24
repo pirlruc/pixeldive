@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Publish smoke command is `python -m app.settings_storage`.
+  `verify-multiarch.sh` word-splits `verify_command` and keeps quote
+  characters, so `python -c "import app"` never reached cosign.
 - Bump aiohttp to 3.14.5, multidict to 6.9.1, Mako to 1.4.3, and
   certifi to 2026.10.23 so pip-audit is clean. Move the image base to
   `python:3.13.17-slim-trixie`, which has no fixable HIGH or CRITICAL
