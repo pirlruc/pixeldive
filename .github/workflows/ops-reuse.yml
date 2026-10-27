@@ -66,11 +66,11 @@ jobs:
       contents: read
       actions: read
       security-events: write
-    uses: pirlruc/containerdevops/.github/workflows/container-iac.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    uses: pirlruc/containerdevops/.github/workflows/container-iac.yml@c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
     with:
       blocking: true
       paths: Dockerfile,docker-compose.yml
-      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+      scripts_ref: c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
     secrets:
       scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
 
@@ -168,13 +168,13 @@ jobs:
     permissions:
       contents: read
       packages: read
-    uses: pirlruc/containerdevops/.github/workflows/container-lint.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    uses: pirlruc/containerdevops/.github/workflows/container-lint.yml@c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
     with:
       blocking: true
       dockerfile: Dockerfile
       run_infra_lint: false
       run_secrets_scan: false
-      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+      scripts_ref: c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
     secrets:
       scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
 
@@ -183,7 +183,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: pirlruc/containerdevops/.github/workflows/container-build.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    uses: pirlruc/containerdevops/.github/workflows/container-build.yml@c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
     with:
       blocking: true
       image_name: pixeldive:ci
@@ -192,7 +192,7 @@ jobs:
       image_title: pixeldive
       image_description: Async image-processing sessions over HTTP and gRPC.
       artifact_name: pixeldive-ci
-      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+      scripts_ref: c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
     secrets:
       scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
 
@@ -204,7 +204,7 @@ jobs:
       packages: read
       actions: read
       security-events: write
-    uses: pirlruc/containerdevops/.github/workflows/container-scan.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    uses: pirlruc/containerdevops/.github/workflows/container-scan.yml@c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
     with:
       # Debian won't-fix highs fail a blocking scan. container-scan has no
       # ignore-unfixed input. The gate stays advisory until one exists.
@@ -212,7 +212,7 @@ jobs:
       image: ghcr.io/${{ github.repository_owner }}/${{ needs.container-build.outputs.image_ref }}
       scanners: vuln,secret
       image_config_scanners: misconfig,secret
-      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+      scripts_ref: c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
     secrets:
       scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
 
@@ -220,12 +220,12 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       contents: read
-    uses: pirlruc/containerdevops/.github/workflows/container-compose-smoke.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    uses: pirlruc/containerdevops/.github/workflows/container-compose-smoke.yml@c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
     with:
       blocking: true
       compose_files: docker-compose.yml
       env_files: .env.example
       project_name: pixeldive-smoke
-      scripts_ref: 416e31ea127d4a3249e1f3159a95679f93cfabd7
+      scripts_ref: c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
     secrets:
       scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
