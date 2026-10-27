@@ -40,7 +40,7 @@
 #   done  SDK-005 (iOS/Android PixeldiveGrpcClient client-streaming image RPCs)
 #   done  SDK-006 (camera-feed demos upload frames over gRPC)
 #
-#   open  TOOL-002 (GitHub issue objects still unpublished)
+#   done  TOOL-002 (issues published; sync closed the epic)
 #   done  SEC-002, SEC-003, API-003, PERF-003, PERF-004, OPS-002, OPS-003, DATA-003, DATA-004
 #   open  SEC-004 (Postgres shared quotas), SEC-005 (Redis quota hot path later)
 #   done  PERF-006 (gRPC demo streams capped chunks; REST fallback keeps a temp file)
@@ -882,7 +882,7 @@ milestones:
   - name: Phase 3 — Remaining hardening
     epics:
       - id: TOOL-002
-        status: open
+        status: done
         title: Publish GitHub Epic/Task issues from docs/issues.yml
         decision: >-
           In the context of github-issue-adr, facing a backlog that exists
@@ -913,7 +913,7 @@ milestones:
           - CI-022
         tasks:
           - id: TOOL-002-T1
-            status: open
+            status: done
             title: Dry-run and apply issues-sync.py to pirlruc/pixeldive
             instructions:
               files:

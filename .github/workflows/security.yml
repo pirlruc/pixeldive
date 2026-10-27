@@ -186,3 +186,23 @@ jobs:
           format: cyclonedx-json
           artifact-name: pixeldive.cdx.json
           upload-artifact: true
+
+  published-image-rescan:
+    # Scheduled and main only. Pull requests already build and scan the
+    # candidate image. linux/amd64 digest of tag 0.1.0.
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+      packages: read
+    uses: pirlruc/containerdevops/.github/workflows/container-published-rescan.yml@c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
+    with:
+      image: ghcr.io/pirlruc/pixeldive@sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93
+      scripts_ref: c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
+      blocking: false
+      pkg_types: os,library
+      results_artifact: published-pixeldive-scan
+      sarif_category: trivy-pixeldive
+    secrets:
+      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}

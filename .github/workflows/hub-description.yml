@@ -13,7 +13,7 @@ jobs:
   overview:
     permissions:
       contents: read
-    uses: pirlruc/containerdevops/.github/workflows/container-hub-description.yml@416e31ea127d4a3249e1f3159a95679f93cfabd7
+    uses: pirlruc/containerdevops/.github/workflows/container-hub-description.yml@c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
     with:
       dockerhub_image: pirlruc/pixeldive
       dockerhub_readme: docs/docker-hub.md
