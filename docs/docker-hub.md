@@ -13,10 +13,16 @@ Async image-processing sessions over HTTP and gRPC.
 | Base | `python:3.13.17-slim-trixie` |
 | Ports | `8000` HTTP, `50051` gRPC |
 
-Release `0.1.0` is the first published image. The GitHub Release lists the index and `linux/amd64` digests. Prefer that digest. `latest` is never the only tag.
+Release `0.1.0` is the first published image. Prefer a digest. `latest` is never the only tag.
+
+| Tag | Digest |
+|-----|--------|
+| `0.1.0` / `latest` | `sha256:2d26235d2882f69dcd4b4196a02c337f144ffd330d566ffa2c43ece835c7b022` (tag index) |
+| `0.1.0` `linux/amd64` | `sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93` |
 
 ```bash
 docker pull pirlruc/pixeldive:0.1.0
+docker pull pirlruc/pixeldive@sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93
 ```
 
 ## What it does

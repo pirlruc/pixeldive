@@ -12,10 +12,16 @@ Async image-processing sessions over HTTP and gRPC.
 | User | non-root `65532:65532` |
 | Ports | `8000` HTTP, `50051` gRPC |
 
-Release `0.1.0` is the first published image. The GitHub Release lists the index and `linux/amd64` digests.
+Release `0.1.0` is the first published image. Prefer a digest.
+
+| Tag | Digest |
+|-----|--------|
+| `0.1.0` / `latest` | `sha256:2d26235d2882f69dcd4b4196a02c337f144ffd330d566ffa2c43ece835c7b022` (tag index) |
+| `0.1.0` `linux/amd64` | `sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93` |
 
 ```bash
 docker pull ghcr.io/pirlruc/pixeldive:0.1.0
+docker pull ghcr.io/pirlruc/pixeldive@sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93
 ```
 
 `ci-run-*` tags are ephemeral CI handoff tags. They are not a release.

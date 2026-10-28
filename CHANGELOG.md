@@ -12,9 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - setuptools in the lock is 84.2.1. Dependabot's updater reported
   "No files have changed" for 84.0.0 to 84.1.0, and it cannot clone
   the github-scaffold submodule.
-- The security workflow rescans the published 0.1.0 linux/amd64 image
-  through containerdevops 6.3.5. Image workflow pins move to the same
-  commit. The runtime image is unchanged, so there is no 0.1.1.
+- Callers pin commondevops 5.6.2
+  (`b85f95bbac8ba7d82eb90d1d84d1b8d1e8590a12`) and containerdevops 6.3.6
+  (`b419c24cbaf09f39d73fa0146a71155f1a4fbd54`). Job containers stay on
+  the public Ubuntu image. The runtime image is unchanged, so there is
+  no 0.1.1. Tag `0.1.0` stays put.
+- `SECURITY.md` points vulnerability reports at the private advisory form.
+  Image docs list the 0.1.0 index and `linux/amd64` digests.
 
 ## [0.1.0] - 2026-10-23
 

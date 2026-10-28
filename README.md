@@ -17,12 +17,11 @@ Both transports call the same `SessionService` ([ARCH-001](docs/issues.yml)).
 
 ## Methodology
 
-[GitHub Issue-native ADR](https://github.com/pirlruc/methodologies/tree/1.7.0/github-issue-adr) —
+[GitHub Issue-native ADR](https://github.com/pirlruc/methodologies/tree/1.9.2/github-issue-adr) —
 Epic = decision record, Y-statement on every new Epic, no ADR markdown files. Templates:
-[pirlruc/github-scaffold](https://github.com/pirlruc/github-scaffold) @ 1.7.0. Quality: pin
-[pirlruc/guardrails](https://github.com/pirlruc/guardrails) @ 1.8.0 at `docs/guardrails/`. Applies to
-**new issues only**. Authored backlog: [`docs/issues.yml`](docs/issues.yml).
-Proposed analog additions: [`docs/new-guardrails/`](docs/new-guardrails/).
+[pirlruc/github-scaffold](https://github.com/pirlruc/github-scaffold) @ 1.10.2. Quality: pin
+[pirlruc/guardrails](https://github.com/pirlruc/guardrails) @ 1.13.1 at `docs/guardrails/`. Applies to
+**new issues only**.
 
 Android payload shape follows the same keys [FinSilo](https://github.com/pirlruc/finsilo) and
 Heimdall clients already read (`Build`, `ActivityManager`, `DisplayMetrics`, Camera2). This repo is
@@ -90,8 +89,8 @@ Python SDK TLS: `RestClient("https://…", token=…, verify="/path/ca.pem")` an
 `GrpcClient("host:port", token=…, insecure=False, root_certificates=pem_bytes)`.
 Passing PEMs with `insecure=True` raises. IP targets can set
 `ssl_target_name_override` to the certificate's DNS name.
-iOS/Android clients use platform TLS when the base URL is `https://`; custom CA
-loading is [SDK-008](docs/issues.yml).
+iOS/Android clients use platform TLS when the base URL is `https://`. A custom
+CA is optional on both clients.
 
 Compose host ports bind to `127.0.0.1`. Named volumes `pgdata`, `images`, and
 `minio` hold state — back them up with `docker compose run --rm` / volume snapshots
@@ -126,8 +125,7 @@ maps `Build` / Camera2 into the same keys, tagged `metadata.platform=android`.
 bash scripts/check-ci-local.sh
 bash scripts/check-ci-docker.sh
 # macOS is the iOS final gate. Linux without Swift uses the swift:6.1 image
-# from check-ci-docker.sh. Android local runs use the Android Studio JBR
-# when /opt/android-studio/jbr exists.
+# from check-ci-docker.sh. Android local runs use JAVA_HOME and ANDROID_HOME.
 PIXELDIVE_REQUIRE_SWIFT=1 bash scripts/check-ios-sdk.sh
 PIXELDIVE_REQUIRE_JAVA=1 bash scripts/check-android-sdk.sh
 ```
