@@ -13,7 +13,7 @@
 
 Phase 1 session platform is **on main** ([PR #1](https://github.com/pirlruc/pixeldive/pull/1), merged 2026-09-19). Phase 2 hardening, Python SDK, capture demo, and async S3 (PERF-002) are **on main** ([PR #7](https://github.com/pirlruc/pixeldive/pull/7), merged 2026-09-19). Phase 3 remaining hardening is **on main** ([PR #9](https://github.com/pirlruc/pixeldive/pull/9)). Analog pins, DRY, and 1.6.0 QUAL-003 gates (hadolint, KICS, uv.lock, Trivy/SBOM, pydoclint) are **on main** ([PR #10](https://github.com/pirlruc/pixeldive/pull/10)). iOS SDK + SwiftUI demo (SDK-002) and Android SDK + Compose demo (SDK-003) are **on main** ([PR #12](https://github.com/pirlruc/pixeldive/pull/12); iOS opened as [PR #11](https://github.com/pirlruc/pixeldive/pull/11)). Camera-session ingest (PERF-005), streaming file uploads (SDK-004), mobile gRPC image clients (SDK-005), and camera-feed demos (SDK-006) shipped in [PR #13](https://github.com/pirlruc/pixeldive/pull/13). HTTP TLS + shared PEM with gRPC (SEC-007) is **on main** ([PR #14](https://github.com/pirlruc/pixeldive/pull/14), `78b0baa`). Upload measurement, batch/metadata caps, production quotas (SEC-008), the `app` package split, and streamed demo uploads (PERF-006) are **on main** ([PR #15](https://github.com/pirlruc/pixeldive/pull/15), `03e3280`).
 
-GitHub Epic/Task issues are not published ([TOOL-002](issues.yml)); statuses live in [`docs/issues.yml`](issues.yml).
+TOOL-002 and TOOL-002-T1 are closed on GitHub. Statuses live in [`docs/issues.yml`](issues.yml).
 
 | Module | Path | Notes |
 | --- | --- | --- |
@@ -171,7 +171,7 @@ Sibling epics were opened on GitHub because the token cannot push `docs/issues.y
 
 PY-SEC-005/006/007: [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/161) stayed closed. It deferred the Python proposals as out of scope of a Swift/Java pack epic. That close is right for that epic. The rules themselves were not rejected. pixeldive already uses `hmac.compare_digest`, production fail-closed auth/plaintext, and upload magic bytes, which is stricter than PY-SEC-001..004. [GR-PY-SEC-001](https://github.com/pirlruc/guardrails/issues/191) asks the Python pack to add the three IDs. Do not remove those implementations.
 
-- [TOOL-002](issues.yml) publish GitHub issues from `docs/issues.yml`
+- TOOL-002 is closed. The next image change is the one that changes what `docker/pixeldive/requirements.txt` installs.
 - [SEC-004](issues.yml) shared quota store on PostgreSQL (`app/sessions/quotas.py`; first multi-replica tests). In-process `TenantQuota` is still sync
 - S3 put-skip is process-local. A cache hit still HEADs, so a missing object is uploaded again. Replicas still re-PUT until SEC-004
 - [SDK-007](issues.yml) TLS gRPC constructors + protobuf Struct metadata on mobile
@@ -182,6 +182,7 @@ PY-SEC-005/006/007: [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/1
 
 ## Recent history
 
+- 2026-10-27: PR 128 adds the published-image rescan and closes TOOL-002. The runtime image did not change, so there is no 0.1.1. Do not move `0.1.0`.
 - Phase 1 + REV-001 shipped in [PR #1](https://github.com/pirlruc/pixeldive/pull/1) (`c1eda05`)
 - Phase 2 + SDK-001 + PERF-002 shipped in [PR #7](https://github.com/pirlruc/pixeldive/pull/7) (`96192bf`)
 - Phase 3 remaining hardening in [PR #9](https://github.com/pirlruc/pixeldive/pull/9)
@@ -199,4 +200,4 @@ PY-SEC-005/006/007: [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/1
 - 2026-10-24: [PR 125](https://github.com/pirlruc/pixeldive/pull/125) merged as `25822ec`. Annotated tag `0.1.0` is that commit and contains no digest. Publish run https://github.com/pirlruc/pixeldive/actions/runs/40092702718 signed the image. The release body lists index `sha256:2d26235d2882f69dcd4b4196a02c337f144ffd330d566ffa2c43ece835c7b022` and linux/amd64 `sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93`. Smoke command is `python -m app.settings_storage`. Editing the release did not republish. Do not move tag `0.1.0`.
 - `feature-ops-refresh`: guardrails 1.13.1, scaffold 1.10.2, ops reusables at commondevops `0932c7bf` and containerdevops `416e31ea`, SEC-004/005 quota stores, SDK-007/008 TLS gRPC and PEM CA. `python-quality` stays unused because the stricter average maintainability floor is `config/python.profile.thresholds.yml`. iOS NIO TLS is covered on macos-15; Linux `swift:6.1` runs the package tests. `ios/Package.resolved` pins grpc-swift 1.24.2, swift-nio 2.104.0, and swift-nio-ssl.
 
-*Last updated: 2026-10-24*
+*Last updated: 2026-10-27 (TOOL-002 closed, no 0.1.1)*
