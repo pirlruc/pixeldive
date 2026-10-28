@@ -196,10 +196,10 @@ jobs:
       contents: read
       security-events: write
       packages: read
-    uses: pirlruc/containerdevops/.github/workflows/container-published-rescan.yml@c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
+    uses: pirlruc/containerdevops/.github/workflows/container-published-rescan.yml@b419c24cbaf09f39d73fa0146a71155f1a4fbd54
     with:
       image: ghcr.io/pirlruc/pixeldive@sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93
-      scripts_ref: c92c83bd4ccb9f0040f11ca9e99bc1b4f50b652e
+      scripts_ref: b419c24cbaf09f39d73fa0146a71155f1a4fbd54
       blocking: false
       pkg_types: os,library
       results_artifact: published-pixeldive-scan
