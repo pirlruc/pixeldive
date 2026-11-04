@@ -29,8 +29,6 @@ jobs:
       scripts_ref: b85f95bbac8ba7d82eb90d1d84d1b8d1e8590a12
       container_image: ghcr.io/catthehacker/ubuntu:act-24.04@sha256:dff4ec57d90046a7283aafc314298380be82bfeccb9ad0f1b36c4ebe74aabe78
       mount_runner_git: false
-    secrets:
-      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
 
   secrets:
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
@@ -43,8 +41,6 @@ jobs:
       scripts_ref: b85f95bbac8ba7d82eb90d1d84d1b8d1e8590a12
       container_image: ghcr.io/catthehacker/ubuntu:act-24.04@sha256:dff4ec57d90046a7283aafc314298380be82bfeccb9ad0f1b36c4ebe74aabe78
       mount_runner_git: false
-    secrets:
-      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
 
   scaffold:
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
@@ -55,8 +51,6 @@ jobs:
     with:
       blocking: true
       scripts_ref: b85f95bbac8ba7d82eb90d1d84d1b8d1e8590a12
-    secrets:
-      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
 
   iac:
     # CI-024: Dependabot cannot read CONTAINERDEVOPS_READ_TOKEN.
@@ -71,8 +65,6 @@ jobs:
       blocking: true
       paths: Dockerfile,docker-compose.yml
       scripts_ref: b419c24cbaf09f39d73fa0146a71155f1a4fbd54
-    secrets:
-      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
 
   supply-chain:
     # Filesystem SBOM, Grype, Trivy vuln, and the grant licence gate.
@@ -91,8 +83,6 @@ jobs:
       scripts_ref: b85f95bbac8ba7d82eb90d1d84d1b8d1e8590a12
       container_image: ghcr.io/catthehacker/ubuntu:act-24.04@sha256:dff4ec57d90046a7283aafc314298380be82bfeccb9ad0f1b36c4ebe74aabe78
       mount_runner_git: false
-    secrets:
-      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
 
   scorecard:
     if: >-
@@ -123,8 +113,6 @@ jobs:
       # 5.4.4 scripts checkout has no markdownlint lockfile (CI-039).
       run_markdownlint: false
       scripts_ref: b85f95bbac8ba7d82eb90d1d84d1b8d1e8590a12
-    secrets:
-      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
 
   pins:
     permissions:
@@ -153,8 +141,6 @@ jobs:
       scripts_ref: b85f95bbac8ba7d82eb90d1d84d1b8d1e8590a12
     secrets:
       guardrails_token: ${{ secrets.GUARDRAILS_READ_TOKEN }}
-      containerdevops_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
-      checkout_token: ${{ secrets.COMMONDEVOPS_READ_TOKEN }}
 
   sweep:
     permissions:
@@ -175,8 +161,6 @@ jobs:
       run_infra_lint: false
       run_secrets_scan: false
       scripts_ref: b419c24cbaf09f39d73fa0146a71155f1a4fbd54
-    secrets:
-      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
 
   container-build:
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
@@ -193,8 +177,6 @@ jobs:
       image_description: Async image-processing sessions over HTTP and gRPC.
       artifact_name: pixeldive-ci
       scripts_ref: b419c24cbaf09f39d73fa0146a71155f1a4fbd54
-    secrets:
-      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
 
   container-scan:
     needs: container-build
@@ -213,8 +195,6 @@ jobs:
       scanners: vuln,secret
       image_config_scanners: misconfig,secret
       scripts_ref: b419c24cbaf09f39d73fa0146a71155f1a4fbd54
-    secrets:
-      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
 
   compose-smoke:
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
@@ -227,5 +207,3 @@ jobs:
       env_files: .env.example
       project_name: pixeldive-smoke
       scripts_ref: b419c24cbaf09f39d73fa0146a71155f1a4fbd54
-    secrets:
-      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
