@@ -204,5 +204,3 @@ jobs:
       pkg_types: os,library
       results_artifact: published-pixeldive-scan
       sarif_category: trivy-pixeldive
-    secrets:
-      scripts_token: ${{ secrets.CONTAINERDEVOPS_READ_TOKEN }}
