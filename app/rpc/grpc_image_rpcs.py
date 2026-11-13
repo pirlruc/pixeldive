@@ -2,9 +2,11 @@
 
 from collections.abc import AsyncIterator
 
+import anyio
 from grpc.aio import ServicerContext
 from pydantic import ValidationError
 
+from app.config import ensure_spool
 from app.exceptions import SessionServiceError
 from app.pb import session_service_pb2 as pb
 from app.rpc.grpc_codec import as_uuid, image_to_pb
@@ -32,7 +34,9 @@ class ImageRpcMixin:
                 request_iterator,
                 context,
                 max_bytes=self._service._settings.max_image_bytes,
-                spool_dir=self._service._settings.spool_dir(),
+                spool_dir=await anyio.to_thread.run_sync(
+                    ensure_spool, self._service._settings.spool_dir()
+                ),
             )
             image = await self._service.add_image(session_id, upload, principal)
             return pb.ImageUploadResponse(image=image_to_pb(image))
@@ -52,7 +56,9 @@ class ImageRpcMixin:
                 context,
                 max_bytes=self._service._settings.max_image_bytes,
                 max_images=self._service._settings.max_batch_images,
-                spool_dir=self._service._settings.spool_dir(),
+                spool_dir=await anyio.to_thread.run_sync(
+                    ensure_spool, self._service._settings.spool_dir()
+                ),
             )
             images = await self._service.add_images_batch(session_id, uploads, principal)
             return pb.BatchUploadResponse(images=[image_to_pb(item) for item in images])

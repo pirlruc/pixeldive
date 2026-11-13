@@ -84,14 +84,16 @@ async def test_postgres_engine_opens_without_connecting() -> None:
 
 
 @pytest.mark.asyncio
-async def test_anonymous_and_unlimited_skip_a_down_store() -> None:
-    """AUTH_REQUIRED=false and zero caps stay unlimited when the store is down."""
+async def test_anonymous_caps_fail_closed_and_zero_caps_skip() -> None:
+    """Anonymous traffic uses the shared bucket. Zero caps never touch the store."""
     dead = "postgresql+asyncpg://127.0.0.1:1/pixeldive"
     quota = TenantQuota(1, 60.0, 10, 10, backend="postgres", database_url=dead)
-    await quota.hit(None)
-    await quota.reserve_bytes(None, uuid.uuid4(), 5)
+    with pytest.raises(QuotaUnavailableError):
+        await quota.hit(None)
+    with pytest.raises(QuotaUnavailableError):
+        await quota.reserve_bytes(None, uuid.uuid4(), 5)
     unlimited = TenantQuota(0, 60.0, 0, 0, backend="redis", redis_url="redis://127.0.0.1:1/0")
-    await unlimited.hit(Principal(owner_id="tenant-a"))
+    await unlimited.hit(None)
     await quota.aclose()
     await unlimited.aclose()
 

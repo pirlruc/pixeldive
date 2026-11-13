@@ -85,10 +85,17 @@ class Settings(StorageSettingsMixin, RuntimeSettingsMixin, BaseSettings):
         return parse_api_keys(self.api_keys)
 
     def spool_dir(self) -> Path:
-        """Directory for hashed upload spools under the storage root."""
-        path = self.storage_root / ".incoming"
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+        """Directory for hashed upload spools under the storage root.
+
+        Callers create the directory off the event loop. This method does not.
+        """
+        return self.storage_root / ".incoming"
+
+
+def ensure_spool(path: Path) -> Path:
+    """Create the spool directory. Call this off the event loop."""
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 @lru_cache(maxsize=1)
