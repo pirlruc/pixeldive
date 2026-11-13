@@ -44,6 +44,6 @@ class RuntimeSettingsMixin:
     session_max_upload_bytes: int = 0
     quota_backend: str = ""
     quota_redis_url: str = ""
-    orphan_sweep_interval_seconds: float = 0.0
+    orphan_sweep_interval_seconds: float = 60.0
     grpc_upload_chunk_bytes: int = GRPC_UPLOAD_CHUNK_BYTES
     environment: str = "development"

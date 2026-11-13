@@ -42,7 +42,9 @@ dev = [
   "pytest-cov==7.1.0",
   "radon==6.0.1",
   "ruff==0.16.8",
+  "semgrep==1.177.0",
   "types-aiofiles==25.1.0.20260518",
+  "zizmor==1.29.0",
 ]
 
 # exclude-newer would reject the current lock: certifi 2026.10.23 is inside a 7-day window.

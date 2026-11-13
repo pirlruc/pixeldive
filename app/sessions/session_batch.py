@@ -66,21 +66,32 @@ class SessionBatchMixin(SessionHost):
         uploads: Sequence[ImageUpload],
         principal: Principal | None,
     ) -> list[SessionImage]:
-        """Persist blobs then insert image rows."""
+        """Re-check the session, persist blobs, then insert image rows.
+
+        Blobs written after the session disappears are deleted.
+        """
+        async with self._factory() as db:
+            await self._require_session(db, session_id, principal)
         paths = await asyncio.gather(
             *[persist_upload(self._storage, item, self._write_sema) for item in uploads],
         )
-        async with self._factory() as db:
-            session = await self._require_session(db, session_id, principal)
-            images = [
-                new_image(session, item, path) for item, path in zip(uploads, paths, strict=True)
-            ]
-            db.add_all(images)
-            if apply_first_upload(session):
-                db.add(session)
-            await db.commit()
-            for image in images:
-                await db.refresh(image)
+        try:
+            async with self._factory() as db:
+                session = await self._require_session(db, session_id, principal)
+                images = [
+                    new_image(session, item, path)
+                    for item, path in zip(uploads, paths, strict=True)
+                ]
+                db.add_all(images)
+                if apply_first_upload(session):
+                    db.add(session)
+                await db.commit()
+                for image in images:
+                    await db.refresh(image)
+        except Exception:
+            for path in paths:
+                await self._storage.delete(path)
+            raise
         self._metrics.observe_upload(sum(upload_size(item) for item in uploads))
         return images
 

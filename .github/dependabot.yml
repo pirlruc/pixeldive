@@ -1,6 +1,13 @@
 # Org-default Dependabot seed (SC-DEP-001/002/003).
 version: 2
 
+registries:
+  github-private:
+    type: git
+    url: https://github.com
+    username: x-access-token
+    password: ${{secrets.DEPENDABOT_GITHUB_TOKEN}}
+
 multi-ecosystem-groups:
   all-dependencies:
     schedule:
@@ -60,3 +67,16 @@ updates:
     multi-ecosystem-group: all-dependencies
     cooldown:
       default-days: 7
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: monthly
+      time: "06:00"
+      timezone: Europe/Lisbon
+    commit-message:
+      prefix: build
+      include: scope
+    cooldown:
+      default-days: 7
+    registries:
+      - github-private
