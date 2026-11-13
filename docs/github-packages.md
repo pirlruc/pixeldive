@@ -51,4 +51,4 @@ docker run --rm \
 
 ## License
 
-MIT. Source: https://github.com/pirlruc/pixeldive
+MIT. Source: <https://github.com/pirlruc/pixeldive>

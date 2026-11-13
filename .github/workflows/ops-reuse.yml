@@ -51,6 +51,8 @@ jobs:
     with:
       blocking: true
       scripts_ref: 0813708ec539e888bb105b8369ea9e250c73bf7b
+    secrets:
+      packs_token: ${{ secrets.GUARDRAILS_READ_TOKEN }}
 
   iac:
     # CI-024: Dependabot cannot read CONTAINERDEVOPS_READ_TOKEN.
