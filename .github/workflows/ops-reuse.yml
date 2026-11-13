@@ -233,6 +233,6 @@ jobs:
       contents: read
     uses: pirlruc/commondevops/.github/workflows/common-swift.yml@8934d8433df058bb0ac85e50964dbd16db232628
     with:
-      working_directory: .
+      working_directory: ios
       blocking: true
       scripts_ref: 8934d8433df058bb0ac85e50964dbd16db232628

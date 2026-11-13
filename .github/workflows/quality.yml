@@ -288,4 +288,4 @@ jobs:
           enable-cache: false
 
       - name: Fuzz filename and magic sniffing
-        run: uv run --with atheris python fuzz/fuzz_ingest.py -runs=200
+        run: PYTHONPATH=. uv run --with atheris python fuzz/fuzz_ingest.py -runs=200
