@@ -1,6 +1,13 @@
 version: v2
 modules:
-  - path: proto
+  # Root stays the module so buf breaking still sees proto/session_service.proto.
+  # A module path of proto renames that file and looks like a deletion.
+  - path: .
+    excludes:
+      - .venv
+      - ios
+      - android
+      - docs
 lint:
   use:
     - STANDARD
