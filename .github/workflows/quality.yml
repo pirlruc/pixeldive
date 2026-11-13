@@ -81,6 +81,14 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
         run: bash scripts/run-actionlint.sh
 
+      - name: Set up uv
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: "3.13"
+          # workflow_dispatch makes a default uv cache a zizmor cache-poisoning finding.
+          enable-cache: false
+
       - name: zizmor
         if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
         run: bash scripts/run-zizmor.sh
