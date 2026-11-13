@@ -48,7 +48,7 @@ def new_image(session: Session, upload: ImageUpload, storage_path: str) -> Sessi
         session_id=session.id,
         filename=sanitize_filename(upload.filename),
         content_type=upload.content_type,
-        size_bytes=upload_size(upload),
+        size_bytes=upload.size_bytes or len(upload.payload),
         storage_path=storage_path,
         extra_metadata=upload.extra_metadata,
     )

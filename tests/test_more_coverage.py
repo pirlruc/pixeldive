@@ -94,19 +94,20 @@ async def test_spool_gc_and_discard(tmp_path: Path, service: SessionService, sto
     await spool.delete()
 
 
-def test_list_local_blobs_skips_missing_and_dotted(tmp_path: Path) -> None:
+@pytest.mark.asyncio
+async def test_list_local_blobs_skips_missing_and_dotted(tmp_path: Path) -> None:
     """Incoming spools and missing roots are ignored by the sweeper walk."""
     from app.blobs.local_listing import list_local_blobs
 
     missing = tmp_path / "gone"
-    assert list_local_blobs(missing) == []
+    assert await list_local_blobs(missing) == []
     hidden = tmp_path / ".incoming"
     hidden.mkdir()
     (hidden / "part").write_bytes(b"x")
     visible = tmp_path / "ab"
     visible.mkdir()
     (visible / "blob.bin").write_bytes(b"y")
-    keys = {key for key, _mtime in list_local_blobs(tmp_path)}
+    keys = {key for key, _mtime in await list_local_blobs(tmp_path)}
     assert keys == {"ab/blob.bin"}
 
 

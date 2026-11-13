@@ -50,7 +50,8 @@ def test_default_bind_is_loopback() -> None:
     assert Settings.model_fields["grpc_host"].default == "127.0.0.1"
 
 
-def test_magic_bytes_match_declared_types(tmp_path: Path) -> None:
+@pytest.mark.asyncio
+async def test_magic_bytes_match_declared_types(tmp_path: Path) -> None:
     """Sniff PNG/JPEG/WEBP/HEIF/BMP/TIFF; reject forged Content-Type."""
     webp = b"RIFF\x00\x00\x00\x00WEBP"
     heif = b"\x00\x00\x00\x18ftypmif1"
@@ -68,16 +69,20 @@ def test_magic_bytes_match_declared_types(tmp_path: Path) -> None:
     assert not matches_declared_type("image/png", b"not-a-png")
     assert not matches_declared_type("image/webp", b"RIFF\x00\x00\x00\x00XXXX")
     assert not matches_declared_type("application/octet-stream", PNG_1X1)
-    assert header_bytes(
-        ImageUpload(filename="f.png", content_type="image/png", spool_path=str(spool)),
+    assert (
+        await header_bytes(
+            ImageUpload(filename="f.png", content_type="image/png", spool_path=str(spool)),
+        )
     ).startswith(b"\x89PNG")
-    assert header_bytes(ImageUpload(filename="f.png", content_type="image/png")) == b""
-    assert header_bytes(
-        ImageUpload(
-            filename="f.png",
-            content_type="image/png",
-            header_prefix=PNG_1X1[:8],
-        ),
+    assert await header_bytes(ImageUpload(filename="f.png", content_type="image/png")) == b""
+    assert (
+        await header_bytes(
+            ImageUpload(
+                filename="f.png",
+                content_type="image/png",
+                header_prefix=PNG_1X1[:8],
+            ),
+        )
     ).startswith(b"\x89PNG")
 
 

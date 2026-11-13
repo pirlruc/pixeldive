@@ -6,9 +6,10 @@ import time
 from pathlib import Path
 
 import aiofiles.os
+import anyio
 
 
-def list_local_blobs(root: Path) -> list[tuple[str, float]]:
+def _list_local_blobs(root: Path) -> list[tuple[str, float]]:
     """Return relative keys with mtimes, ignoring dotted path parts."""
     blobs: list[tuple[str, float]] = []
     if not root.exists():
@@ -21,6 +22,11 @@ def list_local_blobs(root: Path) -> list[tuple[str, float]]:
             continue
         blobs.append((path.relative_to(root).as_posix(), path.stat().st_mtime))
     return blobs
+
+
+async def list_local_blobs(root: Path) -> list[tuple[str, float]]:
+    """Return relative keys with mtimes, ignoring dotted path parts."""
+    return await anyio.to_thread.run_sync(_list_local_blobs, root)
 
 
 async def file_age_seconds(path: Path) -> float:

@@ -61,7 +61,7 @@ class LocalFilesystemStorage:
 
     async def list_blobs(self) -> list[tuple[str, float]]:
         """Walk the root and return relative keys with mtimes (skip tmp/spool)."""
-        return list_local_blobs(self._root)
+        return await list_local_blobs(self._root)
 
     async def age_seconds(self, storage_path: str) -> float:
         """Return file age; missing files are treated as age 0."""

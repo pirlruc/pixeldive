@@ -45,11 +45,11 @@ class SessionBatchMixin(SessionHost):
             reject_bad_batch(uploads, self._settings.max_batch_images)
         try:
             for upload in uploads:
-                validate_upload(upload, self._settings)
+                await validate_upload(upload, self._settings)
             await self._quota.hit(principal)
             async with self._factory() as db:
                 await self._require_session(db, session_id, principal)
-            total = sum(upload_size(item) for item in uploads)
+            total = sum([await upload_size(item) for item in uploads])
             await self._quota.reserve_bytes(principal, session_id, total)
             try:
                 return await self._commit_batch(session_id, uploads, principal)
@@ -92,7 +92,7 @@ class SessionBatchMixin(SessionHost):
             for path in paths:
                 await self._storage.delete(path)
             raise
-        self._metrics.observe_upload(sum(upload_size(item) for item in uploads))
+        self._metrics.observe_upload(sum([await upload_size(item) for item in uploads]))
         return images
 
 

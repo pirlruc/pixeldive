@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import anyio
+
 from app.blobs.filenames import sanitize_filename
 from app.blobs.magic import header_bytes, matches_declared_type
 from app.config import Settings
@@ -17,26 +19,31 @@ def normalize_content_type(raw: str | None) -> str:
     return (raw or "").split(";")[0].strip().lower()
 
 
-def upload_size(upload: ImageUpload) -> int:
+def _spool_size(path: str) -> int:
+    """Return the spool length. Runs off the event loop."""
+    return Path(path).stat().st_size
+
+
+async def upload_size(upload: ImageUpload) -> int:
     """Return the spool length, or the in-memory payload length when there is no spool."""
     if upload.spool_path:
-        return Path(upload.spool_path).stat().st_size
+        return await anyio.to_thread.run_sync(_spool_size, upload.spool_path)
     return len(upload.payload)
 
 
-def validate_upload(upload: ImageUpload, settings: Settings) -> None:
+async def validate_upload(upload: ImageUpload, settings: Settings) -> None:
     """Reject empty, oversized, or non-image payloads."""
     content_type = normalize_content_type(upload.content_type)
     if content_type not in ALLOWED_CONTENT_TYPES:
         raise UnsupportedContentTypeError(f"unsupported content type: {upload.content_type}")
-    size = upload_size(upload)
+    size = await upload_size(upload)
     if size <= 0:
         raise EmptyImageError("image payload is empty")
     if size > settings.max_image_bytes:
         raise ImageTooLargeError(
             f"image exceeds max_image_bytes={settings.max_image_bytes}",
         )
-    if not matches_declared_type(content_type, header_bytes(upload)):
+    if not matches_declared_type(content_type, await header_bytes(upload)):
         raise UnsupportedContentTypeError(
             f"payload does not match content type: {upload.content_type}",
         )

@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import anyio
+
 from app.models import ImageUpload
 
 HEADER_SIZE = 16
@@ -17,15 +19,20 @@ _PREFIXES: dict[str, tuple[bytes, ...]] = {
 _HEIF = {b"heic", b"heix", b"hevc", b"hevx", b"mif1", b"msf1", b"heim", b"heis"}
 
 
-def header_bytes(upload: ImageUpload, size: int = HEADER_SIZE) -> bytes:
+def _read_spool(path: str, size: int) -> bytes:
+    """Read the first ``size`` bytes. Runs off the event loop."""
+    with Path(path).open("rb") as handle:
+        return handle.read(size)
+
+
+async def header_bytes(upload: ImageUpload, size: int = HEADER_SIZE) -> bytes:
     """Return the first ``size`` bytes from memory, a captured prefix, or a spool."""
     if upload.payload:
         return upload.payload[:size]
     if upload.header_prefix:
         return upload.header_prefix[:size]
     if upload.spool_path:
-        with Path(upload.spool_path).open("rb") as handle:
-            return handle.read(size)
+        return await anyio.to_thread.run_sync(_read_spool, upload.spool_path, size)
     return b""
 
 
