@@ -41,7 +41,7 @@ def build_store(backend: str, database_url: str, redis_url: str) -> _Store:
 
 
 class TenantQuota:
-    """Rate and byte caps. ``principal is None`` stays unlimited.
+    """Rate and byte caps. Missing auth shares the ``anonymous`` bucket.
 
     The default store is an in-process ``asyncio.Lock`` counter. PostgreSQL and
     Redis are selected by ``quota_from_settings`` when a shared URL is set.
@@ -79,9 +79,10 @@ class TenantQuota:
 
     async def hit(self, principal: Principal | None) -> None:
         """Count one request; raise when the window is full."""
-        if principal is None or self.requests_per_window <= 0:
+        if self.requests_per_window <= 0:
             return
-        await self._run(self._store.hit(principal.owner_id, self._limits))
+        owner_id = principal.owner_id if principal is not None else "anonymous"
+        await self._run(self._store.hit(owner_id, self._limits))
 
     async def reserve_bytes(
         self,
@@ -128,10 +129,10 @@ def _byte_owner(
     session_cap: int,
 ) -> str | None:
     """Return the tenant id when byte caps apply, else None."""
-    if principal is None or nbytes <= 0:
+    if nbytes <= 0 or (tenant_cap <= 0 and session_cap <= 0):
         return None
-    if tenant_cap <= 0 and session_cap <= 0:
-        return None
+    if principal is None:
+        return "anonymous"
     return principal.owner_id
 
 

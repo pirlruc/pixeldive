@@ -22,6 +22,7 @@ class RuntimeSettingsMixin:
     list_max_limit: int = 200
     auth_required: bool = False
     api_keys: str = ""
+    metrics_bearer_token: str = Field(default="", validation_alias="METRICS_TOKEN")
     allow_anonymous: bool = Field(
         default=False,
         validation_alias="PIXELDIVE_ALLOW_ANONYMOUS",

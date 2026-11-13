@@ -60,7 +60,7 @@ If `ensurepip` is missing:
 
 ```bash
 python3 -m pip install --target .venv -r requirements.txt -r requirements-dev.txt
-PYTHONPATH=.venv bash scripts/ci-local.sh
+PYTHONPATH=.venv bash scripts/check-ci-local.sh
 ```
 
 CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`, `uv-lock`, `ios-sdk` on macOS, `android-sdk` on Ubuntu JDK 21), `.github/workflows/ops-reuse.yml` (common-infra-lint and container-iac), `security.yml` (gitleaks, CodeQL, bandit, pip-audit, semgrep `p/python` + `p/swift` + `p/kotlin`, dependency-review, Trivy, SBOM). Actions are SHA-pinned. Numeric gates read analog `docs/guardrails/python/profile.thresholds.yml` after `scripts/ci-init-guardrails.sh` (`GUARDRAILS_READ_TOKEN`); otherwise the consumer copy `config/python.profile.thresholds.yml`. Swift overlays live in `config/swift.profile.thresholds.yml` and are enforced by llvm-cov + `scripts/check-swift-docs.py`. Kotlin overlays live in `config/kotlin.profile.thresholds.yml` and are enforced by Kover/ktlint/detekt plus `:sdk:dokkaGeneratePublicationHtml` (KT-DOC-001). The overlay reader allows stricter consumer values and fails on looser ones. Do not clone `.github/scaffold` in CI. Do not check out commondevops, containerdevops, or pydevops from a pixeldive workflow; the reusable workflows sparse-checkout their own `scripts/` with the read tokens.
@@ -69,8 +69,8 @@ CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`,
 
 | Companion | How it is pinned |
 | --- | --- |
-| `pirlruc/guardrails` | Git submodule `guardrails` at `docs/guardrails/` (tag **1.13.1**, `1945211ac851c3c0f83694bd4ea53571fdced4ab`). Private; needs `GUARDRAILS_READ_TOKEN`. |
-| `pirlruc/github-scaffold` | Git submodule `github-scaffold` at `.github/scaffold/` (tag **1.10.2**, `c8eddcfb2c8a808981e640fa9739cb4fcefa991e`). Templates are synced into `.github/` and `.cursor/rules/`. |
+| `pirlruc/guardrails` | Git submodule `guardrails` at `docs/guardrails/` (tag **1.15.0**, `2d4bb70e95449f6922781716857adeb22badf676`). Private; needs `GUARDRAILS_READ_TOKEN`. |
+| `pirlruc/github-scaffold` | Git submodule `github-scaffold` at `.github/scaffold/` (tag **1.12.0**, `9c443ea978851768f451b1df2020dd86dfb1a967`). Templates are synced into `.github/` and `.cursor/rules/`. |
 | `pirlruc/methodologies` | Not a submodule. README and this file's header still cite `tree/1.7.0`. Issue and pull-request templates cite `1.9.1`. |
 
 Android client analogs (payload shape, not Gradle layout): [pirlruc/finsilo](https://github.com/pirlruc/finsilo) (`:app` / `:domain`) and Heimdall (`app → kit → core`). Phone/camera JSON maps to Android `Build`, `ActivityManager`, `DisplayMetrics`, and Camera2 — see field descriptions on `app/device_models.py`. Do not copy Heimdall's native kit layout into this Python service.

@@ -6,6 +6,8 @@ import asyncio
 import uuid
 from collections.abc import Sequence
 
+from sqlalchemy import func, select
+
 from app.blobs.uploads import discard_spool, new_image, persist_upload, upload_size, validate_upload
 from app.exceptions import BatchLimitError
 from app.models import ImageUpload, SessionImage
@@ -89,11 +91,23 @@ class SessionBatchMixin(SessionHost):
                 for image in images:
                     await db.refresh(image)
         except Exception:
-            for path in paths:
-                await self._storage.delete(path)
+            await _delete_unreferenced(self, paths)
             raise
         self._metrics.observe_upload(sum([await upload_size(item) for item in uploads]))
         return images
+
+
+async def _delete_unreferenced(host: SessionHost, paths: Sequence[str]) -> None:
+    """Delete blobs this attempt wrote when no committed row still names them."""
+    async with host._factory() as db:
+        for path in paths:
+            referenced = await db.scalar(
+                select(func.count())
+                .select_from(SessionImage)
+                .where(SessionImage.storage_path == path),  # type: ignore[arg-type]
+            )
+            if not referenced:
+                await host._storage.delete(path)
 
 
 def reject_batch_count(count: int, max_images: int) -> None:

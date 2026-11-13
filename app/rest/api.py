@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import hmac
 import uuid
 
-from fastapi import APIRouter, FastAPI, Query, Response
+from fastapi import APIRouter, FastAPI, Query, Request, Response
 from fastapi.responses import PlainTextResponse
 
 from app.metrics import Metrics
@@ -16,6 +17,14 @@ from app.rest.http_errors import register_error_handlers
 from app.sessions.service import SessionService
 
 session_router = APIRouter(prefix="/api/v1")
+
+
+def _bearer_matches(header: str, expected: str) -> bool:
+    """True when ``header`` is exactly ``Bearer`` plus the configured token."""
+    candidate = f"Bearer {expected}"
+    if len(header) != len(candidate):
+        return False
+    return hmac.compare_digest(header, candidate)
 
 
 def create_app(service: SessionService, metrics: Metrics | None = None) -> FastAPI:
@@ -48,8 +57,11 @@ def create_app(service: SessionService, metrics: Metrics | None = None) -> FastA
         return Response(content='{"status":"ok"}', media_type="application/json")
 
     @app.get("/metrics", tags=["health"])
-    async def metrics_endpoint() -> PlainTextResponse:
+    async def metrics_endpoint(request: Request) -> PlainTextResponse:
         """Prometheus text exposition of request, error, and upload counters."""
+        expected = service._settings.metrics_bearer_token
+        if expected and not _bearer_matches(request.headers.get("authorization", ""), expected):
+            return PlainTextResponse("unauthorized", status_code=401)
         return PlainTextResponse(shared_metrics.render(), media_type="text/plain; version=0.0.4")
 
     return app

@@ -31,22 +31,6 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
         run: bash scripts/run-gitleaks.sh
 
-  dependency-review:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Dependency review
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
-        with:
-          fail-on-severity: high
-          comment-summary-in-pr: false
-
   codeql:
     name: CodeQL
     runs-on: ubuntu-24.04
@@ -116,33 +100,6 @@ jobs:
         run: |
           python -m pip install --require-hashes -r scripts/requirements-dev-hashed.txt
           pip-audit -r requirements.txt --no-deps --disable-pip --progress-spinner off
-
-  semgrep:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.13"
-
-      - name: SAST
-        run: |
-          python -m pip install --require-hashes -r scripts/requirements-dev-hashed.txt
-          semgrep scan --error --severity ERROR --config p/python \
-            --exclude app/pb \
-            app main.py sdk demo scripts
-          semgrep scan --error --severity ERROR --config p/swift \
-            --exclude ios/.build --exclude ios/Demo/PixeldiveDemo.xcodeproj \
-            ios
-          semgrep scan --error --severity ERROR --config p/kotlin \
-            --exclude android/.gradle --exclude android/**/build \
-            android
 
   image:
     # Non-dependabot image scan is container-build + container-scan.

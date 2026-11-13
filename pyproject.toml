@@ -42,7 +42,6 @@ dev = [
   "pytest-cov==7.1.0",
   "radon==6.0.1",
   "ruff==0.16.8",
-  "semgrep==1.185.0",
   "types-aiofiles==25.1.0.20260518",
   "zizmor==1.29.0",
 ]

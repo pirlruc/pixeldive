@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Spool directories are created off the event loop.
+- A failed batch deletes a blob only when no committed image still names it.
+- `/metrics` requires `METRICS_TOKEN` when that variable is set.
+- Anonymous traffic shares one quota bucket when caps are configured.
+- Semgrep is no longer a product dependency. SAST uses `common-secrets-sast`.
+
 ## [0.2.0] - 2026-11-13
 
 ### Changed
