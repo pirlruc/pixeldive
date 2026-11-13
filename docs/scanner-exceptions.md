@@ -13,6 +13,7 @@ targets are product trees (`app`, `sdk`, `demo`, `scripts`, `ios`, `android`).
 | `android/.gradle`, `android/**/build` | Gradle caches and build output. Not product source. |
 | KICS `698ed579-…` on `minio-init` (`kics-scan ignore-block`) | See below. One-shot bucket bootstrap, not a daemon. |
 | KICS `ce76b7d0-…` on `db.cap_add` (`kics-scan ignore-line`) | See below. Postgres entrypoint caps after `cap_drop: ALL`. |
+| KICS `aa93e17f-…` Chown Flag Exists on `Dockerfile` `COPY --chown` | DOCKER-BUILD-007 requires `--chown` on `COPY`. A follow-up `RUN chown` rewrites the layer. The ignore-line comments stay. |
 
 ## Why these KICS exclusions exist in pixeldive
 

@@ -145,4 +145,3 @@ Gaps that remain:
   branches), and the JVM `DeviceSnapshot` / `JvmDeviceProbe` fallbacks (dead
   Elvis on `System.getProperty`). Production client/transport/Camera2Labels stay
   at 95/95.
-

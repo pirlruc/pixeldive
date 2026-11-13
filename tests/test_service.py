@@ -58,7 +58,7 @@ async def test_add_image_marks_in_progress(service: SessionService) -> None:
     """First upload moves CREATED → IN_PROGRESS."""
     session = await service.create_session(sample_create())
     payload = ImageUpload(filename="frame.png", content_type="image/png", payload=PNG_1X1)
-    service.validate_upload(payload)
+    await service.validate_upload(payload)
     image = await service.add_image(session.id, payload)
     loaded = await service.get_session(session.id)
     assert loaded.status == SessionStatus.IN_PROGRESS.value

@@ -1,0 +1,25 @@
+version: v2
+modules:
+  # Root stays the module so buf breaking still sees proto/session_service.proto.
+  # A module path of proto renames that file and looks like a deletion.
+  - path: .
+    excludes:
+      - .venv
+      - ios
+      - android
+      - docs
+lint:
+  use:
+    - STANDARD
+  except:
+    # Published RPC and message names predate this gate. Renaming them
+    # would break generated clients without changing the wire format.
+    # PROTO-API-001 still rejects wire breaks. New files are linted.
+    - DIRECTORY_SAME_PACKAGE
+    - PACKAGE_DIRECTORY_MATCH
+    - RPC_REQUEST_RESPONSE_UNIQUE
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+breaking:
+  use:
+    - FILE

@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: ["*"]
+  workflow_dispatch:
 
 concurrency:
   group: quality-${{ github.workflow }}-${{ github.ref }}
@@ -14,7 +16,7 @@ permissions:
 
 jobs:
   quality:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Check out
@@ -35,8 +37,8 @@ jobs:
 
       - name: Install
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          python -m pip install --require-hashes -r scripts/requirements-runtime.txt
+          python -m pip install --require-hashes -r scripts/requirements-dev-hashed.txt
 
       - name: Generate protobuf stubs
         run: bash scripts/generate_proto.sh
@@ -48,7 +50,7 @@ jobs:
         run: bash scripts/check-ci-local.sh
 
   docker-lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Check out
@@ -87,7 +89,7 @@ jobs:
         run: docker compose -f docker-compose.yml --profile s3 config --quiet
 
   uv-lock:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Check out
@@ -107,7 +109,7 @@ jobs:
         run: bash scripts/check-uv-export.sh
 
   postgres:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       postgres:
@@ -137,18 +139,58 @@ jobs:
 
       - name: Install
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          python -m pip install --require-hashes -r scripts/requirements-runtime.txt
+          python -m pip install --require-hashes -r scripts/requirements-dev-hashed.txt
 
       - name: Generate protobuf stubs
         run: bash scripts/generate_proto.sh
 
-      - name: Alembic + SessionService tests on PostgreSQL
+      - name: Alembic check and SessionService tests on PostgreSQL
         env:
           PIXELDIVE_TEST_DATABASE_URL: postgresql+asyncpg://pixeldive:pixeldive@localhost:5432/pixeldive
         run: bash scripts/ci-postgres.sh
 
+  ios-changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ios: ${{ steps.diff.outputs.ios }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Detect ios changes
+        id: diff
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if git diff --name-only "origin/${BASE_REF}" HEAD | grep -q '^ios/'; then
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ios=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  wrapper:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
   ios-sdk:
+    # Linux swift test covers pull requests that do not touch ios/.
+    # macos-15 runs on main, tags, workflow_dispatch, and ios/** pull requests.
+    needs: ios-changes
+    if: >-
+      always() &&
+      (github.event_name != 'pull_request' || needs.ios-changes.outputs.ios == 'true')
     runs-on: macos-15
     timeout-minutes: 30
     steps:
@@ -179,7 +221,7 @@ jobs:
           skip-dirs: .build
 
   android-sdk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Check out

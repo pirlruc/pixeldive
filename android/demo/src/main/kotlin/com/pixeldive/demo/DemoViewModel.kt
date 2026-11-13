@@ -211,6 +211,7 @@ class DemoViewModel(
     companion object {
         fun factory(application: Application): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
+                // Expires 2027-05-13. ViewModelProvider.Factory.create has no reified form.
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
                     DemoViewModel(application) as T

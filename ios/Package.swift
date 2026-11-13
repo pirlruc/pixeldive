@@ -14,6 +14,8 @@ let package = Package(
         .package(url: "https://github.com/grpc/grpc-swift.git", exact: "1.24.2"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.100.0"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.23.0"),
+        // 1.7.x needs Swift 6.4. The macOS and Linux gates are Swift 6.1.
+        .package(url: "https://github.com/apple/swift-collections.git", exact: "1.6.0"),
     ],
     targets: [
         .target(

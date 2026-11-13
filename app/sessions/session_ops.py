@@ -55,9 +55,9 @@ class SessionOpsMixin(SessionHost):
         except FileNotFoundError as exc:
             raise ImageNotFoundError(f"image {image_id} blob is missing") from exc
 
-    def validate_upload(self, upload: ImageUpload) -> None:
+    async def validate_upload(self, upload: ImageUpload) -> None:
         """Reject empty, oversized, or non-image payloads."""
-        validate_upload(upload, self._settings)
+        await validate_upload(upload, self._settings)
 
 
 def apply_first_upload(session: Session) -> bool:

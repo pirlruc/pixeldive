@@ -30,6 +30,7 @@ ENV PATH="/opt/venv/bin:${PATH}" \
     GRPC_PORT="50051"
 
 # DOCKER-BUILD-007: chown on COPY, not a follow-up RUN that rewrites the tree.
+# kics-scan ignore-line
 COPY --from=builder --chown=65532:65532 /opt/venv /opt/venv
 
 # Official python-slim ships pip/setuptools in /usr/local (CVE-2025-47273).
@@ -48,10 +49,15 @@ RUN rm -rf \
     \) -exec rm -rf {} +
 
 WORKDIR /app
+# kics-scan ignore-line
 COPY --chown=65532:65532 app /app/app
+# kics-scan ignore-line
 COPY --chown=65532:65532 proto /app/proto
+# kics-scan ignore-line
 COPY --chown=65532:65532 migrations /app/migrations
+# kics-scan ignore-line
 COPY --chown=65532:65532 alembic.ini /app/alembic.ini
+# kics-scan ignore-line
 COPY --chown=65532:65532 main.py /app/main.py
 
 # Empty volume mount point. Created as root because USER 65532 cannot

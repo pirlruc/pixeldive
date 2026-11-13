@@ -72,8 +72,8 @@ docker run --rm \
 
 ## Compose
 
-Copy `.env.example` to `.env` and set `POSTGRES_PASSWORD` before `docker compose up`. The checked-in Compose file binds published ports to `127.0.0.1`. Source: https://github.com/pirlruc/pixeldive/blob/main/docker-compose.yml
+Copy `.env.example` to `.env` and set `POSTGRES_PASSWORD` before `docker compose up`. The checked-in Compose file binds published ports to `127.0.0.1`. Source: <https://github.com/pirlruc/pixeldive/blob/main/docker-compose.yml>
 
 ## License
 
-MIT. Source: https://github.com/pirlruc/pixeldive
+MIT. Source: <https://github.com/pirlruc/pixeldive>

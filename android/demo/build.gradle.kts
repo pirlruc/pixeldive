@@ -26,6 +26,12 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+    }
+}
+
 dependencies {
     implementation(project(":sdk"))
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))

@@ -156,16 +156,16 @@ Sibling epics were opened on GitHub because the token cannot push `docs/issues.y
 
 | Repo | Epic | Issue |
 | --- | --- | --- |
-| github-scaffold | GS-PIN-LAG | https://github.com/pirlruc/github-scaffold/issues/151 |
-| guardrails | GR-PIN-MTH | https://github.com/pirlruc/guardrails/issues/190 |
-| guardrails | GR-PY-SEC-001 | https://github.com/pirlruc/guardrails/issues/191 |
-| commondevops | CMN-PIN-002 | https://github.com/pirlruc/commondevops/issues/167 |
-| containerdevops | CDO-LOCAL-001 | https://github.com/pirlruc/containerdevops/issues/127 |
-| pydevops | PDO-THRESH-002 | https://github.com/pirlruc/pydevops/issues/173 |
-| cppdevops | CPPD-MOBILE-002 | https://github.com/pirlruc/cppdevops/issues/85 |
-| methodologies | MTH-PIN-SYNC | https://github.com/pirlruc/methodologies/issues/119 |
-| guardrails | GR-CI-024-BOT | https://github.com/pirlruc/guardrails/issues/192 |
-| commondevops | CMN-SHELL-001 | https://github.com/pirlruc/commondevops/issues/168 |
+| github-scaffold | GS-PIN-LAG | <https://github.com/pirlruc/github-scaffold/issues/151> |
+| guardrails | GR-PIN-MTH | <https://github.com/pirlruc/guardrails/issues/190> |
+| guardrails | GR-PY-SEC-001 | <https://github.com/pirlruc/guardrails/issues/191> |
+| commondevops | CMN-PIN-002 | <https://github.com/pirlruc/commondevops/issues/167> |
+| containerdevops | CDO-LOCAL-001 | <https://github.com/pirlruc/containerdevops/issues/127> |
+| pydevops | PDO-THRESH-002 | <https://github.com/pirlruc/pydevops/issues/173> |
+| cppdevops | CPPD-MOBILE-002 | <https://github.com/pirlruc/cppdevops/issues/85> |
+| methodologies | MTH-PIN-SYNC | <https://github.com/pirlruc/methodologies/issues/119> |
+| guardrails | GR-CI-024-BOT | <https://github.com/pirlruc/guardrails/issues/192> |
+| commondevops | CMN-SHELL-001 | <https://github.com/pirlruc/commondevops/issues/168> |
 
 `python-quality` and `container-scan` limits are already [PDO-THRESH-002](https://github.com/pirlruc/pydevops/issues/173) and [CDO-LOCAL-001](https://github.com/pirlruc/containerdevops/issues/127). Do not file them again.
 
@@ -198,7 +198,7 @@ PY-SEC-005/006/007: [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/1
 - TOOL-003: guardrails 1.8.0 and github-scaffold 1.7.0 gitlinks; commondevops submodule names; Kotlin overlay keys; `COPY --chown`; actionlint + zizmor; CodeQL/Semgrep no longer exclude analog pins
 - TOOL-004: Dokka HTML on `:sdk` (the earlier "not published, so KT-DOC-001 N/A" note was wrong for a library that already has a public API); `ops-reuse.yml` calls common-infra-lint and container-iac via read tokens; KICS `698ed579` / `ce76b7d0` explained for `minio-init` and Postgres `cap_add`
 - 2026-10-28: `feature-ops-pins` pins commondevops 5.6.2 and containerdevops 6.3.6. Job containers stay on the public Ubuntu image because this repo is not on the private package allow list. `SECURITY.md` is new. Tag `0.1.0` stays.
-- 2026-10-24: [PR 125](https://github.com/pirlruc/pixeldive/pull/125) merged as `25822ec`. Annotated tag `0.1.0` is that commit and contains no digest. Publish run https://github.com/pirlruc/pixeldive/actions/runs/40092702718 signed the image. The release body lists index `sha256:2d26235d2882f69dcd4b4196a02c337f144ffd330d566ffa2c43ece835c7b022` and linux/amd64 `sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93`. Smoke command is `python -m app.settings_storage`. Editing the release did not republish. Do not move tag `0.1.0`.
+- 2026-10-24: [PR 125](https://github.com/pirlruc/pixeldive/pull/125) merged as `25822ec`. Annotated tag `0.1.0` is that commit and contains no digest. Publish run <https://github.com/pirlruc/pixeldive/actions/runs/40092702718> signed the image. The release body lists index `sha256:2d26235d2882f69dcd4b4196a02c337f144ffd330d566ffa2c43ece835c7b022` and linux/amd64 `sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93`. Smoke command is `python -m app.settings_storage`. Editing the release did not republish. Do not move tag `0.1.0`.
 - `feature-ops-refresh`: guardrails 1.13.1, scaffold 1.10.2, ops reusables at commondevops `0932c7bf` and containerdevops `416e31ea`, SEC-004/005 quota stores, SDK-007/008 TLS gRPC and PEM CA. `python-quality` stays unused because the stricter average maintainability floor is `config/python.profile.thresholds.yml`. iOS NIO TLS is covered on macos-15; Linux `swift:6.1` runs the package tests. `ios/Package.resolved` pins grpc-swift 1.24.2, swift-nio 2.104.0, and swift-nio-ssl.
 
-*Last updated: 2026-10-28 (commondevops 5.6.2, containerdevops 6.3.6, SECURITY.md; tag 0.1.0 stays)*
+Last updated: 2026-11-13 (guardrails 1.15.0, github-scaffold 1.12.0, commondevops v6.3.0, containerdevops 6.5.0). Tag 0.1.0 stays.
