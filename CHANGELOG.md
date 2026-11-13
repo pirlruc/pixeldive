@@ -9,18 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-13
+
 ### Changed
 
-- setuptools in the lock is 84.2.1. Dependabot's updater reported
-  "No files have changed" for 84.0.0 to 84.1.0, and it cannot clone
-  the github-scaffold submodule.
-- Callers pin commondevops 5.6.2
-  (`b85f95bbac8ba7d82eb90d1d84d1b8d1e8590a12`) and containerdevops 6.3.6
-  (`b419c24cbaf09f39d73fa0146a71155f1a4fbd54`). Job containers stay on
-  the public Ubuntu image. The runtime image is unchanged, so there is
-  no 0.1.1. Tag `0.1.0` stays put.
-- `SECURITY.md` points vulnerability reports at the private advisory form.
-  Image docs list the 0.1.0 index and `linux/amd64` digests.
+- Pins are guardrails 1.15.0, github-scaffold 1.12.0, commondevops
+  v6.3.0, and containerdevops 6.5.0. Tag `0.1.0` stays put.
+- The runtime image stays `python:3.13-slim-trixie`. Debian findings
+  the base will not fix stay in `docs/scanner-exceptions.md`.
+- Blob uploads and local listings do their disk work off the event
+  loop. A failed batch no longer keeps the bytes it already stored.
+- The iOS package stays on the Swift 6.1 line. swift-collections is
+  pinned to 1.6.0.
+- The Android demo draws edge to edge and treats Kotlin warnings as
+  errors.
 
 ## [0.1.0] - 2026-10-23
 
