@@ -9,3 +9,4 @@ ignores:
   - ".venv/**"
   - "android/.gradle/**"
   - "docs/guardrails/**"
+  - "android/sdk/Module.md"
