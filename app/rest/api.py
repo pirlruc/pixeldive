@@ -30,7 +30,7 @@ def _bearer_matches(header: str, expected: str) -> bool:
 def create_app(service: SessionService, metrics: Metrics | None = None) -> FastAPI:
     """Build a FastAPI app bound to a SessionService instance."""
     shared_metrics = metrics or service._metrics
-    app = FastAPI(title="pixeldive session service", version="0.1.0")
+    app = FastAPI(title="pixeldive session service", version="0.3.0")
     app.state.service = service
     app.state.metrics = shared_metrics
     app.add_middleware(ObservabilityMiddleware, metrics=shared_metrics)

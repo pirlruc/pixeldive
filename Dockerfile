@@ -1,18 +1,21 @@
-# python:3.13.17-slim-trixie (linux/amd64 digest; DOCKER-BUILD-002/003).
-# Debian 13 clears the fixable perl HIGH findings that bookworm still ships.
+# dhi.io/python:3.13-debian13-dev (linux/amd64). The runtime tag has no shell,
+# so the venv and the data directory are prepared here.
 # CPython minor follows PY-RUN-003 / guardrails python/profile.md (3.13;
 # 3.14 is still in bugfix until ~2027-10, so it does not qualify until the
 # 2027-04 re-evaluation). Keep lockstep with setup-python and requires-python.
-FROM python:3.13.17-slim-trixie@sha256:fe14fd57a4c0361110eaa0c284112b189750bcb43fb04bb5d1ee7b7744027ccf AS builder
+FROM dhi.io/python:3.13-debian13-dev@sha256:dbe603d026e33548f420346eb3963d3dd385a06148c1913bb5af32218829d4e2 AS builder
 
 WORKDIR /build
 # --without-pip keeps pip/setuptools/msgpack out of the runtime venv
 # (DOCKER-BUILD-001). Install with the builder image's pip.
-RUN python -m venv --without-pip /opt/venv
+RUN python -m venv --without-pip /opt/venv \
+ && install -d -o 65532 -g 65532 /out/data/images
 COPY requirements.txt .
 RUN pip --python /opt/venv/bin/python install --no-cache-dir -r requirements.txt
 
-FROM python:3.13.17-slim-trixie@sha256:fe14fd57a4c0361110eaa0c284112b189750bcb43fb04bb5d1ee7b7744027ccf
+# dhi.io/python:3.13-debian13 (linux/amd64). No /bin/sh, so this stage has
+# no RUN. The base user is 65532 and cannot delete the image's own pip.
+FROM dhi.io/python:3.13-debian13@sha256:ab678ca8fa69d36f1386fb71f4252d1a9561b7542ca84f5d14babffebcf4f479
 
 LABEL org.opencontainers.image.title="pixeldive" \
       org.opencontainers.image.description="Image-processing session management (REST + gRPC)" \
@@ -33,20 +36,9 @@ ENV PATH="/opt/venv/bin:${PATH}" \
 # kics-scan ignore-line
 COPY --from=builder --chown=65532:65532 /opt/venv /opt/venv
 
-# Official python-slim ships pip/setuptools in /usr/local (CVE-2025-47273).
-# They are build tooling, not runtime (DOCKER-BUILD-001).
-RUN rm -rf \
-      /usr/local/lib/python3.13/ensurepip \
-      /usr/local/bin/pip \
-      /usr/local/bin/pip3 \
-      /usr/local/bin/pip3.13 \
-      /usr/local/bin/wheel \
- && find /usr/local/lib/python3.13/site-packages -maxdepth 1 \( \
-      -name 'pip' -o -name 'pip-*' -o \
-      -name 'setuptools' -o -name 'setuptools-*' -o \
-      -name '_distutils_hack' -o -name 'pkg_resources' -o \
-      -name 'wheel' -o -name 'wheel-*' \
-    \) -exec rm -rf {} +
+# The data directory is created in the builder. This image has no shell,
+# so it cannot RUN install or delete the base image's /usr/bin/pip.
+COPY --from=builder --chown=65532:65532 /out/data/images /data/images
 
 WORKDIR /app
 # kics-scan ignore-line
@@ -60,9 +52,6 @@ COPY --chown=65532:65532 alembic.ini /app/alembic.ini
 # kics-scan ignore-line
 COPY --chown=65532:65532 main.py /app/main.py
 
-# Empty volume mount point. Created as root because USER 65532 cannot
-# mkdir /data. This is not a COPY --chown of a tree (DOCKER-BUILD-007).
-RUN install -d -o 65532 -g 65532 /data/images
 USER 65532:65532
 EXPOSE 8000 50051
 VOLUME ["/data/images"]
