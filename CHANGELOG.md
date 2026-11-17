@@ -11,8 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The runtime image is `dhi.io/python:3.13-debian13`. The builder is the
-  matching `-dev` tag. Tags `0.1.0` and `0.2.0` stay put.
+- The runtime image is `python:3.13.18-slim-trixie` at the linux/amd64
+  digest `sha256:48d884813cf44e927cf64c5529dd630dd3b18338c6dc727991eef9b71e934a20`,
+  with zlib upgraded to `1.3.1-1+deb13u1`. The DHI Debian 13 runtime has
+  no shell, so the image-size gate cannot measure it. Tags `0.1.0` and
+  `0.2.0` stay put.
 
 ### Fixed
 

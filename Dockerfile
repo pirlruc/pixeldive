@@ -1,21 +1,19 @@
-# dhi.io/python:3.13-debian13-dev (linux/amd64). The runtime tag has no shell,
-# so the venv and the data directory are prepared here.
+# python:3.13.18-slim-trixie (linux/amd64 digest; DOCKER-BUILD-002/003).
+# Debian 13. The DHI runtime has no shell, and the image-size gate runs
+# `du` through `sh`, so this image stays on the official slim tag.
 # CPython minor follows PY-RUN-003 / guardrails python/profile.md (3.13;
 # 3.14 is still in bugfix until ~2027-10, so it does not qualify until the
 # 2027-04 re-evaluation). Keep lockstep with setup-python and requires-python.
-FROM dhi.io/python:3.13-debian13-dev@sha256:dbe603d026e33548f420346eb3963d3dd385a06148c1913bb5af32218829d4e2 AS builder
+FROM python:3.13.18-slim-trixie@sha256:48d884813cf44e927cf64c5529dd630dd3b18338c6dc727991eef9b71e934a20 AS builder
 
 WORKDIR /build
 # --without-pip keeps pip/setuptools/msgpack out of the runtime venv
 # (DOCKER-BUILD-001). Install with the builder image's pip.
-RUN python -m venv --without-pip /opt/venv \
- && install -d -o 65532 -g 65532 /out/data/images
+RUN python -m venv --without-pip /opt/venv
 COPY requirements.txt .
 RUN pip --python /opt/venv/bin/python install --no-cache-dir -r requirements.txt
 
-# dhi.io/python:3.13-debian13 (linux/amd64). No /bin/sh, so this stage has
-# no RUN. The base user is 65532 and cannot delete the image's own pip.
-FROM dhi.io/python:3.13-debian13@sha256:ab678ca8fa69d36f1386fb71f4252d1a9561b7542ca84f5d14babffebcf4f479
+FROM python:3.13.18-slim-trixie@sha256:48d884813cf44e927cf64c5529dd630dd3b18338c6dc727991eef9b71e934a20
 
 LABEL org.opencontainers.image.title="pixeldive" \
       org.opencontainers.image.description="Image-processing session management (REST + gRPC)" \
@@ -36,9 +34,28 @@ ENV PATH="/opt/venv/bin:${PATH}" \
 # kics-scan ignore-line
 COPY --from=builder --chown=65532:65532 /opt/venv /opt/venv
 
-# The data directory is created in the builder. This image has no shell,
-# so it cannot RUN install or delete the base image's /usr/bin/pip.
-COPY --from=builder --chown=65532:65532 /out/data/images /data/images
+# Official python-slim ships pip/setuptools in /usr/local (CVE-2025-47273).
+# They are build tooling, not runtime (DOCKER-BUILD-001).
+RUN rm -rf \
+      /usr/local/lib/python3.13/ensurepip \
+      /usr/local/bin/pip \
+      /usr/local/bin/pip3 \
+      /usr/local/bin/pip3.13 \
+      /usr/local/bin/wheel \
+ && find /usr/local/lib/python3.13/site-packages -maxdepth 1 \( \
+      -name 'pip' -o -name 'pip-*' -o \
+      -name 'setuptools' -o -name 'setuptools-*' -o \
+      -name '_distutils_hack' -o -name 'pkg_resources' -o \
+      -name 'wheel' -o -name 'wheel-*' \
+    \) -exec rm -rf {} +
+
+# The 2026-11-05 slim digest still ships zlib 1.3.1-1+b1 (CVE-2026-85091).
+# The fix is 1.3.1-1+deb13u1. Apt and the other highs in this digest have
+# no fixed package yet, so they stay on ignore-unfixed.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      'zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1' \
+ && apt-get dist-clean
 
 WORKDIR /app
 # kics-scan ignore-line
@@ -52,6 +69,9 @@ COPY --chown=65532:65532 alembic.ini /app/alembic.ini
 # kics-scan ignore-line
 COPY --chown=65532:65532 main.py /app/main.py
 
+# Empty volume mount point. Created as root because USER 65532 cannot
+# mkdir /data. This is not a COPY --chown of a tree (DOCKER-BUILD-007).
+RUN install -d -o 65532 -g 65532 /data/images
 USER 65532:65532
 EXPOSE 8000 50051
 VOLUME ["/data/images"]
