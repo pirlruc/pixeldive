@@ -60,7 +60,7 @@ If `ensurepip` is missing:
 
 ```bash
 python3 -m pip install --target .venv -r requirements.txt -r requirements-dev.txt
-PYTHONPATH=.venv bash scripts/ci-local.sh
+PYTHONPATH=.venv bash scripts/check-ci-local.sh
 ```
 
 CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`, `uv-lock`, `ios-sdk` on macOS, `android-sdk` on Ubuntu JDK 21), `.github/workflows/ops-reuse.yml` (common-infra-lint and container-iac), `security.yml` (gitleaks, CodeQL, bandit, pip-audit, semgrep `p/python` + `p/swift` + `p/kotlin`, dependency-review, Trivy, SBOM). Actions are SHA-pinned. Numeric gates read analog `docs/guardrails/python/profile.thresholds.yml` after `scripts/ci-init-guardrails.sh` (`GUARDRAILS_READ_TOKEN`); otherwise the consumer copy `config/python.profile.thresholds.yml`. Swift overlays live in `config/swift.profile.thresholds.yml` and are enforced by llvm-cov + `scripts/check-swift-docs.py`. Kotlin overlays live in `config/kotlin.profile.thresholds.yml` and are enforced by Kover/ktlint/detekt plus `:sdk:dokkaGeneratePublicationHtml` (KT-DOC-001). The overlay reader allows stricter consumer values and fails on looser ones. Do not clone `.github/scaffold` in CI. Do not check out commondevops, containerdevops, or pydevops from a pixeldive workflow; the reusable workflows sparse-checkout their own `scripts/` with the read tokens.
@@ -69,8 +69,8 @@ CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`,
 
 | Companion | How it is pinned |
 | --- | --- |
-| `pirlruc/guardrails` | Git submodule `guardrails` at `docs/guardrails/` (tag **1.13.1**, `1945211ac851c3c0f83694bd4ea53571fdced4ab`). Private; needs `GUARDRAILS_READ_TOKEN`. |
-| `pirlruc/github-scaffold` | Git submodule `github-scaffold` at `.github/scaffold/` (tag **1.10.2**, `c8eddcfb2c8a808981e640fa9739cb4fcefa991e`). Templates are synced into `.github/` and `.cursor/rules/`. |
+| `pirlruc/guardrails` | Git submodule `guardrails` at `docs/guardrails/` (tag **1.15.0**, `2d4bb70e95449f6922781716857adeb22badf676`). Private; needs `GUARDRAILS_READ_TOKEN`. |
+| `pirlruc/github-scaffold` | Git submodule `github-scaffold` at `.github/scaffold/` (tag **1.12.0**, `9c443ea978851768f451b1df2020dd86dfb1a967`). Templates are synced into `.github/` and `.cursor/rules/`. |
 | `pirlruc/methodologies` | Not a submodule. README and this file's header still cite `tree/1.7.0`. Issue and pull-request templates cite `1.9.1`. |
 
 Android client analogs (payload shape, not Gradle layout): [pirlruc/finsilo](https://github.com/pirlruc/finsilo) (`:app` / `:domain`) and Heimdall (`app → kit → core`). Phone/camera JSON maps to Android `Build`, `ActivityManager`, `DisplayMetrics`, and Camera2 — see field descriptions on `app/device_models.py`. Do not copy Heimdall's native kit layout into this Python service.
@@ -201,4 +201,4 @@ PY-SEC-005/006/007: [GR-PACK-005](https://github.com/pirlruc/guardrails/issues/1
 - 2026-10-24: [PR 125](https://github.com/pirlruc/pixeldive/pull/125) merged as `25822ec`. Annotated tag `0.1.0` is that commit and contains no digest. Publish run <https://github.com/pirlruc/pixeldive/actions/runs/40092702718> signed the image. The release body lists index `sha256:2d26235d2882f69dcd4b4196a02c337f144ffd330d566ffa2c43ece835c7b022` and linux/amd64 `sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93`. Smoke command is `python -m app.settings_storage`. Editing the release did not republish. Do not move tag `0.1.0`.
 - `feature-ops-refresh`: guardrails 1.13.1, scaffold 1.10.2, ops reusables at commondevops `0932c7bf` and containerdevops `416e31ea`, SEC-004/005 quota stores, SDK-007/008 TLS gRPC and PEM CA. `python-quality` stays unused because the stricter average maintainability floor is `config/python.profile.thresholds.yml`. iOS NIO TLS is covered on macos-15; Linux `swift:6.1` runs the package tests. `ios/Package.resolved` pins grpc-swift 1.24.2, swift-nio 2.104.0, and swift-nio-ssl.
 
-Last updated: 2026-11-13 (guardrails 1.15.0, github-scaffold 1.12.0, commondevops v6.3.0, containerdevops 6.5.0). Dependabot docker-lint installs uv before zizmor, with the cache off. Tag 0.1.0 stays. Tag 0.2.0 is <https://github.com/pirlruc/pixeldive/releases/tag/0.2.0>. Index digest `sha256:b9b873ef6b534ae033259a3bda323bf2221fc23f4e74a0e113baf25863715649`. Cosign identity is `container-publish.yml` at `b8c07466`. `gh attestation verify oci://ghcr.io/pirlruc/pixeldive:0.2.0 --owner pirlruc` succeeded.
+Last updated: 2026-11-17. Package version 0.3.0 is not tagged yet. The DHI runtime (`dhi.io/python:3.13-debian13`, `sha256:ab678ca8fa69d36f1386fb71f4252d1a9561b7542ca84f5d14babffebcf4f479`) builds and imports, but it has no `/bin/sh`. `check-image-size.sh` runs `du` through `sh`, so container-build failed age and size on that image. The Dockerfile is back on `python:3.13.18-slim-trixie` linux/amd64 `sha256:48d884813cf44e927cf64c5529dd630dd3b18338c6dc727991eef9b71e934a20` (config created 2026-11-05). Tags 0.1.0 and 0.2.0 stay. `published-image-rescan` still points at the 0.1.0 digest until 0.3.0 is published.

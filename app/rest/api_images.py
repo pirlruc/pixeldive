@@ -7,12 +7,14 @@ import uuid
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
+import anyio
 from fastapi import APIRouter, File, Form, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.blobs.filenames import sanitize_filename
 from app.blobs.spool import spool_chunks
 from app.blobs.uploads import discard_spool, upload_from_spool
+from app.config import ensure_spool
 from app.io_sizes import IO_CHUNK_BYTES
 from app.models import ImagePage, ImageUpload, SessionImage, SessionImageRead
 from app.rest.api_deps import PrincipalDep, ServiceDep
@@ -124,7 +126,7 @@ async def to_upload(
     """Spool an UploadFile to disk while hashing incrementally."""
     spool = await spool_chunks(
         file_chunks(file),
-        service._settings.spool_dir(),
+        await anyio.to_thread.run_sync(ensure_spool, service._settings.spool_dir()),
         service._settings.max_image_bytes,
     )
     return upload_from_spool(

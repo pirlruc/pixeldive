@@ -1,9 +1,10 @@
-# python:3.13.17-slim-trixie (linux/amd64 digest; DOCKER-BUILD-002/003).
-# Debian 13 clears the fixable perl HIGH findings that bookworm still ships.
+# python:3.13.18-slim-trixie (linux/amd64 digest; DOCKER-BUILD-002/003).
+# Debian 13. The DHI runtime has no shell, and the image-size gate runs
+# `du` through `sh`, so this image stays on the official slim tag.
 # CPython minor follows PY-RUN-003 / guardrails python/profile.md (3.13;
 # 3.14 is still in bugfix until ~2027-10, so it does not qualify until the
 # 2027-04 re-evaluation). Keep lockstep with setup-python and requires-python.
-FROM python:3.13.17-slim-trixie@sha256:fe14fd57a4c0361110eaa0c284112b189750bcb43fb04bb5d1ee7b7744027ccf AS builder
+FROM python:3.13.18-slim-trixie@sha256:48d884813cf44e927cf64c5529dd630dd3b18338c6dc727991eef9b71e934a20 AS builder
 
 WORKDIR /build
 # --without-pip keeps pip/setuptools/msgpack out of the runtime venv
@@ -12,7 +13,7 @@ RUN python -m venv --without-pip /opt/venv
 COPY requirements.txt .
 RUN pip --python /opt/venv/bin/python install --no-cache-dir -r requirements.txt
 
-FROM python:3.13.17-slim-trixie@sha256:fe14fd57a4c0361110eaa0c284112b189750bcb43fb04bb5d1ee7b7744027ccf
+FROM python:3.13.18-slim-trixie@sha256:48d884813cf44e927cf64c5529dd630dd3b18338c6dc727991eef9b71e934a20
 
 LABEL org.opencontainers.image.title="pixeldive" \
       org.opencontainers.image.description="Image-processing session management (REST + gRPC)" \
@@ -47,6 +48,14 @@ RUN rm -rf \
       -name '_distutils_hack' -o -name 'pkg_resources' -o \
       -name 'wheel' -o -name 'wheel-*' \
     \) -exec rm -rf {} +
+
+# The 2026-11-05 slim digest still ships zlib 1.3.1-1+b1 (CVE-2026-85091).
+# The fix is 1.3.1-1+deb13u1. Apt and the other highs in this digest have
+# no fixed package yet, so they stay on ignore-unfixed.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      'zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1' \
+ && apt-get dist-clean
 
 WORKDIR /app
 # kics-scan ignore-line

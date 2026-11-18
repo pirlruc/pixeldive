@@ -64,7 +64,7 @@ async def test_rate_limit_returns_http_429(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_upload_byte_quotas_and_auth_off(tmp_path: Path) -> None:
-    """Session/tenant byte caps apply only when a principal is present (SEC-002)."""
+    """Byte caps apply to a principal and to anonymous traffic when auth is off."""
     settings = auth_settings(
         tmp_path,
         session_max_upload_bytes=len(PNG_1X1),
@@ -90,18 +90,18 @@ async def test_upload_byte_quotas_and_auth_off(tmp_path: Path) -> None:
         storage_backend="local",
         storage_root=tmp_path / "open-images",
         auth_required=False,
-        rate_limit_per_minute=1,
+        rate_limit_per_minute=10,
         session_max_upload_bytes=1,
         log_json=False,
     )
     open_service, open_engine = await make_service(open_settings)
     first = await open_service.create_session(sample_create(session_name="a"))
     second = await open_service.create_session(sample_create(session_name="b"))
-    uploaded = await open_service.add_image(
-        first.id,
-        ImageUpload(filename="frame.png", content_type="image/png", payload=PNG_1X1),
-    )
-    assert uploaded.size_bytes == len(PNG_1X1)
+    with pytest.raises(QuotaExceededError, match="quota exceeded"):
+        await open_service.add_image(
+            first.id,
+            ImageUpload(filename="frame.png", content_type="image/png", payload=PNG_1X1),
+        )
     assert first.id != second.id
     tenant_settings = auth_settings(
         tmp_path / "tenant",
