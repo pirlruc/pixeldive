@@ -10,19 +10,19 @@ Async image-processing sessions over HTTP and gRPC.
 | GHCR | `ghcr.io/pirlruc/pixeldive` |
 | Architectures | `linux/amd64` |
 | User | non-root `65532:65532` |
-| Base | `python:3.13.17-slim-trixie` |
+| Base | `python:3.13.18-slim-trixie` |
 | Ports | `8000` HTTP, `50051` gRPC |
 
-Release `0.1.0` is the first published image. Prefer a digest. `latest` is never the only tag.
+Release `0.3.0` is the current image. Prefer a digest. `latest` is never the only tag. Tags `0.1.0` and `0.2.0` stay published.
 
 | Tag | Digest |
 |-----|--------|
-| `0.1.0` / `latest` | `sha256:2d26235d2882f69dcd4b4196a02c337f144ffd330d566ffa2c43ece835c7b022` (tag index) |
-| `0.1.0` `linux/amd64` | `sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93` |
+| `0.3.0` / `latest` | `sha256:6db37b8fcd56f654359abb2c34cd998d78396a3de8aefd46e707f0447037bd85` (tag index) |
+| `0.3.0` `linux/amd64` | `sha256:fc25276ca6f4e94b9ec4e14b2bf3c5566c967af4cae647eff265a5639ff16f8c` |
 
 ```bash
-docker pull pirlruc/pixeldive:0.1.0
-docker pull pirlruc/pixeldive@sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93
+docker pull pirlruc/pixeldive:0.3.0
+docker pull pirlruc/pixeldive@sha256:fc25276ca6f4e94b9ec4e14b2bf3c5566c967af4cae647eff265a5639ff16f8c
 ```
 
 ## What it does
@@ -67,7 +67,7 @@ docker run --rm \
   -e AUTH_REQUIRED=true \
   -e API_KEYS \
   -v pixeldive-images:/data/images \
-  pirlruc/pixeldive:0.1.0
+  pirlruc/pixeldive:0.3.0
 ```
 
 ## Compose

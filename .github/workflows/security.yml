@@ -143,7 +143,7 @@ jobs:
 
   published-image-rescan:
     # Scheduled and main only. Pull requests already build and scan the
-    # candidate image. linux/amd64 digest of tag 0.1.0.
+    # candidate image. linux/amd64 digest of tag 0.3.0.
     if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
     permissions:
       actions: read
@@ -152,7 +152,7 @@ jobs:
       packages: read
     uses: pirlruc/containerdevops/.github/workflows/container-published-rescan.yml@b8c0746603eefdc89571b17c62d1e965b28ff31f
     with:
-      image: ghcr.io/pirlruc/pixeldive@sha256:9da25df190e866825937d27a21bf7bbe6397553d9dcd5ec347c989d86545bf93
+      image: ghcr.io/pirlruc/pixeldive@sha256:fc25276ca6f4e94b9ec4e14b2bf3c5566c967af4cae647eff265a5639ff16f8c
       scripts_ref: b8c0746603eefdc89571b17c62d1e965b28ff31f
       blocking: false
       pkg_types: os,library
