@@ -7,6 +7,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-11-24
+
+### Security
+
+- `RestClient` refuses a bearer token on cleartext unless `allow_local_http` is set for loopback.
+- `GrpcClient` defaults to TLS. Callers that want a local insecure channel pass `insecure=True`.
+
+### Changed
+
+- Reusable workflows pin containerdevops 6.9.0 and commondevops v6.11.0.
+- The image scan and the published rescan share the SARIF category `trivy-pixeldive`.
+- Blocking file work uses the named limiter `blob_io`.
+- The slim base stays. A shell-less runtime cannot apt-pin zlib. See `docs/guardrail-deviations.yml`.
+
 ## [0.3.0] - 2026-11-17
 
 ### Changed

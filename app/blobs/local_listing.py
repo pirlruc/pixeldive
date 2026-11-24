@@ -8,6 +8,8 @@ from pathlib import Path
 import aiofiles.os
 import anyio
 
+from app.blocking import blob_io
+
 
 def _list_local_blobs(root: Path) -> list[tuple[str, float]]:
     """Return relative keys with mtimes, ignoring dotted path parts."""
@@ -26,7 +28,7 @@ def _list_local_blobs(root: Path) -> list[tuple[str, float]]:
 
 async def list_local_blobs(root: Path) -> list[tuple[str, float]]:
     """Return relative keys with mtimes, ignoring dotted path parts."""
-    return await anyio.to_thread.run_sync(_list_local_blobs, root)
+    return await anyio.to_thread.run_sync(_list_local_blobs, root, limiter=blob_io)
 
 
 async def file_age_seconds(path: Path) -> float:

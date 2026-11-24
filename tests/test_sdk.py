@@ -121,7 +121,7 @@ async def test_demo_grpc_camera_upload(
     backend = create_app(service)
     rest = asgi_client_for(backend)
     server, port = await start_grpc_server(service, "127.0.0.1", 0)
-    grpc = GrpcClient(f"127.0.0.1:{port}")
+    grpc = GrpcClient(f"127.0.0.1:{port}", insecure=True)
     await grpc.connect()
     demo = create_demo_app(DemoClients(rest, grpc))
 
@@ -287,7 +287,7 @@ class _BoomChunks:
 async def test_grpc_sdk_create_and_upload(service: SessionService) -> None:
     """GrpcClient can create a session and upload an image."""
     server, port = await start_grpc_server(service, "127.0.0.1", 0)
-    async with GrpcClient(f"127.0.0.1:{port}") as client:
+    async with GrpcClient(f"127.0.0.1:{port}", insecure=True) as client:
         session = await client.create_session()
         listed = await client.list_sessions()
         assert listed.sessions

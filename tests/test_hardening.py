@@ -205,7 +205,7 @@ async def test_rest_sdk_applies_token_to_shared_client(tmp_path: Path) -> None:
     service, engine = await make_service(settings)
     app = create_app(service)
     http = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
-    async with RestClient("http://test", token="alpha", client=http) as client:
+    async with RestClient("https://test", token="alpha", client=http) as client:
         created = await client.create_session(sample_session_payload("token-run"))
         session_id = created["id"]
         uploaded = await client.upload_images_batch(

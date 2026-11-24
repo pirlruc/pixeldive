@@ -8,4 +8,14 @@
 #
 # Being stricter than the org default is always allowed and needs no entry here.
 
-deviations: []
+deviations:
+  - id: DOCKER-BUILD-008
+    why: >-
+      The runtime apt-pins zlib and removes pip. A shell-less hardened
+      base cannot run those steps. Remaining Debian wont-fix CVEs stay
+      ignored until a base ships the fixes. Reviewed against containerdevops
+      6.9.0, whose size gate no longer needs a shell.
+    epic: PD-WAVE-006
+    owner: pirlruc
+    approved_by: pirlruc
+    review: 2027-05-24

@@ -8,6 +8,7 @@ import logging
 import anyio
 
 from app.blobs.storage import build_storage
+from app.blocking import blob_io
 from app.config import Settings, ensure_spool, get_settings
 from app.database import create_engine, init_db, session_factory
 from app.lifecycle import close_storage, orphan_sweep_loop, serve_until_stopped
@@ -82,7 +83,7 @@ async def run(settings: Settings | None = None) -> None:
 
 async def _bind(settings: Settings, engine: object) -> tuple[SessionService, object, object]:
     """Construct SessionService plus the HTTP and gRPC servers."""
-    await anyio.to_thread.run_sync(ensure_spool, settings.spool_dir())
+    await anyio.to_thread.run_sync(ensure_spool, settings.spool_dir(), limiter=blob_io)
     factory = session_factory(engine)  # type: ignore[arg-type]
     metrics = Metrics()
     service = SessionService(factory, build_storage(settings), settings, metrics)

@@ -19,7 +19,7 @@ class GrpcClient(GrpcCallsMixin):
         target: str,
         *,
         token: str | None = None,
-        insecure: bool = True,
+        insecure: bool = False,
         root_certificates: bytes | None = None,
         private_key: bytes | None = None,
         certificate_chain: bytes | None = None,

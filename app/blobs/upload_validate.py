@@ -8,6 +8,7 @@ import anyio
 
 from app.blobs.filenames import sanitize_filename
 from app.blobs.magic import header_bytes, matches_declared_type
+from app.blocking import blob_io
 from app.config import Settings
 from app.content_types import ALLOWED_CONTENT_TYPES
 from app.exceptions import EmptyImageError, ImageTooLargeError, UnsupportedContentTypeError
@@ -27,7 +28,7 @@ def _spool_size(path: str) -> int:
 async def upload_size(upload: ImageUpload) -> int:
     """Return the spool length, or the in-memory payload length when there is no spool."""
     if upload.spool_path:
-        return await anyio.to_thread.run_sync(_spool_size, upload.spool_path)
+        return await anyio.to_thread.run_sync(_spool_size, upload.spool_path, limiter=blob_io)
     return len(upload.payload)
 
 

@@ -153,7 +153,7 @@ async def test_sdk_cursors_owned_client_and_demo_settings(
     app = create_app(service)
     transport = ASGITransport(app=app)
     http = AsyncClient(transport=transport, base_url="http://test")
-    client = RestClient("http://test", token="unused", client=http)
+    client = RestClient("https://test", token="unused", client=http)
     listed = await client.list_sessions(limit=5)
     assert "items" in listed
     created = await client.create_session(
@@ -175,7 +175,7 @@ async def test_sdk_cursors_owned_client_and_demo_settings(
     await grpc.connect()
     await grpc.aclose()
 
-    owned = RestClient("http://test", token="abc")
+    owned = RestClient("https://test", token="abc")
     await owned.aclose()
 
     captured: dict[str, object] = {}
@@ -248,6 +248,8 @@ async def test_sdk_cursors_owned_client_and_demo_settings(
         response=Response(404, json={"detail": "missing"}),
     )
     assert _error_body(nested) == {"detail": "missing"}
+    monkeypatch.delenv("PIXELDIVE_TOKEN", raising=False)
+    monkeypatch.setenv("PIXELDIVE_BASE_URL", "http://127.0.0.1:8000")
     demo = create_demo_app()
     async with demo.router.lifespan_context(demo):
         assert demo.state.client is not None

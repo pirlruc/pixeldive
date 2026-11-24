@@ -1,6 +1,7 @@
 # python:3.13.18-slim-trixie (linux/amd64 digest; DOCKER-BUILD-002/003).
-# Debian 13. The DHI runtime has no shell, and the image-size gate runs
-# `du` through `sh`, so this image stays on the official slim tag.
+# Debian 13. The size gate no longer needs a shell. This image still
+# apt-pins zlib and deletes pip, so a shell-less DHI runtime cannot
+# build it (DOCKER-BUILD-008, docs/guardrail-deviations.yml).
 # CPython minor follows PY-RUN-003 / guardrails python/profile.md (3.13;
 # 3.14 is still in bugfix until ~2027-10, so it does not qualify until the
 # 2027-04 re-evaluation). Keep lockstep with setup-python and requires-python.
