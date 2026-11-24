@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from app.blobs.filenames import sanitize_filename
 from app.blobs.spool import spool_chunks
 from app.blobs.uploads import discard_spool, upload_from_spool
+from app.blocking import blob_io
 from app.config import ensure_spool
 from app.io_sizes import IO_CHUNK_BYTES
 from app.models import ImagePage, ImageUpload, SessionImage, SessionImageRead
@@ -126,7 +127,9 @@ async def to_upload(
     """Spool an UploadFile to disk while hashing incrementally."""
     spool = await spool_chunks(
         file_chunks(file),
-        await anyio.to_thread.run_sync(ensure_spool, service._settings.spool_dir()),
+        await anyio.to_thread.run_sync(
+            ensure_spool, service._settings.spool_dir(), limiter=blob_io
+        ),
         service._settings.max_image_bytes,
     )
     return upload_from_spool(

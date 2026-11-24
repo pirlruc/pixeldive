@@ -213,7 +213,7 @@ async def test_grpc_sdk_parity_and_path_upload(service: SessionService, tmp_path
     server, port = await start_grpc_server(service, "127.0.0.1", 0)
     frame = tmp_path / "frame.png"
     frame.write_bytes(PNG_1X1)
-    async with GrpcClient(f"127.0.0.1:{port}") as client:
+    async with GrpcClient(f"127.0.0.1:{port}", insecure=True) as client:
         session = await client.create_session()
         fetched = await client.get_session(session.id)
         assert fetched.session_name == session.session_name

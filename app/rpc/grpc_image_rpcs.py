@@ -6,6 +6,7 @@ import anyio
 from grpc.aio import ServicerContext
 from pydantic import ValidationError
 
+from app.blocking import blob_io
 from app.config import ensure_spool
 from app.exceptions import SessionServiceError
 from app.pb import session_service_pb2 as pb
@@ -35,7 +36,9 @@ class ImageRpcMixin:
                 context,
                 max_bytes=self._service._settings.max_image_bytes,
                 spool_dir=await anyio.to_thread.run_sync(
-                    ensure_spool, self._service._settings.spool_dir()
+                    ensure_spool,
+                    self._service._settings.spool_dir(),
+                    limiter=blob_io,
                 ),
             )
             image = await self._service.add_image(session_id, upload, principal)
@@ -57,7 +60,9 @@ class ImageRpcMixin:
                 max_bytes=self._service._settings.max_image_bytes,
                 max_images=self._service._settings.max_batch_images,
                 spool_dir=await anyio.to_thread.run_sync(
-                    ensure_spool, self._service._settings.spool_dir()
+                    ensure_spool,
+                    self._service._settings.spool_dir(),
+                    limiter=blob_io,
                 ),
             )
             images = await self._service.add_images_batch(session_id, uploads, principal)

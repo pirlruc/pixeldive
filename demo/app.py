@@ -30,8 +30,13 @@ def _settings() -> tuple[str, str | None, bool | str, str]:
 def open_demo_clients() -> DemoClients:
     """Open REST plus gRPC clients for a live demo process."""
     base, token, verify, target = _settings()
-    grpc = GrpcClient(target, token=token) if target.strip() else None
-    return DemoClients(RestClient(base, token=token, verify=verify), grpc)
+    host = base.split("/", 3)[2].rsplit("@", 1)[-1].split(":", 1)[0].strip("[]")
+    local = host in {"localhost", "127.0.0.1", "::1"}
+    grpc = GrpcClient(target, token=token, insecure=True) if target.strip() else None
+    return DemoClients(
+        RestClient(base, token=token, verify=verify, allow_local_http=local),
+        grpc,
+    )
 
 
 def wrap_demo_client(client: RestClient | DemoClients | None) -> DemoClients | None:
@@ -102,5 +107,5 @@ def _error_body(exc: HTTPStatusError) -> dict[str, Any]:
 def asgi_client_for(app: object, token: str | None = None) -> RestClient:
     """Build a RestClient that talks to an in-process pixeldive ASGI app."""
     transport = ASGITransport(app=app)  # type: ignore[arg-type]
-    http = AsyncClient(transport=transport, base_url="http://pixeldive")
-    return RestClient("http://pixeldive", token=token, client=http, owns_client=True)
+    http = AsyncClient(transport=transport, base_url="https://pixeldive")
+    return RestClient("https://pixeldive", token=token, client=http, owns_client=True)

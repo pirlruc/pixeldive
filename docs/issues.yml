@@ -2140,6 +2140,35 @@ milestones:
                 - .github/workflows/hub-description.yml
                 - .github/workflows/release.yml
             verification:
-              - grep -q 578c442571a1f1abfd05e7f14504018ffa6ca844 .github/workflows/hub-description.yml
+              - grep -q 1a0d9a059e79e58cba9fffdb86aa9060249ed2f6 .github/workflows/hub-description.yml
             guardrail_refs:
               - DOC-PUB-001
+      - id: PD-WAVE-006
+        status: done
+        title: Pin current ops workflows and keep tokens off cleartext
+        decision: >-
+          In the context of the published image, facing a shell-less base
+          that cannot apt-pin zlib, we decided to stay on the slim tag and
+          record the deviation, to achieve a build that still patches zlib,
+          accepting the Debian wont-fix CVEs until the review date.
+        overview:
+          problem: >-
+            A bearer token could be sent on cleartext, gRPC defaulted to
+            insecure, and the image scan used a different SARIF category
+            from the published rescan.
+          goal: >-
+            Tokens require TLS unless loopback is explicit, gRPC defaults
+            to TLS, and both image scans use one category.
+        acceptance_criteria:
+          - RestClient rejects a token on cleartext without allow_local_http
+          - GrpcClient insecure defaults to false
+          - container-scan and the published rescan share trivy-pixeldive
+        guardrail_refs:
+          - APP-TLS-001
+          - DOCKER-BUILD-008
+        tasks:
+          - id: PD-WAVE-006-T1
+            status: done
+            title: Apply the TLS defaults and the scan category
+            verification:
+              - uv run pytest tests/test_sdk.py tests/test_tls.py

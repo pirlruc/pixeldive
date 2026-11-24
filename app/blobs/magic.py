@@ -4,6 +4,7 @@ from pathlib import Path
 
 import anyio
 
+from app.blocking import blob_io
 from app.models import ImageUpload
 
 HEADER_SIZE = 16
@@ -32,7 +33,7 @@ async def header_bytes(upload: ImageUpload, size: int = HEADER_SIZE) -> bytes:
     if upload.header_prefix:
         return upload.header_prefix[:size]
     if upload.spool_path:
-        return await anyio.to_thread.run_sync(_read_spool, upload.spool_path, size)
+        return await anyio.to_thread.run_sync(_read_spool, upload.spool_path, size, limiter=blob_io)
     return b""
 
 

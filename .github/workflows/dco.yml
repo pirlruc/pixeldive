@@ -1,0 +1,13 @@
+name: dco
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    permissions:
+      contents: read
+    uses: pirlruc/commondevops/.github/workflows/common-dco.yml@9350e95cbb130219be113d8737469cd7c39f155c # v6.11.0
