@@ -13,16 +13,16 @@ Async image-processing sessions over HTTP and gRPC.
 | Base | `python:3.13.18-slim-trixie` |
 | Ports | `8000` HTTP, `50051` gRPC |
 
-Release `0.3.0` is the current image. Prefer a digest. `latest` is never the only tag. Tags `0.1.0` and `0.2.0` stay published.
+Release `0.4.0` is the current image. Prefer a digest. `latest` is never the only tag. Tags `0.1.0`, `0.2.0`, and `0.3.0` stay published.
 
 | Tag | Digest |
 |-----|--------|
-| `0.3.0` / `latest` | `sha256:6db37b8fcd56f654359abb2c34cd998d78396a3de8aefd46e707f0447037bd85` (tag index) |
-| `0.3.0` `linux/amd64` | `sha256:fc25276ca6f4e94b9ec4e14b2bf3c5566c967af4cae647eff265a5639ff16f8c` |
+| `0.4.0` / `latest` | `sha256:a033dd2b4de410f79d544dda9ce54bec9b0e64bca72e3b0dc9c109b7d4994381` (tag index) |
+| `0.4.0` `linux/amd64` | `sha256:8d2ed133342e2a4e968a3f5be07e5c7dfe05f80959778dcaa9b9177affd63635` |
 
 ```bash
-docker pull pirlruc/pixeldive:0.3.0
-docker pull pirlruc/pixeldive@sha256:fc25276ca6f4e94b9ec4e14b2bf3c5566c967af4cae647eff265a5639ff16f8c
+docker pull pirlruc/pixeldive:0.4.0
+docker pull pirlruc/pixeldive@sha256:8d2ed133342e2a4e968a3f5be07e5c7dfe05f80959778dcaa9b9177affd63635
 ```
 
 ## What it does
@@ -67,7 +67,7 @@ docker run --rm \
   -e AUTH_REQUIRED=true \
   -e API_KEYS \
   -v pixeldive-images:/data/images \
-  pirlruc/pixeldive:0.3.0
+  pirlruc/pixeldive:0.4.0
 ```
 
 ## Compose
