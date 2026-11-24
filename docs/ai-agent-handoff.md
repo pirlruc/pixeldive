@@ -69,8 +69,8 @@ CI: `.github/workflows/quality.yml` (SQLite PY-* plus `postgres`, `docker-lint`,
 
 | Companion | How it is pinned |
 | --- | --- |
-| `pirlruc/guardrails` | Git submodule `guardrails` at `docs/guardrails/` (tag **1.15.0**, `2d4bb70e95449f6922781716857adeb22badf676`). Private; needs `GUARDRAILS_READ_TOKEN`. |
-| `pirlruc/github-scaffold` | Git submodule `github-scaffold` at `.github/scaffold/` (tag **1.12.0**, `9c443ea978851768f451b1df2020dd86dfb1a967`). Templates are synced into `.github/` and `.cursor/rules/`. |
+| `pirlruc/guardrails` | Git submodule `guardrails` at `docs/guardrails/` (tag **1.17.1**, `8508e93691aa3c4f769ecc215ddc83ecf26e70b2`). Private; needs `GUARDRAILS_READ_TOKEN`. |
+| `pirlruc/github-scaffold` | Git submodule `github-scaffold` at `.github/scaffold/` (tag **1.14.3**, `1fca8a3b79c10d38d5b39747d2363070a07503da`). Templates are synced into `.github/` and `.cursor/rules/`. |
 | `pirlruc/methodologies` | Not a submodule. README and this file's header still cite `tree/1.7.0`. Issue and pull-request templates cite `1.9.1`. |
 
 Android client analogs (payload shape, not Gradle layout): [pirlruc/finsilo](https://github.com/pirlruc/finsilo) (`:app` / `:domain`) and Heimdall (`app → kit → core`). Phone/camera JSON maps to Android `Build`, `ActivityManager`, `DisplayMetrics`, and Camera2 — see field descriptions on `app/device_models.py`. Do not copy Heimdall's native kit layout into this Python service.
