@@ -56,7 +56,8 @@ RUN rm -rf \
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       'zlib1g=1:1.3.dfsg+really1.3.1-1+deb13u1' \
- && apt-get dist-clean
+ && apt-get dist-clean \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 # kics-scan ignore-line

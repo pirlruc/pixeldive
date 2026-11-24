@@ -1,7 +1,6 @@
 # Limitations
 
-Untracked limits (not silent guardrail deviations — see `docs/guardrail-deviations.yml`,
-which has no entries).
+Untracked limits. Recorded departures are in `docs/guardrail-deviations.yml`.
 
 | Limit | Why |
 | --- | --- |
@@ -16,4 +15,4 @@ which has no entries).
 | Android Compose demo is host-only | `:sdk` JVM tests, ktlint, detekt, and Kover run on Linux. The demo is included only with `local.properties` or `PIXELDIVE_INCLUDE_ANDROID_DEMO=1` (not `ANDROID_HOME`). Analog proposals: [new-guardrails/kotlin.md](new-guardrails/kotlin.md). |
 | Image Dockerfile digest | Base image is pinned to the published linux/amd64 digest of `python:3.13.18-slim-trixie` (`sha256:48d88481…`) ([QUAL-002](issues.yml), PY-RUN-003). 3.14 does not qualify until the 2027-04 re-evaluation. Multi-arch deploys need a manifest-list digest. |
 | Compose secrets | `docker-compose.yml` interpolates passwords with no in-file defaults (DOCKER-COMPOSE-004). Copy `.env.example` to `.env` before `docker compose up`. `scripts/compose-s3.sh` still supplies local demo defaults. |
-| Published image | Tags `0.1.0`, `0.2.0`, and `0.3.0` are published. Do not move them. |
+| Published image | Tags `0.1.0`, `0.2.0`, `0.3.0`, and `0.4.0` are published. Do not move them. |
