@@ -1,11 +1,9 @@
 name: hub-description
 
+# workflow_dispatch only. A push trigger called container-hub-description at
+# 6.5.0, and that revision wrote this page onto pirlruc/ci-container.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "docs/docker-hub.md"
-      - ".github/workflows/hub-description.yml"
+  workflow_dispatch:
 
 permissions: {}
 
@@ -13,7 +11,7 @@ jobs:
   overview:
     permissions:
       contents: read
-    uses: pirlruc/containerdevops/.github/workflows/container-hub-description.yml@b8c0746603eefdc89571b17c62d1e965b28ff31f
+    uses: pirlruc/containerdevops/.github/workflows/container-hub-description.yml@578c442571a1f1abfd05e7f14504018ffa6ca844 # 6.8.1
     with:
       dockerhub_image: pirlruc/pixeldive
       dockerhub_readme: docs/docker-hub.md

@@ -2107,8 +2107,8 @@ milestones:
   - name: Hub caller
     epics:
       - id: HUB-001
-        status: open
-        title: Pin the Hub reusable at containerdevops 6.7.0
+        status: done
+        title: Pin the Hub reusable at containerdevops 6.8.1
         decision: >-
           In the context of publishing the Docker Hub overview, facing a
           reusable that writes this repository's readme onto pirlruc/ci-container
@@ -2122,24 +2122,24 @@ milestones:
             pirlruc/ci-container. A push of docs/docker-hub.md overwrites the
             ci-container overview. Run 44206526070 did that on 2026-11-18.
           goal: >-
-            The caller pins containerdevops 6.7.0
-            (f0f9077ced9f79097e7597de1a2e00f8eb42e216) and does not run the Hub
-            job on push until that pin is in place.
+            The caller pins containerdevops 6.8.1
+            (578c442571a1f1abfd05e7f14504018ffa6ca844). That tag is after the
+            6.7.0 fix. The Hub job does not run on push.
         acceptance_criteria:
-          - The uses pin is f0f9077ced9f79097e7597de1a2e00f8eb42e216
-          - hub-description.yml has no push trigger until that pin is merged
+          - The uses pin is 578c442571a1f1abfd05e7f14504018ffa6ca844
+          - hub-description.yml has no push trigger
           - A workflow_dispatch writes pirlruc/pixeldive from docs/docker-hub.md
         guardrail_refs:
           - DOC-PUB-001
         tasks:
           - id: HUB-001-T1
-            status: open
-            title: Retire the push trigger and pin containerdevops 6.7.0
+            status: done
+            title: Retire the push trigger and pin containerdevops 6.8.1
             instructions:
               files:
                 - .github/workflows/hub-description.yml
                 - .github/workflows/release.yml
             verification:
-              - grep -q f0f9077ced9f79097e7597de1a2e00f8eb42e216 .github/workflows/hub-description.yml
+              - grep -q 578c442571a1f1abfd05e7f14504018ffa6ca844 .github/workflows/hub-description.yml
             guardrail_refs:
               - DOC-PUB-001
