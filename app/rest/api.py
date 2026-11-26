@@ -60,6 +60,8 @@ def create_app(service: SessionService, metrics: Metrics | None = None) -> FastA
     async def metrics_endpoint(request: Request) -> PlainTextResponse:
         """Prometheus text exposition of request, error, and upload counters."""
         expected = service._settings.metrics_bearer_token
+        if service._settings.environment == "production" and not expected:
+            return PlainTextResponse("unauthorized", status_code=401)
         if expected and not _bearer_matches(request.headers.get("authorization", ""), expected):
             return PlainTextResponse("unauthorized", status_code=401)
         return PlainTextResponse(shared_metrics.render(), media_type="text/plain; version=0.0.4")
@@ -81,7 +83,7 @@ async def create_session(
 async def list_sessions(
     service: ServiceDep,
     principal: PrincipalDep,
-    limit: int = Query(default=50, ge=1),
+    limit: int = Query(default=50, ge=1, le=200),
     cursor: str | None = None,
 ) -> SessionPage:
     """List sessions newest-first with an opaque cursor."""

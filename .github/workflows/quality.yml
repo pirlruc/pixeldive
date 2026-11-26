@@ -26,7 +26,7 @@ jobs:
 
       - name: Init guardrails analog
         env:
-          GUARDRAILS_READ_TOKEN: ${{ secrets.GUARDRAILS_READ_TOKEN }}
+          GUARDRAILS_READ_TOKEN: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && secrets.DEPENDABOT_GITHUB_TOKEN || secrets.GUARDRAILS_READ_TOKEN }}
         run: bash scripts/ci-init-guardrails.sh
 
       - name: Set up Python
@@ -210,7 +210,7 @@ jobs:
 
       - name: Init guardrails analog
         env:
-          GUARDRAILS_READ_TOKEN: ${{ secrets.GUARDRAILS_READ_TOKEN }}
+          GUARDRAILS_READ_TOKEN: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && secrets.DEPENDABOT_GITHUB_TOKEN || secrets.GUARDRAILS_READ_TOKEN }}
         run: bash scripts/ci-init-guardrails.sh
 
       - name: SWIFT-* gates
@@ -240,7 +240,7 @@ jobs:
 
       - name: Init guardrails analog
         env:
-          GUARDRAILS_READ_TOKEN: ${{ secrets.GUARDRAILS_READ_TOKEN }}
+          GUARDRAILS_READ_TOKEN: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && secrets.DEPENDABOT_GITHUB_TOKEN || secrets.GUARDRAILS_READ_TOKEN }}
         run: bash scripts/ci-init-guardrails.sh
 
       # GitHub-hosted runners have no Android Studio JBR. Local

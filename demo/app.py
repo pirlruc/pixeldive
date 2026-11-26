@@ -32,7 +32,13 @@ def open_demo_clients() -> DemoClients:
     base, token, verify, target = _settings()
     host = base.split("/", 3)[2].rsplit("@", 1)[-1].split(":", 1)[0].strip("[]")
     local = host in {"localhost", "127.0.0.1", "::1"}
-    grpc = GrpcClient(target, token=token, insecure=True) if target.strip() else None
+    grpc_host = target.rsplit(":", 1)[0].strip("[]")
+    grpc_local = grpc_host in {"localhost", "127.0.0.1", "::1"}
+    grpc = (
+        GrpcClient(target, token=token, insecure=True, allow_local_http=grpc_local)
+        if target.strip()
+        else None
+    )
     return DemoClients(
         RestClient(base, token=token, verify=verify, allow_local_http=local),
         grpc,

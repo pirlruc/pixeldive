@@ -17,6 +17,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     mem_limit: 512m
+    pids_limit: 256
     cap_drop:
       - ALL
     # Entrypoint chowns the data dir then gosu to postgres (DOCKER-COMPOSE-005).
@@ -80,7 +81,7 @@ services:
       S3_REGION: ${S3_REGION:-us-east-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      GC_MIN_AGE_SECONDS: ${GC_MIN_AGE_SECONDS:-5}
+      GC_MIN_AGE_SECONDS: ${GC_MIN_AGE_SECONDS:-60}
       ORPHAN_MIN_AGE_SECONDS: ${ORPHAN_MIN_AGE_SECONDS:-60}
       ORPHAN_SWEEP_INTERVAL_SECONDS: ${ORPHAN_SWEEP_INTERVAL_SECONDS:-60}
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-0}
@@ -106,6 +107,7 @@ services:
     tmpfs:
       - /tmp
     mem_limit: 512m
+    pids_limit: 256
     healthcheck:
       test: ["CMD", "python", "-c", "from app.ready_probe import main; main()"]
       interval: 30s
@@ -128,6 +130,7 @@ services:
     volumes:
       - minio:/data
     mem_limit: 512m
+    pids_limit: 256
     cap_drop:
       - ALL
     security_opt:
@@ -184,6 +187,7 @@ services:
       retries: 10
       start_period: 5s
     mem_limit: 256m
+    pids_limit: 128
     cap_drop:
       - ALL
     security_opt:

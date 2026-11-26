@@ -41,11 +41,11 @@ def test_invalid_storage_backend() -> None:
 
 
 def test_build_local_storage(tmp_path: Path) -> None:
-    """build_storage creates the local root and returns LocalFilesystemStorage."""
+    """build_storage returns local storage and leaves directory creation to startup."""
     settings = Settings(storage_backend="local", storage_root=tmp_path / "blobs")
     backend = build_storage(settings)
     assert isinstance(backend, LocalFilesystemStorage)
-    assert settings.storage_root.is_dir()
+    assert not settings.storage_root.exists()
 
 
 @pytest.mark.asyncio

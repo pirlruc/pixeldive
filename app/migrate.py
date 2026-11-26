@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 
+import anyio
 from alembic import command
 from alembic.config import Config
+
+from app.blocking import blob_io
 
 _ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,4 +33,4 @@ def check_sync(database_url: str) -> None:
 
 async def upgrade_head(database_url: str) -> None:
     """Run migrations on a worker thread so the event loop stays free."""
-    await asyncio.to_thread(upgrade_head_sync, database_url)
+    await anyio.to_thread.run_sync(upgrade_head_sync, database_url, limiter=blob_io)

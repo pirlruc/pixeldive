@@ -207,7 +207,8 @@ public extension PixeldiveGrpcClient {
 
     /// Insecure h2c client for local/dev grpc.aio (`127.0.0.1:50051`).
     static func insecure(host: String, port: Int = 50051, token: String? = nil) -> PixeldiveGrpcClient {
-        PixeldiveGrpcClient(stream: NioGrpcStreaming(host: host, port: port), token: token)
+        rejectInsecureToken(host: host, token: token)
+        return PixeldiveGrpcClient(stream: NioGrpcStreaming(host: host, port: port), token: token)
     }
 }
 #endif

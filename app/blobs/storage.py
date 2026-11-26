@@ -57,7 +57,6 @@ def build_storage(
 ) -> StorageBackend:
     """Construct the configured storage backend."""
     if settings.storage_backend == "local":
-        settings.storage_root.mkdir(parents=True, exist_ok=True)
         return LocalFilesystemStorage(settings.storage_root)
     factory = s3_factory or default_s3_client
     return S3CompatibleStorage(

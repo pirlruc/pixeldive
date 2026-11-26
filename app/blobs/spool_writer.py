@@ -8,11 +8,13 @@ from pathlib import Path
 from typing import Any, cast
 
 import aiofiles
+import anyio
 
 from app.blobs.empty_chunks import empty_run_exceeded
 from app.blobs.fs_async import unlink_missing
 from app.blobs.magic import HEADER_SIZE
 from app.blobs.spool_file import Spool
+from app.blocking import blob_io
 from app.exceptions import EmptyImageError, ImageTooLargeError
 
 
@@ -21,7 +23,7 @@ class SpoolWriter:
 
     def __init__(self, directory: Path, max_bytes: int) -> None:
         """Create a unique ``.part`` path under ``directory``."""
-        directory.mkdir(parents=True, exist_ok=True)
+        self._directory = directory
         self.path = directory / f"{uuid.uuid4().hex}.part"
         self.max_bytes = max_bytes
         self.size = 0
@@ -32,6 +34,10 @@ class SpoolWriter:
 
     async def start(self) -> None:
         """Open the spool file for writing."""
+        await anyio.to_thread.run_sync(
+            lambda: self._directory.mkdir(parents=True, exist_ok=True),
+            limiter=blob_io,
+        )
         self._handle = await aiofiles.open(self.path, "wb")
 
     async def _close(self) -> None:
