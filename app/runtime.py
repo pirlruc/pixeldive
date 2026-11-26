@@ -84,6 +84,11 @@ async def run(settings: Settings | None = None) -> None:
 async def _bind(settings: Settings, engine: object) -> tuple[SessionService, object, object]:
     """Construct SessionService plus the HTTP and gRPC servers."""
     await anyio.to_thread.run_sync(ensure_spool, settings.spool_dir(), limiter=blob_io)
+    if settings.storage_backend == "local":
+        await anyio.to_thread.run_sync(
+            lambda: settings.storage_root.mkdir(parents=True, exist_ok=True),
+            limiter=blob_io,
+        )
     factory = session_factory(engine)  # type: ignore[arg-type]
     metrics = Metrics()
     service = SessionService(factory, build_storage(settings), settings, metrics)

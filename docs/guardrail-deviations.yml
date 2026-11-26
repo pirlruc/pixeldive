@@ -11,10 +11,11 @@
 deviations:
   - id: DOCKER-BUILD-008
     why: >-
-      The runtime apt-pins zlib and removes pip. A shell-less hardened
-      base cannot run those steps. Remaining Debian wont-fix CVEs stay
-      ignored until a base ships the fixes. Reviewed against containerdevops
-      6.9.0, whose size gate no longer needs a shell.
+      A 2026-11-26 retry built on dhi.io/python:3.13 and passed the local
+      structure test, but the Actions base-age gate could not pull that
+      digest and failed closed. The runtime stays on the slim tag, which
+      can apt-pin zlib and remove pip. Remaining Debian wont-fix CVEs stay
+      ignored until a base the age gate can pull ships the fixes.
     epic: PD-WAVE-006
     owner: pirlruc
     approved_by: pirlruc

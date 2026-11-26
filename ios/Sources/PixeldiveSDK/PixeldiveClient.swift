@@ -7,7 +7,7 @@ import FoundationNetworking
 /// Thin URLSession client for pixeldive `/api/v1` (REST; mirrors Python `RestClient`).
 ///
 /// Pass `caPEM` to trust a private CA in addition to the platform store.
-/// HTTP base URLs stay valid. TLS verification is not disabled.
+/// A bearer token is refused on a non-loopback HTTP URL. TLS verification is not disabled.
 public struct PixeldiveClient: Sendable {
     let http: HTTPTransport
 
@@ -36,6 +36,7 @@ public struct PixeldiveClient: Sendable {
     }
 
     init(baseURL: URL, token: String?, performer: HTTPPerforming) {
+        rejectCleartextToken(baseURL: baseURL, token: token)
         self.http = HTTPTransport(baseURL: baseURL, token: token, performer: performer)
     }
 
@@ -155,4 +156,28 @@ func metadataFields(_ metadata: String?) -> [String: String] {
         return [:]
     }
     return ["metadata": metadata]
+}
+
+func rejectCleartextToken(baseURL: URL, token: String?) {
+    guard let token, !token.trimmingCharacters(in: .whitespaces).isEmpty else {
+        return
+    }
+    if baseURL.scheme == "https" {
+        return
+    }
+    let host = baseURL.host ?? ""
+    if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+        return
+    }
+    preconditionFailure("a token requires TLS unless the host is loopback")
+}
+
+func rejectInsecureToken(host: String, token: String?) {
+    guard let token, !token.trimmingCharacters(in: .whitespaces).isEmpty else {
+        return
+    }
+    if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+        return
+    }
+    preconditionFailure("a token requires TLS unless the host is loopback")
 }

@@ -18,7 +18,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
-    uses: pirlruc/containerdevops/.github/workflows/container-publish.yml@1a0d9a059e79e58cba9fffdb86aa9060249ed2f6 # 6.9.0
+    uses: pirlruc/containerdevops/.github/workflows/container-publish.yml@b1cf0dead2b1a501bf1433fe72cdbbdad4e9132d # 6.10.0
     with:
       image_name: pixeldive
       dockerhub_image: pirlruc/pixeldive
@@ -34,7 +34,7 @@ jobs:
       dockerhub_readme: docs/docker-hub.md
       dockerhub_short_description: Async image-processing sessions over HTTP and gRPC.
       environment: release
-      scripts_ref: 1a0d9a059e79e58cba9fffdb86aa9060249ed2f6 # 6.9.0
+      scripts_ref: b1cf0dead2b1a501bf1433fe72cdbbdad4e9132d # 6.10.0
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -43,7 +43,7 @@ jobs:
   hub-description:
     permissions:
       contents: read
-    uses: pirlruc/containerdevops/.github/workflows/container-hub-description.yml@1a0d9a059e79e58cba9fffdb86aa9060249ed2f6 # 6.9.0
+    uses: pirlruc/containerdevops/.github/workflows/container-hub-description.yml@b1cf0dead2b1a501bf1433fe72cdbbdad4e9132d # 6.10.0
     with:
       dockerhub_image: pirlruc/pixeldive
       dockerhub_readme: docs/docker-hub.md

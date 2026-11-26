@@ -2172,3 +2172,34 @@ milestones:
             title: Apply the TLS defaults and the scan category
             verification:
               - uv run pytest tests/test_sdk.py tests/test_tls.py
+      - id: PD-WAVE-007
+        status: open
+        title: Keep tokens off cleartext and retry a shell-less base
+        decision: >-
+          In the context of the published image, facing a shell-less base
+          the Actions age gate cannot pull, we decided to keep the slim
+          runtime and still refuse cleartext tokens, to achieve the token
+          rule without a red image gate, accepting the existing image
+          deviation until a pullable base ships the fixes.
+        overview:
+          problem: >-
+            Blocking filesystem calls still ran on the event loop. A token
+            could ride an insecure gRPC channel or a client with verification
+            disabled. The image scan was advisory because the slim base
+            could not drop pip.
+          goal: >-
+            Those calls use the blob limiter, tokens stay off cleartext,
+            and the runtime has no shell.
+        acceptance_criteria:
+          - The runtime stays on the slim tag because the age gate cannot pull dhi.io
+          - Spool, link, and migration work uses blob_io
+          - A non-loopback cleartext token is refused on Python, Android, and iOS
+        guardrail_refs:
+          - APP-TLS-001
+          - DOCKER-BUILD-008
+        tasks:
+          - id: PD-WAVE-007-T1
+            status: open
+            title: Switch the runtime base and refuse cleartext tokens
+            verification:
+              - bash scripts/check-ci-local.sh

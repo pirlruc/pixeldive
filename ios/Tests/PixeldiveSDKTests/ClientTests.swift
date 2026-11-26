@@ -288,7 +288,7 @@ final class ClientTests: XCTestCase {
 
     private func makeClient(stub: StubPerformer, token: String? = nil) -> PixeldiveClient {
         PixeldiveClient(
-            baseURL: URL(string: "http://test")!,
+            baseURL: URL(string: "https://test")!,
             token: token,
             performer: stub
         )

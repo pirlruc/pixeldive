@@ -10,4 +10,4 @@ jobs:
   dco:
     permissions:
       contents: read
-    uses: pirlruc/commondevops/.github/workflows/common-dco.yml@9350e95cbb130219be113d8737469cd7c39f155c # v6.11.0
+    uses: pirlruc/commondevops/.github/workflows/common-dco.yml@ff65e7efbb7eea67bd659f886db0adb399f3a3f5 # v6.12.0

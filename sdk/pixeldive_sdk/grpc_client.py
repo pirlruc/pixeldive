@@ -7,6 +7,7 @@ from typing import Self
 import grpc
 
 from app.pb import session_service_pb2_grpc as pb_grpc
+from pixeldive_sdk.client import _reject_cleartext_token
 from pixeldive_sdk.grpc_calls import GrpcCallsMixin
 from pixeldive_sdk.grpc_channel import open_channel, reject_tls_on_insecure, stub_for
 
@@ -20,6 +21,7 @@ class GrpcClient(GrpcCallsMixin):
         *,
         token: str | None = None,
         insecure: bool = False,
+        allow_local_http: bool = False,
         root_certificates: bytes | None = None,
         private_key: bytes | None = None,
         certificate_chain: bytes | None = None,
@@ -33,6 +35,7 @@ class GrpcClient(GrpcCallsMixin):
                 certificate_chain,
                 ssl_target_name_override,
             )
+            _reject_cleartext_token(f"http://{target}", token, allow_local_http)
         self._target = target
         self._token = token
         self._insecure = insecure

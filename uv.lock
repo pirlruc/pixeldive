@@ -1262,7 +1262,7 @@ wheels = [
 
 [[package]]
 name = "pixeldive"
-version = "0.4.0"
+version = "0.5.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiobotocore" },

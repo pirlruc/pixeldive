@@ -9,8 +9,10 @@ from pathlib import Path
 
 import aiofiles
 import aiofiles.os
+import anyio
 
 from app.blobs.hash_keys import object_key, sha256_hex
+from app.blocking import blob_io
 from app.io_sizes import IO_CHUNK_BYTES
 
 
@@ -59,13 +61,17 @@ async def save_payload(
 
 async def try_link(source: Path, destination: Path) -> bool:
     """Hard-link ``source`` onto ``destination`` when the filesystem allows it."""
-    try:
-        os.link(source, destination)
-        return True
-    except FileExistsError:
-        return True
-    except OSError:
-        return False
+
+    def link() -> bool:
+        try:
+            os.link(source, destination)
+            return True
+        except FileExistsError:
+            return True
+        except OSError:
+            return False
+
+    return await anyio.to_thread.run_sync(link, limiter=blob_io)
 
 
 async def copy_spool(source: Path, tmp_path: Path) -> None:

@@ -32,36 +32,14 @@ jobs:
         run: bash scripts/run-gitleaks.sh
 
   codeql:
-    name: CodeQL
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
-      contents: read
       actions: read
-      packages: read
+      contents: read
       security-events: write
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
-        with:
-          languages: python
-          build-mode: none
-          config-file: .github/codeql/codeql-config.yml
-
-      - name: Analyze
-        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
-        with:
-          category: "/language:python"
-          output: ${{ runner.temp }}/codeql-sarif
-          upload: always
-
-      - name: Fail on High/Critical
-        run: python3 scripts/fail-on-sarif-severity.py --min-severity high "${{ runner.temp }}/codeql-sarif"
+    uses: pirlruc/commondevops/.github/workflows/common-codeql.yml@ff65e7efbb7eea67bd659f886db0adb399f3a3f5 # v6.12.0
+    with:
+      languages: python
 
   bandit:
     runs-on: ubuntu-24.04
@@ -150,10 +128,10 @@ jobs:
       contents: read
       security-events: write
       packages: read
-    uses: pirlruc/containerdevops/.github/workflows/container-published-rescan.yml@1a0d9a059e79e58cba9fffdb86aa9060249ed2f6 # 6.9.0
+    uses: pirlruc/containerdevops/.github/workflows/container-published-rescan.yml@b1cf0dead2b1a501bf1433fe72cdbbdad4e9132d # 6.10.0
     with:
       image: ghcr.io/pirlruc/pixeldive@sha256:8d2ed133342e2a4e968a3f5be07e5c7dfe05f80959778dcaa9b9177affd63635
-      scripts_ref: 1a0d9a059e79e58cba9fffdb86aa9060249ed2f6 # 6.9.0
+      scripts_ref: b1cf0dead2b1a501bf1433fe72cdbbdad4e9132d # 6.10.0
       blocking: false
       pkg_types: os,library
       results_artifact: published-pixeldive-scan

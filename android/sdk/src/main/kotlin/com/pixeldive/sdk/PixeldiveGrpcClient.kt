@@ -127,6 +127,9 @@ class PixeldiveGrpcClient(
             host: String,
             port: Int = 50051,
             token: String? = null,
-        ): PixeldiveGrpcClient = PixeldiveGrpcClient(OkHttpGrpcStreaming(host, port), token)
+        ): PixeldiveGrpcClient {
+            requireLoopbackForInsecureToken(host, token)
+            return PixeldiveGrpcClient(OkHttpGrpcStreaming(host, port), token)
+        }
     }
 }

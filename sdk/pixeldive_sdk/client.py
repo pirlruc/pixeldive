@@ -47,6 +47,8 @@ class RestClient(RestSessionMixin, RestImageMixin, RestPathUploadMixin):
         """Bind a base URL, optional bearer token, and optional TLS verify/cert."""
         self._base = base_url.rstrip("/")
         _reject_cleartext_token(self._base, token, allow_local_http)
+        if verify is False:
+            raise ValueError("verify=False is refused; pass a CA or an SSLContext")
         self._token = token
         self._owns_client = client is None if owns_client is None else owns_client
         self._http = client or httpx.AsyncClient(

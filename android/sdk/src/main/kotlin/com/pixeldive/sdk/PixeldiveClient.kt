@@ -17,6 +17,10 @@ class PixeldiveClient(
     http: OkHttpClient = defaultHttp(),
     caPem: String? = null,
 ) {
+    init {
+        requireTlsForToken(baseUrl, token)
+    }
+
     private val transport = HttpTransport(baseUrl, token, httpClient(http, caPem))
 
     /** GET `/health`. */

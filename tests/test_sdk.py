@@ -296,3 +296,15 @@ async def test_grpc_sdk_create_and_upload(service: SessionService) -> None:
     with pytest.raises(RuntimeError, match="connect"):
         client._require_stub()
     await server.stop(grace=0)
+
+
+def test_token_stays_off_cleartext() -> None:
+    """A bearer token is refused on remote HTTP and on an insecure gRPC channel."""
+    with pytest.raises(ValueError, match="token requires TLS"):
+        RestClient("http://files.example", token="secret")
+    with pytest.raises(ValueError, match="token requires TLS"):
+        GrpcClient("files.example:443", token="secret", insecure=True)
+    with pytest.raises(ValueError, match="verify=False"):
+        RestClient("https://files.example", verify=False)
+    RestClient("http://127.0.0.1:9", token="secret", allow_local_http=True)
+    GrpcClient("127.0.0.1:9", token="secret", insecure=True, allow_local_http=True)

@@ -67,7 +67,7 @@ final class TransportGuardTests: XCTestCase {
     func testFollowedRedirectOffOriginIsRefused() async {
         let stub = OffOriginPerformer()
         let client = PixeldiveClient(
-            baseURL: URL(string: "http://test")!,
+            baseURL: URL(string: "https://test")!,
             token: "secret",
             performer: stub
         )

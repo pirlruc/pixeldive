@@ -7,15 +7,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Fixed
-
-- Remove apt lists after the zlib pin so the Dockerfile matches the KICS apt-list check. This line is not in the published `0.4.0` image.
+## [0.5.0] - 2026-11-26
 
 ### Changed
 
-- The published-image rescan follows the `0.4.0` linux/amd64 digest.
+- Reusable workflows pin commondevops v6.12.0 and containerdevops 6.10.0.
+- CodeQL uses common-codeql. Dependabot guardrails checkouts use `DEPENDABOT_GITHUB_TOKEN`.
+- The shell-less `dhi.io/python:3.13` base built locally, but the Actions base-age gate could not pull it, so the runtime stays on `python:3.13-slim`.
+- Compose services set `pids_limit`. The example garbage-collection age matches the 60 second default.
+
+### Fixed
+
+- Spool directory creation, hard links, storage-root creation, and Alembic upgrades run on the named `blob_io` limiter.
+- A bearer token is refused on a non-loopback cleartext URL in the Python, Android, and iOS clients. `verify=False` is refused.
+- `/metrics` fails closed in production when no token is set. List endpoints cap `limit` at 200.
 
 ## [0.4.0] - 2026-11-24
 
